@@ -86,18 +86,9 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Project Structure
 
-> Today the repo holds `docs/` plus a default `create-next-app` scaffold; the full layout
-> below is intended, not yet built. See
-> [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for the complete directory tree and
-> file-placement rules.
-
-```text
-app/         Next.js App Router — Server Components (reads), Server Actions (writes, in app/actions/)
-components/  Reusable UI (components/ui = shadcn/ui) + the live quote-builder client component
-lib/         Framework-agnostic logic — pricing calc, Zod validation, Supabase clients & types
-supabase/    Supabase CLI migrations (migrations/*.sql) — schema, RLS policies, RPC functions
-docs/        Source-of-truth documents (PRODUCT, PRD, ARCHITECTURE, TECH-STACK, PROJECT-STRUCTURE)
-```
+> Today the repo holds `docs/` plus a default `create-next-app` scaffold; the full layout is
+> intended, not yet built. See [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for the
+> complete directory tree and file-placement rules.
 
 ## Further Reading
 

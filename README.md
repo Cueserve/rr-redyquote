@@ -80,16 +80,23 @@ supabase db push      # apply migrations from supabase/migrations/
 npm run dev           # start the Next.js app locally
 ```
 
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
 ## Project Structure
 
-> The app directories (`app/`, `supabase/`) are the intended layout from
-> [ARCHITECTURE.md](docs/ARCHITECTURE.md). They are created when we scaffold the app. Only
-> `docs/` exists today.
+> Today the repo holds `docs/` plus a default `create-next-app` scaffold; the full layout
+> below is intended, not yet built. See
+> [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for the complete directory tree and
+> file-placement rules.
 
 ```text
-app/         Next.js App Router application — Server Components (reads), Server Actions (writes)
+app/         Next.js App Router — Server Components (reads), Server Actions (writes, in app/actions/)
+components/  Reusable UI (components/ui = shadcn/ui) + the live quote-builder client component
+lib/         Framework-agnostic logic — pricing calc, Zod validation, Supabase clients & types
 supabase/    Supabase CLI migrations (migrations/*.sql) — schema, RLS policies, RPC functions
-docs/        Source-of-truth documents (PRODUCT, PRD, ARCHITECTURE, TECH-STACK)
+docs/        Source-of-truth documents (PRODUCT, PRD, ARCHITECTURE, TECH-STACK, PROJECT-STRUCTURE)
 ```
 
 ## Further Reading
@@ -97,6 +104,7 @@ docs/        Source-of-truth documents (PRODUCT, PRD, ARCHITECTURE, TECH-STACK)
 - [PRD.md](docs/PRD.md) — requirements and feature scope
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
+- [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 
 ---
 

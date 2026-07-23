@@ -12,16 +12,27 @@ decisions from memory.**
 - [docs/PRD.md](docs/PRD.md) — requirements and feature scope
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [docs/TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
+- [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
+
+**Before creating any new route, Server Action, component, `lib/` module, or migration,
+consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — it maps
+each kind of file to its location and encodes the placement rules that keep the ARCHITECTURE
+invariants intact. If reality has to diverge from that layout, update that file in the same
+change (see its §5).
 
 This file is the single home for Claude Code's working rules on RedyQuote. Keep AI-behavior rules
 here and product/architecture facts in `docs/`.
 
 ## Project state
 
-The app is **not scaffolded** on `main` — no `package.json`, `.env.example`, or `supabase/`
-directory exists yet. Only `docs/` and `README.md` are present. Treat the directory layout,
-commands, and versions in the docs/README as *intended*, not verified. Confirm before
-assuming any script or file exists.
+A **default `create-next-app` scaffold** now exists in the working tree (untracked): root
+`package.json`, `tsconfig.json`, `next.config.ts`, `node_modules/`, and a boilerplate `app/`
+(`page.tsx`, `layout.tsx`, `globals.css`) plus `public/*.svg`. **None of the intended
+architecture is built yet** — no `app/actions/`, `lib/`, `components/`, or `supabase/`
+migrations, and no `.env.example`. Treat the layout in
+[docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) and the commands/versions in the
+docs/README as *intended*, not verified. Confirm a script or file exists before assuming it
+does.
 
 ## Approved stack (TECH-STACK.md — do not deviate)
 

@@ -6,7 +6,7 @@
 that satisfy docs/PRD.md.
 
 > Derived from: docs/PRD.md
-> Downstream: docs/TECH-STACK.md, README.md
+> Downstream: docs/TECH-STACK.md, docs/PROJECT-STRUCTURE.md, README.md
 
 ---
 

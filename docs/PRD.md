@@ -24,14 +24,17 @@ RedyQuote v1.
 | PRD-007A | Fixed-category invariant: a quote may contain at most one non-misc line per fixed category. Misc lines are exempt and may repeat. The fixed category list MUST be defined before implementation begins. |
 | PRD-008 | A component whose environment is Indoor-only, used on an Outdoor-environment quote, is flagged as a mismatch. |
 | PRD-009 | Component and fab-tier cost dates are compared against settings-configured "warning" and "re-quote" age thresholds and shown as Current / Aging / Re-Quote badges. The quotes dashboard shows a count of stale-priced components. |
-| PRD-010 | Quote status lifecycle: `Draft → Pending Approval → Approved → Sent`. Reps can submit a Draft for approval. **Only an admin can transition Pending Approval → Approved, enforced by the database (RLS), not just the UI.** Any signed-in user can mark an Approved quote Sent (flat model). Invalid transitions (e.g. Draft → Approved directly) are rejected. |
+| PRD-010 | Quote status lifecycle: `Draft → Pending Approval → Approved → Sent`. Reps can submit their own Draft for approval. **Only an admin can transition Pending Approval → Approved, enforced by the database (RLS), not just the UI.** The quote's owner or an admin can mark an Approved quote Sent. Invalid transitions (e.g. Draft → Approved directly) are rejected. |
 | PRD-011 | Quote numbers are generated server-side (format `Q-YYYY-NNNN`, sequential per calendar year) at the moment a quote is first saved — never computed by counting client-side. |
-| PRD-012 | A single global settings row holds: labor rate, fabrication markup, component markup (default), cushion %, sales commission %, margin floor %, freshness warning/re-quote thresholds (months). The edit authorization model for settings is pending product decision and MUST be finalized before implementation begins. |
-| PRD-013 | Branding: a favicon image can be uploaded, resized to 64×64, and applied globally for every user. The edit authorization model for branding is pending the same product decision as PRD-012. |
+| PRD-012 | A single global settings row holds: labor rate, fabrication markup, component markup (default), cushion %, sales commission %, margin floor %, freshness warning/re-quote thresholds (months). Editing settings is admin-only, enforced by the database (RLS). Every settings change is audited (see PRD-018A). |
+| PRD-013 | Branding: a favicon image can be uploaded, resized to 64×64, and applied globally for every user. Uploading/applying branding is admin-only, enforced by the database (RLS). The change is audited (see PRD-018A). |
 | PRD-014 | Saving a quote and its line items is atomic — either both the quote header and all its lines are written, or neither is. |
 | PRD-015 | Saving a product's tiers and default components is atomic, including the price-history rows written for any changed tier cost. |
 | PRD-016 | A quote priced below the configured margin floor is flagged visually and in the submit confirmation. The flag is advisory only; save and submit remain allowed. |
 | PRD-017 | Every quote status transition writes an append-only audit row containing quote_id, from_status, to_status, actor, and changed_at. |
+| PRD-018 | Deactivating a product or component is a soft state, not a delete. A deactivated item stays on existing quotes that already reference it (priced as-is, rendered with a visible "Deactivated" badge) but is not selectable for new quote lines on any quote. Deactivated items remain viewable; only admins can edit or reactivate them (PRD-003, PRD-006). |
+| PRD-018A | Settings edits (PRD-012) and branding changes (PRD-013) write an append-only audit row (changed field, old value, new value, actor, changed_at) in the same transaction as the change. |
+| PRD-019 | Authorization model — admin owns master data. Reps create/manage their own quotes, submit for approval, and mark their own approved quotes Sent; they may read but not write master data. Admins do all of that on any quote, plus the approval gate and all master-data / settings / branding writes. Two roles only (rep, admin). Every write is enforced by Postgres RLS at the database, not only in Server Actions. |
 
 ## 2. Non-Functional Requirements
 
@@ -66,15 +69,20 @@ Status: Pending product/pricing sign-off before implementation.
 
 ### Real Authorization Model
 
-Status: Pending product/operations sign-off before implementation.
+Status: **Resolved 2026-07-23.** See
+`docs/superpowers/specs/2026-07-23-authorization-matrix-design.md`. Codified as PRD-019
+(model), PRD-018 (deactivation behavior), and PRD-018A (settings/branding audit).
 
-- Confirm which actions are admin-only versus available to any signed-in user for:
-	settings edits, branding changes, product create/edit/deactivate, fab-tier changes,
-	product default changes, component create/edit/deactivate, and quote sent status.
-- Confirm whether any of the above require audit logging beyond quote status and price
-	history.
-- Confirm whether deactivated master data remains editable, viewable, and selectable on
-	existing quotes.
+- Model — **admin owns master data** (PRD-019): reps quote (own quotes, submit, mark own
+  Sent) and read master data; admins additionally approve, act on any quote, and own all
+  writes to products, fab tiers, product defaults, components, settings, and branding. Two
+  roles only.
+- Enforcement — every write is Postgres RLS-enforced at the database, not only in Server
+  Actions (extends NFR-002 beyond the approval gate).
+- Audit — settings and branding changes are audited in an append-only `settings_history`
+  table, written in the same transaction as the change (PRD-018A, extends NFR-005).
+- Deactivated master data — stays on existing quotes with a "Deactivated" badge, not
+  selectable for new lines; admin-only to edit/reactivate (PRD-018).
 
 ## 3. Explicit Non-Requirements (see PRODUCT.md §4)
 

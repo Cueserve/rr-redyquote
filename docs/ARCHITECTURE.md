@@ -86,6 +86,7 @@ paths to run under an elevated role.
 | `quotes` | Quote header: quote_number, customer_name, product_id, qty_tier, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
 | `quote_lines` | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order | Belongs to a Quote |
 | `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at | Belongs to a Quote |
+| `settings_history` | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at | Global audit of settings/branding edits |
 
 ## 3. Data Flow
 
@@ -96,7 +97,7 @@ stateDiagram-v2
     [*] --> Draft
     Draft --> PendingApproval: rep submits
     PendingApproval --> Approved: admin only (RLS-enforced)
-    Approved --> Sent: any user (flat model), manual button
+    Approved --> Sent: owner or admin, manual button
     Draft --> Draft: rep edits/saves
 ```
 
@@ -123,19 +124,20 @@ price-history rows for any tier whose cost changed — all in one transaction.
 | Mutation path | Server Actions only, no separate JSON API layer | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library |
 | Atomicity | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction | Prevents partial saves from leaving quotes, tiers, defaults, or history in an inconsistent state |
 | Quote numbering | Server-generated from a Postgres sequence at first save | Removes the client-side counting race that could collide two reps' quote numbers |
-| Approval gate | RLS policy restricts `Pending Approval → Approved` to `role = 'admin'`; the authorization model for other writes remains an explicit product decision | Preserves the confirmed approval control while leaving unresolved write permissions visible until product finalizes them |
+| Authorization | RLS enforces the full model: `Pending Approval → Approved` and all master-data / settings / branding writes require `role = 'admin'`; quote content edits require owner-or-admin; reads are flat | Admin-owns-master-data model (resolved — PRD §2A / PRD-019); enforced at the database so it is a structural guarantee, not a UI convention |
 | Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only | Prevents a tampered client from persisting a fabricated margin and keeps implementation tied to a single canonical formula once defined |
 | State machine | Status transitions validated centrally against the diagram in §3; invalid transitions rejected | Prevents illegal states (e.g. skipping Approved) |
-| Audit | `quote_status_history` + `price_history`, written in the same transaction as the state change | Preserves traceability for quote status and cost changes |
+| Audit | `quote_status_history`, `price_history`, and `settings_history`, written in the same transaction as the change | Preserves traceability for quote status, cost, and settings/branding changes |
 | Tenancy | No `tenant_id` anywhere; single schema for REDYREF only | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist |
 | Service-role key | Not used anywhere in the app | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role |
 
 ## 5. Implementation Conventions
 
-- **RLS is the enforcement locus for the approval gate; everything else requires
-  authentication but is otherwise flat.** A Server Action must not be the only thing
-  standing between a non-admin and an approval — the database must reject it too.
-  (PRD-010, NFR-002)
+- **RLS is the enforcement locus for every write, not just the approval gate.**
+  Master-data, settings, and branding writes are admin-only; quote content edits are
+  owner-or-admin; the approval gate is admin-only; reads are flat (any authenticated user).
+  A Server Action must never be the only thing standing between a user and a write they
+  aren't allowed — the database must reject it too. (PRD-010, PRD-019, NFR-002)
 - **Server Actions are the sole mutation path.** No direct browser-to-Postgres writes.
   (NFR-007)
 - **Client-side pricing calculation is preview-only.** The Server Action's recomputed
@@ -171,13 +173,14 @@ Action pattern without touching the access/audit model above.
 | --- | --- | --- |
 | User credentials | Restricted | Managed entirely by Supabase Auth (bcrypt); never logged |
 | Quote/pricing/customer data | Confidential | Business-sensitive; visible to any signed-in REDYREF user (flat model), never to an unauthenticated request |
-| Settings (markups, margin floor) | Internal | Any signed-in user may edit (flat model, per PRD-012) |
+| Settings (markups, margin floor) | Internal | Admin-only edit, RLS-enforced (PRD-012); readable by any signed-in user |
 
 **Authentication & authorization.** Supabase Auth issues a JWT carried in an httpOnly,
 `Secure`, `SameSite` cookie via `@supabase/ssr`. Every Server Component read and Server
-Action write happens under that session, and RLS evaluates it at the database — the one
-non-flat rule (admin-only approval) is enforced there, not in application code, so a
-bypassed or scripted client is still denied. (PRD-001, PRD-010, NFR-002)
+Action write happens under that session, and RLS evaluates it at the database — the
+non-flat rules (admin-only approval, admin-only master-data / settings / branding writes,
+owner-or-admin quote edits) are enforced there, not in application code, so a bypassed or
+scripted client is still denied. (PRD-001, PRD-010, PRD-019, NFR-002)
 
 **Encryption.** TLS 1.2+ on all traffic (enforced by Vercel and Supabase); credentials are
 bcrypt-hashed, not encrypted. (NFR-004)

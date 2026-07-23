@@ -51,9 +51,10 @@ Draft → Pending Approval → Approved → Sent — the approval step enforced 
 Single organization: **REDYREF**, single tenant, no reselling to other clients planned.
 
 - **Sales reps** — build and submit quotes.
-- **Admins** — everything a rep can do, plus approve quotes. This is the only role
-  distinction enforced; access is otherwise flat (any signed-in user can read/write
-  products, components, and settings).
+- **Admins** — everything a rep can do on any quote, plus approve quotes and own all
+  master data (products, fab tiers, components, defaults), global settings, and branding.
+  Reps may read master data but not write it. Two roles only; the approval gate and every
+  admin-only write are database-enforced (RLS), not UI conventions.
 
 ## 3. Features
 
@@ -80,9 +81,9 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - **Pricing formula and rounding rules** — pending explicit definition in docs/PRD.md.
   Until that section is completed, no implementation may invent or infer calculation order,
   rounding points, or persisted pricing fields.
-- **Authorization model beyond quote approval** — pending explicit definition in
-  docs/PRD.md. The admin-only approval gate is confirmed; the ownership of settings,
-  catalog, component, default, and branding changes remains a product decision to finalize.
+- **Authorization model beyond quote approval** — **resolved 2026-07-23:** admin owns all
+  master data, settings, and branding; reps do quoting only. Codified in PRD §2A / PRD-019
+  and docs/superpowers/specs/2026-07-23-authorization-matrix-design.md.
 
 ## 4. Scope (In / Out)
 
@@ -94,6 +95,8 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - Building in the five requirements above: real access control on approval, atomic
   multi-row writes, race-free quote numbering, a single consistent cushion/margin formula,
   and an audit trail of status changes.
+- Soft deactivation of products/components: deactivated items stay on existing quotes with
+  a "Deactivated" badge but aren't selectable for new lines (PRD-018).
 
 ### Out of scope
 
@@ -118,22 +121,23 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - Price freshness badges and stale-price counts are derived from the same configured
   thresholds everywhere they appear.
 - Branding is applied consistently through a single org-wide favicon.
-- Settings changes and pricing behavior are not implemented until the explicit PRD
-  placeholders for authorization model and pricing formula are resolved.
+- Pricing behavior is not implemented until the explicit PRD placeholder for the pricing
+  formula is resolved. (The authorization-model placeholder is resolved — see PRD §2A.)
 
 ## 6. Anti-Patterns
 
 - **Don't enforce access control in the UI only.** Hiding the Approve button for
-  non-admins is not access control — every non-flat rule (the approval gate) must be
-  enforced by RLS and hold even against a bypassed or tampered client.
+  non-admins is not access control — every non-flat rule (the approval gate and all
+  admin-only writes) must be enforced by RLS and hold even against a bypassed or tampered
+  client.
 - **Don't delete-then-reinsert on multi-row saves.** Deleting all line items and
   re-inserting them is fragile — an insert failure after a successful delete silently
   loses data; saves must be atomic.
 - **Don't compute identifiers client-side.** Counting existing rows client-side to
   generate quote numbers is a race condition waiting to happen; sequence generation
   belongs server-side.
-- **Don't build a new permissions system.** The one rep/admin distinction is intentional
-  and sufficient for REDYREF's actual sales process — adding broader RBAC is scope creep,
-  not a fix.
+- **Don't build a new permissions system.** The two-role rep/admin model (reps quote;
+  admins also approve and own master data) is intentional and sufficient for REDYREF's
+  actual sales process — adding a third role or per-field RBAC is scope creep, not a fix.
 - **Don't add multi-tenant scaffolding.** RedyQuote is single-tenant for REDYREF; no
   `tenant_id`, no plan for reselling — don't design for a hypothetical second client.

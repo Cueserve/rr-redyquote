@@ -35,9 +35,10 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **Component library** — reusable, categorized components (environment: Any/Indoor/
   Outdoor) that plug into a quote line. A cost change appends to `price_history` instead of
   overwriting it, so nothing is lost.
-- **RLS-enforced approval gate** — the one non-flat rule in the app. The
-  `Pending Approval → Approved` transition is restricted to `role = 'admin'` by a Postgres
-  RLS policy, not a hidden UI button, so a bypassed or scripted client is still denied.
+- **RLS-enforced authorization** — writes are enforced at the database, not the UI. The
+  `Pending Approval → Approved` transition and all master-data / settings / branding writes
+  are restricted to `role = 'admin'`; quote content edits are owner-or-admin; reads are flat.
+  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §2A)
 - **Atomic multi-row save** — saving a quote (header + line items) or a product (fab tiers +
   defaults + price history) goes through a single Postgres RPC transaction, so a failure
   partway through never leaves a row half-written.

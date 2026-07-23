@@ -1,0 +1,202 @@
+# ARCHITECTURE.md — System Architecture
+
+**Owner:** Viral Parikh
+**Last updated:** 2026-07-23
+**Source of truth for:** the system structure, component boundaries, and design decisions
+that satisfy docs/PRD.md.
+
+> Derived from: docs/PRD.md
+> Downstream: docs/TECH-STACK.md, README.md
+
+---
+
+## Contents
+
+1. [System Architecture](#1-system-architecture)
+2. [Data Design](#2-data-design)
+3. [Data Flow](#3-data-flow)
+4. [Key Design Decisions](#4-key-design-decisions)
+5. [Implementation Conventions](#5-implementation-conventions)
+6. [Integration Points](#6-integration-points)
+7. [Security Posture](#7-security-posture)
+8. [Non-Functional Approach](#8-non-functional-approach)
+
+---
+
+## 1. System Architecture
+
+RedyQuote is a **single-tenant Next.js modular monolith on Supabase** — one runtime role,
+unlike a multi-tenant product that needs to isolate an unauthenticated capture path. Every
+request in RedyQuote is an authenticated REDYREF user; there is no public, unauthenticated
+surface at all.
+
+```mermaid
+flowchart TB
+    browser["Browser (React client components)<br/>quote builder live recalc"]
+
+    subgraph app["Next.js App Router — one runtime role"]
+        rsc["Server Components<br/>reads: quotes/products/library/settings"]
+        actions["Server Actions<br/>sole mutation path — session-bound"]
+    end
+
+    store[("Supabase Postgres<br/>RLS on every table · single tenant")]
+    auth["Supabase Auth (GoTrue)<br/>httpOnly session cookie via @supabase/ssr"]
+
+    browser <-->|"HTTPS"| app
+    rsc -->|"session-bound read"| store
+    actions -->|"session-bound write · RPC for atomic multi-row ops"| store
+    app -->|"auth"| auth
+```
+
+Components:
+
+- **Server Components** — the read path. Fetch quotes, products, component library,
+  settings, and quote detail using a session-bound Supabase server client
+  (`@supabase/ssr`), so RLS applies to every read.
+- **Server Actions** — the sole mutation path: save quote, submit/approve/mark-sent, save
+  product, save component, save settings, upload favicon. Every action that computes a
+  cost breakdown recomputes it server-side from stored line items and settings — the
+  client's live-preview numbers are never trusted as the value that gets persisted.
+  (PRD-007, NFR-007)
+- **Quote builder client component** — the one place needing rich client interactivity
+  (live recalculation on every keystroke). Uses the same pricing-calculation function as
+  the server (shared TS module) so the live preview and the eventual server-recomputed
+  value agree, short of the client being tampered with — in which case the server value
+  wins. (PRD-007, NFR-007)
+- **Supabase Postgres** — single schema, no `tenant_id` (single-tenant, per PRODUCT.md
+  §4). RLS is enabled on every table.
+- **Supabase Auth (GoTrue)** — authenticates every request; the session JWT rides in an
+  httpOnly cookie and is forwarded to Postgres, where RLS evaluates it. (PRD-001, NFR-002)
+
+No service-role key is used anywhere in the application — every database access happens
+under a real authenticated user's session, because RedyQuote has no unauthenticated system
+paths to run under an elevated role.
+
+## 2. Data Design
+
+| Table | Purpose | Key relationships |
+| --- | --- | --- |
+| `profiles` | id, full_name, role (`rep` \| `admin`) | 1:1 with a Supabase Auth user |
+| `settings` | Singleton row: labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds, favicon | Referenced by every quote calculation |
+| `products` | Fabricated product catalog: name, SKU, description, vendor, est. labor hours, active | Has many `fab_tiers`, `product_defaults` |
+| `fab_tiers` | Quantity-tier fab cost: product_id, qty_tier, cost, quoted_date, vendor | Belongs to a Product |
+| `product_defaults` | Default component per category per product | Belongs to a Product; references a Component |
+| `components` | Component library: category, name, SKU, vendor, environment, cost, default_labor_hours, active | Referenced by QuoteLine, ProductDefault |
+| `price_history` | Append-only: component_id or (product_id, qty_tier), cost, quoted_date, vendor | Written whenever a cost changes |
+| `quotes` | Quote header: quote_number, customer_name, product_id, qty_tier, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
+| `quote_lines` | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order | Belongs to a Quote |
+| `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at | Belongs to a Quote |
+
+## 3. Data Flow
+
+**Quote status lifecycle** (PRD-010, PRD-017) — the only state machine in the app:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> PendingApproval: rep submits
+    PendingApproval --> Approved: admin only (RLS-enforced)
+    Approved --> Sent: any user (flat model), manual button
+    Draft --> Draft: rep edits/saves
+```
+
+Every arrow above writes one `quote_status_history` row in the same transaction as the
+status change. Any transition not shown (e.g. Draft → Approved, Sent → Draft) is rejected.
+
+**Quote save** (PRD-014): a Server Action receives the quote header fields and the current
+line items, recomputes the canonical cost breakdown server-side, then calls a single
+Postgres RPC function that upserts the quote header and replaces its line items inside one
+transaction. First save also allocates the quote number from a Postgres sequence inside
+the same transaction. (PRD-011)
+
+**Product save** (PRD-015): a Server Action calls a single Postgres RPC function that
+upserts the product row, replaces its fab tiers and default components, and appends
+price-history rows for any tier whose cost changed — all in one transaction.
+
+## 4. Key Design Decisions
+
+| Decision | Choice | Rationale |
+| --- | --- | --- |
+| Mutation path | Server Actions only, no separate JSON API layer | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library |
+| Atomicity | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction | Replaces the old app's non-atomic delete-then-insert, which could silently drop line items on a partial failure |
+| Quote numbering | Server-generated from a Postgres sequence at first save | Removes the client-side counting race that could collide two reps' quote numbers |
+| Approval gate | RLS policy restricts `Pending Approval → Approved` to `role = 'admin'`; everything else stays flat | The one place flat-access doesn't apply — matches the old app's intent, which existed in the UI but was never actually enforced |
+| Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only | Prevents a tampered client from persisting a fabricated margin; the old app trusted whatever the client sent |
+| State machine | Status transitions validated centrally against the diagram in §3; invalid transitions rejected | Prevents illegal states (e.g. skipping Approved) |
+| Audit | `quote_status_history` (new) + `price_history` (carried over), written in the same transaction as the state change | The old app had zero audit trail for approvals — this closes that gap |
+| Tenancy | No `tenant_id` anywhere; single schema for REDYREF only | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist |
+| Service-role key | Not used anywhere in the app | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role |
+
+## 5. Implementation Conventions
+
+- **RLS is the enforcement locus for the approval gate; everything else requires
+  authentication but is otherwise flat.** A Server Action must not be the only thing
+  standing between a non-admin and an approval — the database must reject it too.
+  (PRD-010, NFR-002)
+- **Server Actions are the sole mutation path.** No direct browser-to-Postgres writes.
+  (NFR-007)
+- **Client-side pricing calculation is preview-only.** The Server Action's recomputed
+  value is what gets persisted and what the margin-floor flag is evaluated against.
+  (PRD-016, NFR-007)
+- **Multi-row writes that must succeed or fail together go through a Postgres RPC
+  function**, not sequential client-driven calls. (PRD-014, PRD-015)
+- **Quote numbers are never computed client-side.** (PRD-011)
+- **State changes go through the declared transitions in §3 only.** (PRD-010)
+- **Audit rows are written in the same transaction as the change they record.**
+  (PRD-017, NFR-005)
+- **All schema changes are Supabase CLI migrations under `supabase/migrations/`.**
+  Hand-editing schema or RLS policies in the Supabase dashboard is prohibited — the
+  migration files are the authoritative schema.
+- **Zod is the single validation tool** for all Server Action inputs.
+- **No `tenant_id`, no per-tenant scaffolding.** (see Key Design Decisions above)
+
+## 6. Integration Points
+
+None in v1 — no external system sends data into or receives data from RedyQuote. "Mark as
+Sent" is a manual in-app status change with no email or document delivery (PRODUCT.md §4).
+If a future release adds PDF or email quote delivery, it slots in behind the same Server
+Action pattern without touching the access/audit model above.
+
+## 7. Security Posture
+
+**Data classification:**
+
+| Data category | Classification | Handling |
+| --- | --- | --- |
+| User credentials | Restricted | Managed entirely by Supabase Auth (bcrypt); never logged |
+| Quote/pricing/customer data | Confidential | Business-sensitive; visible to any signed-in REDYREF user (flat model), never to an unauthenticated request |
+| Settings (markups, margin floor) | Internal | Any signed-in user may edit (flat model, per PRD-012) |
+
+**Authentication & authorization.** Supabase Auth issues a JWT carried in an httpOnly,
+`Secure`, `SameSite` cookie via `@supabase/ssr`. Every Server Component read and Server
+Action write happens under that session, and RLS evaluates it at the database — the one
+non-flat rule (admin-only approval) is enforced there, not in application code, so a
+bypassed or scripted client is still denied. (PRD-001, PRD-010, NFR-002)
+
+**Encryption.** TLS 1.2+ on all traffic (enforced by Vercel and Supabase); credentials are
+bcrypt-hashed, not encrypted. (NFR-004)
+
+**XSS.** React/JSX escapes rendered output by default — the old app's hand-rolled
+`esc()`/`innerHTML` string-building is gone entirely, removing a whole class of mistake
+the old code had to manually guard against on every render function.
+
+**Threat vectors:**
+
+- Approval bypass via a tampered/scripted client → RLS denies it at the database, not
+  just the UI. (NFR-002)
+- Fabricated margin via a tampered client → server recomputes the canonical cost breakdown
+  server-side before persisting; client-submitted totals are never trusted. (NFR-007)
+- Credential theft → Supabase Auth bcrypt + TLS. (NFR-003, NFR-004)
+- Data loss on a failed multi-row write → atomic RPC transactions. (PRD-014, PRD-015)
+
+## 8. Non-Functional Approach
+
+| Requirement | Structural response |
+| --- | --- |
+| NFR-001 interactive latency | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke |
+| NFR-002 access enforcement | RLS on every table; the approval gate is a real database policy, not a UI-only check |
+| NFR-003 credential security | Supabase Auth (GoTrue) bcrypt hashing, managed |
+| NFR-004 transport security | TLS 1.2+ enforced by Vercel/Supabase |
+| NFR-005 auditability | `price_history` and `quote_status_history`, same-transaction writes |
+| NFR-006 durability | Supabase PITR enabled |
+| NFR-007 pricing trust boundary | Server-side canonical recompute on every save |

@@ -14,8 +14,7 @@ for v1 — REDYREF's new sales quoting system.
 
 ### Vision
 
-A quoting system REDYREF's sales team can trust — with consistent pricing, enforced
-approvals, and no silent quote loss, corruption, or duplication.
+A quoting system REDYREF's sales team can trust — with consistent pricing, enforced approvals, and no silent quote loss, corruption, or duplication.
 
 ### Problem Statement
 

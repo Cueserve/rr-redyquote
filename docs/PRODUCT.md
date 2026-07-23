@@ -6,7 +6,7 @@
 for v1 — REDYREF's new sales quoting system.
 
 > Derived from: (none — starting point)
-> Downstream: README.md, docs/PRD.md, docs/BACKLOG.md
+> Downstream: README.md, docs/PRD.md
 
 ---
 
@@ -42,7 +42,7 @@ the right person — with a full record of who did what, and when.
 
 ### Description
 
-RedyQuote is REDYREF's quoting system. Admins maintain a product catalog with quantity-tier fab pricing and a component library (with full price history); reps build a quote against a product, its quantity tier, and its components, one line per category plus unlimited ad-hoc lines, with hard cost, labor cost, cushion, commission, margin, and totals recalculating live as they go. Every quote moves through
+RedyQuote is REDYREF's quoting system. Admins maintain a product catalog with quantity-tier fab pricing and a component library (with full price history); reps build a quote against a product, its quantity tier, and its components, one line per fixed category plus unlimited ad-hoc misc lines, with hard cost, labor cost, cushion, commission, margin, and totals recalculating live as they go. Every quote moves through
 Draft → Pending Approval → Approved → Sent — the approval step enforced by the database
 (RLS), not the UI — and every status change is written to an audit trail.
 
@@ -64,6 +64,8 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - **Quote builder** — select a product, tier, and environment; live recalculation of hard
   cost, labor cost, cushion, commission, total cost, MSRP, GP$, GP%, and project totals as
   a rep edits lines, with Indoor/Outdoor component mismatches flagged.
+- **Quote line structure** — one line per fixed category, plus unlimited ad-hoc misc
+  lines. Fixed categories and misc-line rules are defined in docs/PRD.md.
 - **Price freshness tracking** — component and fab-tier cost dates compared against
   configurable warning/re-quote age thresholds, shown as Current/Aging/Re-Quote badges.
 - **Approval lifecycle** — Draft → Pending Approval → Approved → Sent; the
@@ -71,7 +73,16 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
   just the UI; every transition writes an audit row (who, when, from/to status).
 - **Estimating defaults** — a single global settings row for labor rate, fab/component
   markup, cushion %, sales commission %, margin floor %, and freshness thresholds.
-- **Branding** — an org-wide favicon/logo, applied globally.
+- **Branding** — an org-wide favicon, applied globally.
+
+## 3A. Decision Placeholders
+
+- **Pricing formula and rounding rules** — pending explicit definition in docs/PRD.md.
+  Until that section is completed, no implementation may invent or infer calculation order,
+  rounding points, or persisted pricing fields.
+- **Authorization model beyond quote approval** — pending explicit definition in
+  docs/PRD.md. The admin-only approval gate is confirmed; the ownership of settings,
+  catalog, component, default, and branding changes remains a product decision to finalize.
 
 ## 4. Scope (In / Out)
 
@@ -102,6 +113,13 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - A failed save never leaves a quote with missing or duplicated line items.
 - Two simultaneous new quotes never receive the same quote number.
 - Every quote status change has a corresponding audit row (who, when, from/to status).
+- The quote builder enforces one line per fixed category while still allowing unlimited
+  misc lines.
+- Price freshness badges and stale-price counts are derived from the same configured
+  thresholds everywhere they appear.
+- Branding is applied consistently through a single org-wide favicon.
+- Settings changes and pricing behavior are not implemented until the explicit PRD
+  placeholders for authorization model and pricing formula are resolved.
 
 ## 6. Anti-Patterns
 

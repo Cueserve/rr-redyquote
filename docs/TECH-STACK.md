@@ -24,7 +24,7 @@ each may be used.
 | Datastore | Version | Role |
 | --- | --- | --- |
 | Supabase Postgres | 17 | Sole datastore: products, components, quotes, settings, price/status history. Single schema, no `tenant_id` (single-tenant). |
-| Supabase Storage | managed | Stores the branding favicon image (replaces the old app's base64-in-a-settings-row approach). |
+| Supabase Storage | managed | Stores the branding favicon image. |
 
 No `pgmq`, `pg_cron`, or Supabase Edge Functions — those exist elsewhere to isolate an
 unauthenticated capture pipeline, which RedyQuote has no equivalent of (ARCHITECTURE §6:

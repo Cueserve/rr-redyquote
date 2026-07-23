@@ -109,6 +109,9 @@ Postgres RPC function that upserts the quote header and replaces its line items 
 transaction. First save also allocates the quote number from a Postgres sequence inside
 the same transaction. (PRD-011)
 
+The quote-save path must also enforce the fixed-category invariant from PRD-007A: at most
+one non-misc line per fixed category, with misc lines explicitly exempt.
+
 **Product save** (PRD-015): a Server Action calls a single Postgres RPC function that
 upserts the product row, replaces its fab tiers and default components, and appends
 price-history rows for any tier whose cost changed — all in one transaction.
@@ -118,12 +121,12 @@ price-history rows for any tier whose cost changed — all in one transaction.
 | Decision | Choice | Rationale |
 | --- | --- | --- |
 | Mutation path | Server Actions only, no separate JSON API layer | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library |
-| Atomicity | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction | Replaces the old app's non-atomic delete-then-insert, which could silently drop line items on a partial failure |
+| Atomicity | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction | Prevents partial saves from leaving quotes, tiers, defaults, or history in an inconsistent state |
 | Quote numbering | Server-generated from a Postgres sequence at first save | Removes the client-side counting race that could collide two reps' quote numbers |
-| Approval gate | RLS policy restricts `Pending Approval → Approved` to `role = 'admin'`; everything else stays flat | The one place flat-access doesn't apply — matches the old app's intent, which existed in the UI but was never actually enforced |
-| Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only | Prevents a tampered client from persisting a fabricated margin; the old app trusted whatever the client sent |
+| Approval gate | RLS policy restricts `Pending Approval → Approved` to `role = 'admin'`; the authorization model for other writes remains an explicit product decision | Preserves the confirmed approval control while leaving unresolved write permissions visible until product finalizes them |
+| Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only | Prevents a tampered client from persisting a fabricated margin and keeps implementation tied to a single canonical formula once defined |
 | State machine | Status transitions validated centrally against the diagram in §3; invalid transitions rejected | Prevents illegal states (e.g. skipping Approved) |
-| Audit | `quote_status_history` (new) + `price_history` (carried over), written in the same transaction as the state change | The old app had zero audit trail for approvals — this closes that gap |
+| Audit | `quote_status_history` + `price_history`, written in the same transaction as the state change | Preserves traceability for quote status and cost changes |
 | Tenancy | No `tenant_id` anywhere; single schema for REDYREF only | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist |
 | Service-role key | Not used anywhere in the app | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role |
 
@@ -138,6 +141,9 @@ price-history rows for any tier whose cost changed — all in one transaction.
 - **Client-side pricing calculation is preview-only.** The Server Action's recomputed
   value is what gets persisted and what the margin-floor flag is evaluated against.
   (PRD-016, NFR-007)
+- **Fixed categories permit one non-misc line each.** This invariant must be enforced in
+  validation and in the quote-save transaction boundary; misc lines are exempt.
+  (PRD-007A)
 - **Multi-row writes that must succeed or fail together go through a Postgres RPC
   function**, not sequential client-driven calls. (PRD-014, PRD-015)
 - **Quote numbers are never computed client-side.** (PRD-011)
@@ -176,9 +182,8 @@ bypassed or scripted client is still denied. (PRD-001, PRD-010, NFR-002)
 **Encryption.** TLS 1.2+ on all traffic (enforced by Vercel and Supabase); credentials are
 bcrypt-hashed, not encrypted. (NFR-004)
 
-**XSS.** React/JSX escapes rendered output by default — the old app's hand-rolled
-`esc()`/`innerHTML` string-building is gone entirely, removing a whole class of mistake
-the old code had to manually guard against on every render function.
+**XSS.** React/JSX escapes rendered output by default. Avoid introducing raw HTML rendering
+without a reviewed sanitization strategy.
 
 **Threat vectors:**
 

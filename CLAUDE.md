@@ -14,22 +14,23 @@ decisions from memory.**
 - [docs/TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 
-**Before creating any new route, Server Action, component, `lib/` module, or migration,
-consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — it maps
-each kind of file to its location and encodes the placement rules that keep the ARCHITECTURE
-invariants intact. If reality has to diverge from that layout, update that file in the same
-change (see its §5).
+**Before creating any new route, Server Action, component, `src/lib/` module, or migration,
+consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2
+"Four Placement Questions" decides the location, and §4 encodes the placement rules that keep
+the ARCHITECTURE invariants intact. If reality has to diverge from that layout, update that
+file in the same change (see its §6).
 
 This file is the single home for Claude Code's working rules on RedyQuote. Keep AI-behavior rules
 here and product/architecture facts in `docs/`.
 
 ## Project state
 
-A **default `create-next-app` scaffold** now exists in the working tree (untracked): root
-`package.json`, `tsconfig.json`, `next.config.ts`, `node_modules/`, and a boilerplate `app/`
-(`page.tsx`, `layout.tsx`, `globals.css`) plus `public/*.svg`. **None of the intended
-architecture is built yet** — no `app/actions/`, `lib/`, `components/`, or `supabase/`
-migrations, and no `.env.example`. Treat the layout in
+A **default `create-next-app` scaffold** exists, moved under `src/`: root `package.json`,
+`tsconfig.json`, `next.config.ts`, `node_modules/`, and boilerplate `src/app/`
+(`page.tsx`, `layout.tsx`, `globals.css`, `favicon.ico`) plus `public/*.svg`. The `@/*` path
+alias resolves to `./src/*`. **None of the intended architecture is built yet** — no
+`src/server/actions/`, `src/lib/`, `src/components/`, `src/proxy.ts`, `supabase/` migrations,
+`e2e/`, or `.env.example`. Treat the layout in
 [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) and the commands/versions in the
 docs/README as *intended*, not verified. Confirm a script or file exists before assuming it
 does.

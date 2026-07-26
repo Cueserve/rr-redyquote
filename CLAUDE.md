@@ -13,6 +13,7 @@ decisions from memory.**
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [docs/TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
+- [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
 
 **Before creating any new route, Server Action, component, `src/lib/` module, or migration,
 consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2
@@ -37,7 +38,8 @@ does.
 
 ## Approved stack (TECH-STACK.md — do not deviate)
 
-- **Next.js 16** (App Router) · **React 19** · **TypeScript 5** · **Node.js 22 LTS**
+- **Next.js 16** (App Router) · **React 19** · **TypeScript 5** · **Node.js 24 LTS** (Active
+  LTS; `.nvmrc` + `engines.node`)
 - **Supabase** — Postgres 17 + Auth. Single-tenant, single runtime role.
 - **npm only** — do not use pnpm or yarn.
 - **Cut for v1:** Resend, Sentry, PostHog, `pgmq`, `pg_cron`, Edge Functions. Do not
@@ -61,8 +63,12 @@ These are structural guarantees, not conventions — don't write code that break
 
 ## Claude Code-specific config
 
-- **Commands:** the README's `npm install` / `supabase start` / `db push` / `npm run dev`
-  are unverified until the app is scaffolded. Don't invent scripts; confirm they exist first.
+- **Commands:** `npm install`, `npm run dev`, `npm run build`, and `npm run lint` are verified
+  to work. Anything else (`db push`, `db:types`, `test`, `test:e2e`) does not exist yet — don't
+  invent scripts; confirm they exist first.
+- **No local Supabase stack.** Development runs against a hosted project; Docker is not
+  installed. Never suggest `supabase start` or `db reset` as a current step — see
+  [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.
 - **Secrets:** never read, print, or write `.env`, `.env*.local`, or any file holding the
   Supabase service-role key or other credentials.
 - **Editing source-of-truth docs:** changes to anything in `docs/` are deliberate decisions,

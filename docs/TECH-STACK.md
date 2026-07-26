@@ -17,7 +17,7 @@ each may be used.
 | TypeScript | 5.x (strict) | One typed language across Server Components, Server Actions, and the shared pricing-calc module. |
 | Next.js (App Router) | 16.x | Server Components for reads, Server Actions as the sole mutation path (ARCHITECTURE §1). No separate JSON API layer — RedyQuote doesn't need the SPA/REST split a bigger product would. |
 | React | 19.x | Renders Server Components and the one client component (quote builder live recalc). |
-| Node.js | 22 LTS | Runtime for the Next.js server on Vercel. |
+| Node.js | 24 LTS ("Krypton") | Runtime for the Next.js server on Vercel. The Active LTS line — v22 went to Maintenance on 2025-10-21. |
 
 ## 2. Datastores
 
@@ -35,7 +35,7 @@ no external integrations in v1).
 | Service | Purpose | Notes |
 | --- | --- | --- |
 | Vercel | Hosts the Next.js app | Region co-located with the Supabase project |
-| Supabase Platform | Managed Postgres, Auth, Storage | Point-in-Time Recovery (PITR) enabled (NFR-006) |
+| Supabase Platform | Managed Postgres, Auth, Storage | **Free** tier for now; Pro at production cutover. No PITR (NFR-006) |
 | Supabase Auth (GoTrue) | Credential store and session issuance | bcrypt-hashed passwords; session cookie via `@supabase/ssr` |
 | GitHub Actions | CI on every PR to `main` | Blocking job: lint + type-check + Vitest unit. Advisory/nightly job: Playwright E2E. |
 
@@ -69,11 +69,19 @@ no external integrations in v1).
 
 ## 6. Versions & Constraints
 
-- Node.js MUST be >= 22 LTS (Vercel runtime).
+- Node.js MUST be on the **Active LTS** line — currently **24.x** (Vercel runtime). Pinned in
+  `.nvmrc` and enforced by `engines.node` in `package.json`. The policy is "track Active LTS,"
+  which means one deliberate review per October promotion: v24 enters Maintenance
+  **2026-10-20** and v26 becomes LTS **2026-10-28**, so revisit this line then rather than
+  drifting onto a Current (odd-numbered, non-LTS) release by accident.
 - Next.js 16.x App Router only.
 - React 19.x; TypeScript 5.x with `strict` enabled.
 - Supabase Postgres 17.
-- Point-in-Time Recovery (PITR) MUST be enabled on the Supabase project (NFR-006).
+- **Supabase plan is Free for now.** PITR is NOT required for v1 (NFR-006c) — it is a $100/mo
+  add-on and is out of budget for an internal tool at this scale. Before production cutover
+  (first real customer quote stored), the project MUST move to **Pro** ($25/mo) for its
+  included daily backups (NFR-006b). Free has **no automated backups at all**, so while on
+  Free: run `supabase db dump` before any destructive migration.
 - TLS 1.2+ enforced at both the Vercel and Supabase edges; plaintext HTTP rejected
   (NFR-004).
 - No service-role key is used anywhere in this application (ARCHITECTURE §1) — there is
@@ -88,7 +96,7 @@ no external integrations in v1).
   applied via `supabase db push`. Hand-editing schema or RLS in the Supabase dashboard is
   prohibited.
 - Zod is the single schema-validation tool of record for Server Action inputs.
-- The package manager is `npm` (bundled with the approved Node.js 22 LTS).
+- The package manager is `npm` (bundled with the approved Node.js 24 LTS).
 - ESLint 9.x + Prettier 3.x are the only linter/formatter; Husky + lint-staged enforce
   format/lint at commit time.
 - Exact patch versions are pinned in the lockfile at scaffold time; this file records the

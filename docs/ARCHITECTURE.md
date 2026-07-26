@@ -206,5 +206,5 @@ without a reviewed sanitization strategy.
 | NFR-003 credential security | Supabase Auth (GoTrue) bcrypt hashing, managed |
 | NFR-004 transport security | TLS 1.2+ enforced by Vercel/Supabase |
 | NFR-005 auditability | `price_history` and `quote_status_history`, same-transaction writes |
-| NFR-006 durability | Supabase PITR enabled |
+| NFR-006 durability | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2 |
 | NFR-007 pricing trust boundary | Server-side canonical recompute on every save |

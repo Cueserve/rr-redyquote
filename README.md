@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.x-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.x-61dafb.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-22_LTS-339933.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933.svg)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Platform-3ecf8e.svg)](https://supabase.com/)
 
 ## Project Overview
@@ -54,10 +54,12 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 > below are the approved stack from [TECH-STACK.md](docs/TECH-STACK.md). The exact list
 > will be confirmed and tested once we scaffold the app.
 
-- Node.js 22 LTS or higher
-- npm (bundled with Node.js 22 LTS) — the only approved package manager; do not use pnpm
+- Node.js 24 LTS (Active LTS) — pinned in `.nvmrc`; `nvm use` picks it up
+- npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm
   or yarn
-- Supabase CLI (latest) — for the local dev stack and migrations
+- Supabase CLI (latest, via `npx supabase`) — for migrations and type generation
+- **No Docker required.** Development runs against a hosted Supabase project, not the local
+  stack — see [ENVIRONMENTS.md](docs/ENVIRONMENTS.md)
 - Git
 - A Supabase account and project (Postgres 17) — no `pgmq`, `pg_cron`, or Edge Functions
   needed; RedyQuote has no unauthenticated capture pipeline to isolate
@@ -75,9 +77,9 @@ product-analytics need for a single internal tool.
 
 ```bash
 npm install
-supabase start        # local Supabase stack (Postgres, Auth)
-supabase db push      # apply migrations from supabase/migrations/
-npm run dev           # start the Next.js app locally
+npx supabase link --project-ref <ref>   # link to the hosted dev project (one time)
+npx supabase db push                    # apply supabase/migrations/ to the linked project
+npm run dev                             # start the Next.js app locally
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

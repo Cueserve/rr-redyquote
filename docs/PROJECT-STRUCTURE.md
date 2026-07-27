@@ -84,6 +84,10 @@ redyquote/
 │  └─ config.toml                   # local stack config
 ├─ e2e/                             # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
+│  └─ superpowers/                  # tool-owned path — the `superpowers` Claude Code plugin
+│     ├─ specs/                     #   writes design specs here (YYYY-MM-DD-<topic>-design.md)
+│     └─ plans/                     #   and implementation plans here, when first used
+
 ├─ public/                          # static assets
 ├─ package.json  tsconfig.json  next.config.ts
 ├─ eslint.config.mjs  postcss.config.mjs
@@ -190,6 +194,14 @@ Read these before creating any new feature, route, action, or component.
   accepts `middleware.ts`; use `proxy.ts` so the repo has one name for one thing, and keep the
   reusable session logic in `src/lib/supabase/update-session.ts`.
 - **Tests** — `*.test.ts` co-located for Vitest units; `*.spec.ts` under `e2e/` for Playwright.
+- **Docs** — top-level `docs/*.md` are the source-of-truth docs, named by content in
+  SCREAMING-KEBAB (`ARCHITECTURE.md`, `TECH-STACK.md`). `docs/superpowers/**` is the one
+  exception: it is **named after the tool, not the content**, because the `superpowers`
+  Claude Code plugin hardcodes that path (`specs/` from its brainstorming skill, `plans/`
+  from writing-plans). Deliberately left alone — renaming it would just make the plugin
+  recreate the folder and split specs across two places. A spec there can still be
+  authoritative: `2026-07-23-authorization-matrix-design.md` amends PRD-010 and
+  ARCHITECTURE §2/§7, so it is listed in CLAUDE.md alongside the top-level docs.
 
 ## 6. Keeping This File Honest
 

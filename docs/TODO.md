@@ -21,7 +21,7 @@ paste this block into a new issue — each `- [ ]` line converts to its own issu
 - [ ] [6. CI workflow + branch protection](#6-ci-workflow-tech-stack-3--blocking-job)
 - [ ] [7. Brand design tokens](#7-brand-design-tokens--blocked-on-input-redyref-brand-values) — **blocked:** needs RedyRef brand values from Viral
 - [ ] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — **gated:** doc edit, needs Viral's sign-off
-- [ ] [9. Rename `docs/superpowers/specs/` → `docs/specs/`](#9-rename-docssuperpowersspecs--docsspecs) — **gated:** doc edit, needs Viral's sign-off
+- [x] [9. Make `docs/superpowers/specs/` visible](#9-make-docssuperpowersspecs-visible--keep-the-path-fix-the-visibility) — signed off by Viral; rename rejected, visibility fixed instead
 
 §C/§D items are deliberately not here — they have triggers, not checkboxes. Add them to
 this list (or as issues) only when their trigger fires.
@@ -196,10 +196,31 @@ radius, font choice.
 Decide: update the doc to 4.x (recommended — 4 is installed and current) or downgrade
 the package. Fix whichever in one commit that says why.
 
-### 9. Rename `docs/superpowers/specs/` → `docs/specs/`
+### 9. Make `docs/superpowers/specs/` visible — **keep the path, fix the visibility**
 
-Tool jargon hiding a real design doc (`2026-07-23-authorization-matrix-design.md`).
-`git mv docs/superpowers/specs docs/specs`, delete the empty `superpowers/` folder.
+**Superseded the original item.** That item proposed
+`git mv docs/superpowers/specs docs/specs` to get tool jargon out of the path. Rejected:
+`superpowers` is an installed, globally-enabled Claude Code plugin
+(`claude-plugins-official@5.1.0`) whose skills hardcode the output paths —
+`brainstorming` writes `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, `writing-plans`
+writes `docs/superpowers/plans/`. Renaming wins a nicer path once, then the next run
+recreates the folder and specs end up split across two directories. Worse than the problem.
+
+The real risk was never the name. It was that
+`2026-07-23-authorization-matrix-design.md` — status **Approved**, **amends** PRD-010 and
+ARCHITECTURE §2/§7 — was not in CLAUDE.md's source-of-truth list, so an agent following that
+list would write RLS policies against superseded PRD text.
+
+Fixed by:
+
+- **CLAUDE.md** — new "Approved design specs" block listing the authorization-matrix spec with
+  what it amends, plus the rule to add future specs to that list in the same change.
+- **docs/PROJECT-STRUCTURE.md §1** — `docs/superpowers/{specs,plans}/` shown in the tree,
+  marked tool-owned.
+- **docs/PROJECT-STRUCTURE.md §5** — a "Docs" naming convention recording that this is the one
+  deliberately tool-named path, and why renaming it is a trap.
+
+Files stayed where they were; no `git mv`.
 
 ---
 

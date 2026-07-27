@@ -15,6 +15,18 @@ decisions from memory.**
 - [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 - [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
 
+**Approved design specs** — same authority as the docs above, for the slice they cover. They
+live under `docs/superpowers/specs/` because the `superpowers` plugin writes them there; the
+tool-named path says nothing about their status (see PROJECT-STRUCTURE.md §5, "Docs").
+
+- [docs/superpowers/specs/2026-07-23-authorization-matrix-design.md](docs/superpowers/specs/2026-07-23-authorization-matrix-design.md)
+  — the complete two-role (`rep` / `admin`) authorization model. **Amends** PRD-010 and
+  ARCHITECTURE §2/§7, and resolves PRD §2A, PRD-012, PRD-013. Read it before writing any RLS
+  policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
+  is superseded, not authoritative.
+
+When a new spec lands there, add it to this list in the same change.
+
 **Before creating any new route, Server Action, component, `src/lib/` module, or migration,
 consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2
 "Four Placement Questions" decides the location, and §4 encodes the placement rules that keep

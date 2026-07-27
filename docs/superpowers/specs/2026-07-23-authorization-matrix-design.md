@@ -22,10 +22,10 @@ two roles — `rep` (default, PRD-002) and `admin`.
 
 ## 2. Roles
 
-| Role | Assigned | Scope |
-| --- | --- | --- |
-| `rep` | Default on first sign-in (PRD-002) | Create and manage **their own** quotes; submit for approval; mark **their own** approved quotes Sent; read all master data. |
-| `admin` | Set out-of-band (Supabase dashboard/DB) | Everything a rep can do on **any** quote, plus the approval gate and **all** master-data / global-config writes. |
+| Role    | Assigned                                | Scope                                                                                                                       |
+| ------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `rep`   | Default on first sign-in (PRD-002)      | Create and manage **their own** quotes; submit for approval; mark **their own** approved quotes Sent; read all master data. |
+| `admin` | Set out-of-band (Supabase dashboard/DB) | Everything a rep can do on **any** quote, plus the approval gate and **all** master-data / global-config writes.            |
 
 "Owner" throughout means the `owner` column on a quote equals the requesting user's
 `auth.uid()`.
@@ -34,32 +34,32 @@ two roles — `rep` (default, PRD-002) and `admin`.
 
 ### 3.1 Quotes
 
-| Action | rep | admin | Enforcement |
-| --- | --- | --- | --- |
-| View any quote / dashboard | ✅ | ✅ | RLS: any authenticated (flat read) |
-| Create quote | ✅ | ✅ | RLS insert; `owner` set to `auth.uid()` |
-| Edit/delete **own** Draft/Pending quote | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'` |
-| Edit/delete **another user's** quote | ❌ | ✅ | RLS |
-| Submit `Draft → Pending Approval` | ✅ (own) | ✅ | Transition validation + RLS |
-| **Approve** `Pending Approval → Approved` | ❌ | ✅ | **RLS (structural invariant, PRD-010, NFR-002)** |
-| Mark `Approved → Sent` | ✅ (own) | ✅ | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010** |
+| Action                                    | rep      | admin    | Enforcement                                                      |
+| ----------------------------------------- | -------- | -------- | ---------------------------------------------------------------- |
+| View any quote / dashboard                | ✅       | ✅       | RLS: any authenticated (flat read)                               |
+| Create quote                              | ✅       | ✅       | RLS insert; `owner` set to `auth.uid()`                          |
+| Edit/delete **own** Draft/Pending quote   | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'`                      |
+| Edit/delete **another user's** quote      | ❌       | ✅       | RLS                                                              |
+| Submit `Draft → Pending Approval`         | ✅ (own) | ✅       | Transition validation + RLS                                      |
+| **Approve** `Pending Approval → Approved` | ❌       | ✅       | **RLS (structural invariant, PRD-010, NFR-002)**                 |
+| Mark `Approved → Sent`                    | ✅ (own) | ✅       | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010** |
 
 ### 3.2 Master data — admin owns
 
-| Action | rep | admin | Enforcement |
-| --- | --- | --- | --- |
-| View products / components | ✅ | ✅ | RLS: any authenticated (flat read) |
-| Product create / edit / deactivate | ❌ | ✅ | RLS: `role = 'admin'` |
-| Fab-tier create / edit | ❌ | ✅ | RLS: `role = 'admin'` |
-| Product default component set | ❌ | ✅ | RLS: `role = 'admin'` |
-| Component create / edit / deactivate | ❌ | ✅ | RLS: `role = 'admin'` |
+| Action                               | rep | admin | Enforcement                        |
+| ------------------------------------ | --- | ----- | ---------------------------------- |
+| View products / components           | ✅  | ✅    | RLS: any authenticated (flat read) |
+| Product create / edit / deactivate   | ❌  | ✅    | RLS: `role = 'admin'`              |
+| Fab-tier create / edit               | ❌  | ✅    | RLS: `role = 'admin'`              |
+| Product default component set        | ❌  | ✅    | RLS: `role = 'admin'`              |
+| Component create / edit / deactivate | ❌  | ✅    | RLS: `role = 'admin'`              |
 
 ### 3.3 Global config — admin only
 
-| Action | rep | admin | Enforcement |
-| --- | --- | --- | --- |
-| Edit settings (labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds) | ❌ | ✅ | RLS: `role = 'admin'` (resolves PRD-012) |
-| Upload / apply branding favicon | ❌ | ✅ | RLS: `role = 'admin'` (resolves PRD-013) |
+| Action                                                                                             | rep | admin | Enforcement                              |
+| -------------------------------------------------------------------------------------------------- | --- | ----- | ---------------------------------------- |
+| Edit settings (labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds) | ❌  | ✅    | RLS: `role = 'admin'` (resolves PRD-012) |
+| Upload / apply branding favicon                                                                    | ❌  | ✅    | RLS: `role = 'admin'` (resolves PRD-013) |
 
 ### 3.4 Out-of-band (explicitly NOT in-app for v1)
 
@@ -81,7 +81,7 @@ ARCHITECTURE's existing invariants, rather than a UI convention.
 **RLS policy surface (new/changed):**
 
 - `quotes` — insert (any auth); select (any auth); update/delete (`owner = auth.uid() OR
-  admin`); the `Pending Approval → Approved` update additionally gated to `admin` (existing
+admin`); the `Pending Approval → Approved` update additionally gated to `admin` (existing
   invariant).
 - `quote_lines` — writes allowed only when the parent quote is writable by the caller
   (owner or admin).

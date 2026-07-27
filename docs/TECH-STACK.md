@@ -12,19 +12,19 @@ each may be used.
 
 ## 1. Languages & Frameworks
 
-| Technology | Version | Reason |
-| --- | --- | --- |
-| TypeScript | 5.x (strict) | One typed language across Server Components, Server Actions, and the shared pricing-calc module. |
-| Next.js (App Router) | 16.x | Server Components for reads, Server Actions as the sole mutation path (ARCHITECTURE §1). No separate JSON API layer — RedyQuote doesn't need the SPA/REST split a bigger product would. |
-| React | 19.x | Renders Server Components and the one client component (quote builder live recalc). |
-| Node.js | 24 LTS ("Krypton") | Runtime for the Next.js server on Vercel. The Active LTS line — v22 went to Maintenance on 2025-10-21. |
+| Technology           | Version            | Reason                                                                                                                                                                                  |
+| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript           | 5.x (strict)       | One typed language across Server Components, Server Actions, and the shared pricing-calc module.                                                                                        |
+| Next.js (App Router) | 16.x               | Server Components for reads, Server Actions as the sole mutation path (ARCHITECTURE §1). No separate JSON API layer — RedyQuote doesn't need the SPA/REST split a bigger product would. |
+| React                | 19.x               | Renders Server Components and the one client component (quote builder live recalc).                                                                                                     |
+| Node.js              | 24 LTS ("Krypton") | Runtime for the Next.js server on Vercel. The Active LTS line — v22 went to Maintenance on 2025-10-21.                                                                                  |
 
 ## 2. Datastores
 
-| Datastore | Version | Role |
-| --- | --- | --- |
-| Supabase Postgres | 17 | Sole datastore: products, components, quotes, settings, price/status history. Single schema, no `tenant_id` (single-tenant). |
-| Supabase Storage | managed | Stores the branding favicon image. |
+| Datastore         | Version | Role                                                                                                                         |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Supabase Postgres | 17      | Sole datastore: products, components, quotes, settings, price/status history. Single schema, no `tenant_id` (single-tenant). |
+| Supabase Storage  | managed | Stores the branding favicon image.                                                                                           |
 
 No `pgmq`, `pg_cron`, or Supabase Edge Functions — those exist elsewhere to isolate an
 unauthenticated capture pipeline, which RedyQuote has no equivalent of (ARCHITECTURE §6:
@@ -32,40 +32,40 @@ no external integrations in v1).
 
 ## 3. Cloud & Infrastructure Services
 
-| Service | Purpose | Notes |
-| --- | --- | --- |
-| Vercel | Hosts the Next.js app | Region co-located with the Supabase project |
-| Supabase Platform | Managed Postgres, Auth, Storage | **Free** tier for now; Pro at production cutover. No PITR (NFR-006) |
-| Supabase Auth (GoTrue) | Credential store and session issuance | bcrypt-hashed passwords; session cookie via `@supabase/ssr` |
-| GitHub Actions | CI on every PR to `main` | Blocking job: lint + type-check + Vitest unit. Advisory/nightly job: Playwright E2E. |
+| Service                | Purpose                               | Notes                                                                                |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------------------------------ |
+| Vercel                 | Hosts the Next.js app                 | Region co-located with the Supabase project                                          |
+| Supabase Platform      | Managed Postgres, Auth, Storage       | **Free** tier for now; Pro at production cutover. No PITR (NFR-006)                  |
+| Supabase Auth (GoTrue) | Credential store and session issuance | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                          |
+| GitHub Actions         | CI on every PR to `main`              | Blocking job: lint + type-check + Vitest unit. Advisory/nightly job: Playwright E2E. |
 
 ## 4. Key Libraries / Tools
 
-| Library / tool | Version | Used for |
-| --- | --- | --- |
-| Tailwind CSS | 4.x | Utility styling |
-| shadcn/ui | CLI-pinned (Radix-based) | Accessible component primitives |
-| Zod | 3.x | Server Action input validation — single tool of record, no hand-rolled validation |
-| `@supabase/supabase-js` | 2.x | Postgres/Storage access, session-bound so RLS applies |
-| `@supabase/ssr` | 0.x | Supabase Auth session handling via httpOnly cookies in Server Components/Actions |
-| Supabase CLI | latest | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |
-| `supabase gen types typescript` | (Supabase CLI) | Generates TypeScript types from the schema; regenerated after each migration. No ORM. |
-| Vitest | 3.x | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here |
-| Playwright | 1.x | E2E — quote builder flow, submit/approve gate |
-| ESLint | 9.x | Linting (flat config, `eslint.config.mjs`) |
-| Prettier | 3.x | Formatting |
-| Husky | 9.x | Git hooks (pre-commit) |
-| lint-staged | 16.x | Runs Prettier/ESLint on staged files at commit time |
+| Library / tool                  | Version                  | Used for                                                                                                                               |
+| ------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Tailwind CSS                    | 4.x                      | Utility styling                                                                                                                        |
+| shadcn/ui                       | CLI-pinned (Radix-based) | Accessible component primitives                                                                                                        |
+| Zod                             | 3.x                      | Server Action input validation — single tool of record, no hand-rolled validation                                                      |
+| `@supabase/supabase-js`         | 2.x                      | Postgres/Storage access, session-bound so RLS applies                                                                                  |
+| `@supabase/ssr`                 | 0.x                      | Supabase Auth session handling via httpOnly cookies in Server Components/Actions                                                       |
+| Supabase CLI                    | latest                   | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |
+| `supabase gen types typescript` | (Supabase CLI)           | Generates TypeScript types from the schema; regenerated after each migration. No ORM.                                                  |
+| Vitest                          | 3.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
+| Playwright                      | 1.x                      | E2E — quote builder flow, submit/approve gate                                                                                          |
+| ESLint                          | 9.x                      | Linting (flat config, `eslint.config.mjs`)                                                                                             |
+| Prettier                        | 3.x                      | Formatting                                                                                                                             |
+| Husky                           | 9.x                      | Git hooks (pre-commit)                                                                                                                 |
+| lint-staged                     | 16.x                     | Runs Prettier/ESLint on staged files at commit time                                                                                    |
 
 ## 5. Deliberately Not Used
 
-| Not used | Why not |
-| --- | --- |
-| TanStack Query | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework |
-| Sentry | Confirmed cut for v1 — revisit if production error visibility becomes a real problem |
-| PostHog | No onboarding funnel or product-analytics need for a single internal tool |
-| Resend, `@react-pdf/renderer` | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model. |
-| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope |
+| Not used                                   | Why not                                                                                                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TanStack Query                             | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework                                              |
+| Sentry                                     | Confirmed cut for v1 — revisit if production error visibility becomes a real problem                                                                                  |
+| PostHog                                    | No onboarding funnel or product-analytics need for a single internal tool                                                                                             |
+| Resend, `@react-pdf/renderer`              | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model. |
+| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                       |
 
 ## 6. Versions & Constraints
 

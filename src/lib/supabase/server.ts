@@ -1,11 +1,11 @@
-import 'server-only';
+import "server-only";
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-import { env } from '@/lib/config';
+import { env } from "@/lib/config";
 
-import type { Database } from './types';
+import type { Database } from "./types";
 
 /**
  * Session-bound server Supabase client — Server Components and Server Actions.

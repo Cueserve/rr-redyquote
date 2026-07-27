@@ -74,19 +74,19 @@ paths to run under an elevated role.
 
 ## 2. Data Design
 
-| Table | Purpose | Key relationships |
-| --- | --- | --- |
-| `profiles` | id, full_name, role (`rep` \| `admin`) | 1:1 with a Supabase Auth user |
-| `settings` | Singleton row: labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds, favicon | Referenced by every quote calculation |
-| `products` | Fabricated product catalog: name, SKU, description, vendor, est. labor hours, active | Has many `fab_tiers`, `product_defaults` |
-| `fab_tiers` | Quantity-tier fab cost: product_id, qty_tier, cost, quoted_date, vendor | Belongs to a Product |
-| `product_defaults` | Default component per category per product | Belongs to a Product; references a Component |
-| `components` | Component library: category, name, SKU, vendor, environment, cost, default_labor_hours, active | Referenced by QuoteLine, ProductDefault |
-| `price_history` | Append-only: component_id or (product_id, qty_tier), cost, quoted_date, vendor | Written whenever a cost changes |
-| `quotes` | Quote header: quote_number, customer_name, product_id, qty_tier, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
-| `quote_lines` | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order | Belongs to a Quote |
-| `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at | Belongs to a Quote |
-| `settings_history` | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at | Global audit of settings/branding edits |
+| Table                  | Purpose                                                                                                                                             | Key relationships                                     |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `profiles`             | id, full_name, role (`rep` \| `admin`)                                                                                                              | 1:1 with a Supabase Auth user                         |
+| `settings`             | Singleton row: labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds, favicon                                          | Referenced by every quote calculation                 |
+| `products`             | Fabricated product catalog: name, SKU, description, vendor, est. labor hours, active                                                                | Has many `fab_tiers`, `product_defaults`              |
+| `fab_tiers`            | Quantity-tier fab cost: product_id, qty_tier, cost, quoted_date, vendor                                                                             | Belongs to a Product                                  |
+| `product_defaults`     | Default component per category per product                                                                                                          | Belongs to a Product; references a Component          |
+| `components`           | Component library: category, name, SKU, vendor, environment, cost, default_labor_hours, active                                                      | Referenced by QuoteLine, ProductDefault               |
+| `price_history`        | Append-only: component_id or (product_id, qty_tier), cost, quoted_date, vendor                                                                      | Written whenever a cost changes                       |
+| `quotes`               | Quote header: quote_number, customer_name, product_id, qty_tier, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
+| `quote_lines`          | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order                  | Belongs to a Quote                                    |
+| `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at                                                                 | Belongs to a Quote                                    |
+| `settings_history`     | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at                                                             | Global audit of settings/branding edits               |
 
 ## 3. Data Flow
 
@@ -119,17 +119,17 @@ price-history rows for any tier whose cost changed — all in one transaction.
 
 ## 4. Key Design Decisions
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| Mutation path | Server Actions only, no separate JSON API layer | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library |
-| Atomicity | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction | Prevents partial saves from leaving quotes, tiers, defaults, or history in an inconsistent state |
-| Quote numbering | Server-generated from a Postgres sequence at first save | Removes the client-side counting race that could collide two reps' quote numbers |
-| Authorization | RLS enforces the full model: `Pending Approval → Approved` and all master-data / settings / branding writes require `role = 'admin'`; quote content edits require owner-or-admin; reads are flat | Admin-owns-master-data model (resolved — PRD §2A / PRD-019); enforced at the database so it is a structural guarantee, not a UI convention |
-| Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only | Prevents a tampered client from persisting a fabricated margin and keeps implementation tied to a single canonical formula once defined |
-| State machine | Status transitions validated centrally against the diagram in §3; invalid transitions rejected | Prevents illegal states (e.g. skipping Approved) |
-| Audit | `quote_status_history`, `price_history`, and `settings_history`, written in the same transaction as the change | Preserves traceability for quote status, cost, and settings/branding changes |
-| Tenancy | No `tenant_id` anywhere; single schema for REDYREF only | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist |
-| Service-role key | Not used anywhere in the app | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role |
+| Decision               | Choice                                                                                                                                                                                           | Rationale                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mutation path          | Server Actions only, no separate JSON API layer                                                                                                                                                  | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library |
+| Atomicity              | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction                                                                              | Prevents partial saves from leaving quotes, tiers, defaults, or history in an inconsistent state                                                |
+| Quote numbering        | Server-generated from a Postgres sequence at first save                                                                                                                                          | Removes the client-side counting race that could collide two reps' quote numbers                                                                |
+| Authorization          | RLS enforces the full model: `Pending Approval → Approved` and all master-data / settings / branding writes require `role = 'admin'`; quote content edits require owner-or-admin; reads are flat | Admin-owns-master-data model (resolved — PRD §2A / PRD-019); enforced at the database so it is a structural guarantee, not a UI convention      |
+| Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only                                                               | Prevents a tampered client from persisting a fabricated margin and keeps implementation tied to a single canonical formula once defined         |
+| State machine          | Status transitions validated centrally against the diagram in §3; invalid transitions rejected                                                                                                   | Prevents illegal states (e.g. skipping Approved)                                                                                                |
+| Audit                  | `quote_status_history`, `price_history`, and `settings_history`, written in the same transaction as the change                                                                                   | Preserves traceability for quote status, cost, and settings/branding changes                                                                    |
+| Tenancy                | No `tenant_id` anywhere; single schema for REDYREF only                                                                                                                                          | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist                         |
+| Service-role key       | Not used anywhere in the app                                                                                                                                                                     | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role                          |
 
 ## 5. Implementation Conventions
 
@@ -169,11 +169,11 @@ Action pattern without touching the access/audit model above.
 
 **Data classification:**
 
-| Data category | Classification | Handling |
-| --- | --- | --- |
-| User credentials | Restricted | Managed entirely by Supabase Auth (bcrypt); never logged |
-| Quote/pricing/customer data | Confidential | Business-sensitive; visible to any signed-in REDYREF user (flat model), never to an unauthenticated request |
-| Settings (markups, margin floor) | Internal | Admin-only edit, RLS-enforced (PRD-012); readable by any signed-in user |
+| Data category                    | Classification | Handling                                                                                                    |
+| -------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| User credentials                 | Restricted     | Managed entirely by Supabase Auth (bcrypt); never logged                                                    |
+| Quote/pricing/customer data      | Confidential   | Business-sensitive; visible to any signed-in REDYREF user (flat model), never to an unauthenticated request |
+| Settings (markups, margin floor) | Internal       | Admin-only edit, RLS-enforced (PRD-012); readable by any signed-in user                                     |
 
 **Authentication & authorization.** Supabase Auth issues a JWT carried in an httpOnly,
 `Secure`, `SameSite` cookie via `@supabase/ssr`. Every Server Component read and Server
@@ -199,12 +199,12 @@ without a reviewed sanitization strategy.
 
 ## 8. Non-Functional Approach
 
-| Requirement | Structural response |
-| --- | --- |
-| NFR-001 interactive latency | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke |
-| NFR-002 access enforcement | RLS on every table; the approval gate is a real database policy, not a UI-only check |
-| NFR-003 credential security | Supabase Auth (GoTrue) bcrypt hashing, managed |
-| NFR-004 transport security | TLS 1.2+ enforced by Vercel/Supabase |
-| NFR-005 auditability | `price_history` and `quote_status_history`, same-transaction writes |
-| NFR-006 durability | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2 |
-| NFR-007 pricing trust boundary | Server-side canonical recompute on every save |
+| Requirement                    | Structural response                                                                                                                                                     |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-001 interactive latency    | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke                              |
+| NFR-002 access enforcement     | RLS on every table; the approval gate is a real database policy, not a UI-only check                                                                                    |
+| NFR-003 credential security    | Supabase Auth (GoTrue) bcrypt hashing, managed                                                                                                                          |
+| NFR-004 transport security     | TLS 1.2+ enforced by Vercel/Supabase                                                                                                                                    |
+| NFR-005 auditability           | `price_history` and `quote_status_history`, same-transaction writes                                                                                                     |
+| NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2 |
+| NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                           |

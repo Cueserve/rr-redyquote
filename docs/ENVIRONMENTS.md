@@ -15,13 +15,13 @@ rules that follow from that, and the plan for adopting the local Docker stack la
 Development runs against a **hosted Supabase project**. The local Docker-based stack
 (`supabase start`) is **deliberately deferred** — see [§4](#4-plan-adopting-the-local-docker-stack).
 
-| | Today |
-| --- | --- |
-| Dev database | Hosted Supabase project (Free plan), `redyquote-dev` |
-| Local stack | Not used — Docker is not installed on the dev machine |
-| Migrations applied via | `supabase db push` against the linked remote |
-| Types generated via | `supabase gen types typescript --linked` |
-| Prerequisite | A Supabase account — **required now**, not just at deploy time |
+|                        | Today                                                          |
+| ---------------------- | -------------------------------------------------------------- |
+| Dev database           | Hosted Supabase project (Free plan), `redyquote-dev`           |
+| Local stack            | Not used — Docker is not installed on the dev machine          |
+| Migrations applied via | `supabase db push` against the linked remote                   |
+| Types generated via    | `supabase gen types typescript --linked`                       |
+| Prerequisite           | A Supabase account — **required now**, not just at deploy time |
 
 **Why:** one developer, no Docker present, and the fastest path to a working quote flow.
 The trade accepted: no offline development, no free `db reset`, and schema mistakes land on a
@@ -32,10 +32,10 @@ real remote database instead of a disposable container.
 **Decision (2026-07-26): Free tier only for now. PITR is not adopted for v1.** NFR-006 was
 amended to a phased requirement — see PRD.md NFR-006 and TECH-STACK.md §6.
 
-| Plan | Price | Decision |
-| --- | --- | --- |
-| **Free** | $0 | **In use now.** Pauses after **1 week of inactivity** (resume from the dashboard); limit of 2 active free projects per org. **No automated backups at all.** |
-| Pro | $25/mo | **Required at production cutover** — the trigger is the first real customer quote being stored. Includes daily backups, 7-day retention. Also removes auto-pause. |
+| Plan        | Price                         | Decision                                                                                                                                                                     |
+| ----------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Free**    | $0                            | **In use now.** Pauses after **1 week of inactivity** (resume from the dashboard); limit of 2 active free projects per org. **No automated backups at all.**                 |
+| Pro         | $25/mo                        | **Required at production cutover** — the trigger is the first real customer quote being stored. Includes daily backups, 7-day retention. Also removes auto-pause.            |
 | PITR add-on | +$100/mo per 7 days retention | **Declined for v1.** Replaces daily backups with finer granularity and additionally requires a Small compute add-on. Revisit only if a stated RPO ever drops below 24 hours. |
 
 ### What Free actually costs you
@@ -60,7 +60,7 @@ mistakes:
 
 1. **Two projects, never one.** `redyquote-dev` and `redyquote-prod` are separate Supabase
    projects. Never point a dev branch at the production project — without a local stack, the
-   dev project *is* your sandbox.
+   dev project _is_ your sandbox.
 2. **Schema changes are still migrations only.** `supabase/migrations/*.sql`, applied with
    `supabase db push`. Hand-editing schema or RLS in the dashboard stays prohibited
    (TECH-STACK §6) — and now it's worse, because there's no `db reset` to reconcile drift.
@@ -89,16 +89,16 @@ mistakes:
 
 ### Steps
 
-| # | Step | Command / Action |
-| --- | --- | --- |
-| 1 | Install Docker Desktop, confirm the daemon runs | `docker info` returns a server version |
-| 2 | Start the local stack (`supabase/config.toml` already exists from `supabase init`) | `npx supabase start` — prints the local API URL, anon key, and DB URL |
-| 3 | Point the app at local | Set the Supabase URL/anon key in `.env.local` to the values step 2 printed; keep the remote values in a commented block |
-| 4 | **Replay every migration from empty** | `npx supabase db reset` — this is the payoff: it proves the migration chain builds a correct schema from scratch, which `db push` against a long-lived remote never verifies |
-| 5 | Regenerate types from local | `npx supabase gen types typescript --local > src/lib/supabase/types.ts` |
-| 6 | Verify the app end to end | `npm run dev`, sign in, create → submit → approve a quote |
-| 7 | Verify the gate under test | `npm run test:e2e` (Playwright, including the RLS approval gate) |
-| 8 | Update the docs in the same change | This file's §1, README Prerequisites + Install & Run, and TECH-STACK §6 if the workflow changes |
+| #   | Step                                                                               | Command / Action                                                                                                                                                             |
+| --- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Install Docker Desktop, confirm the daemon runs                                    | `docker info` returns a server version                                                                                                                                       |
+| 2   | Start the local stack (`supabase/config.toml` already exists from `supabase init`) | `npx supabase start` — prints the local API URL, anon key, and DB URL                                                                                                        |
+| 3   | Point the app at local                                                             | Set the Supabase URL/anon key in `.env.local` to the values step 2 printed; keep the remote values in a commented block                                                      |
+| 4   | **Replay every migration from empty**                                              | `npx supabase db reset` — this is the payoff: it proves the migration chain builds a correct schema from scratch, which `db push` against a long-lived remote never verifies |
+| 5   | Regenerate types from local                                                        | `npx supabase gen types typescript --local > src/lib/supabase/types.ts`                                                                                                      |
+| 6   | Verify the app end to end                                                          | `npm run dev`, sign in, create → submit → approve a quote                                                                                                                    |
+| 7   | Verify the gate under test                                                         | `npm run test:e2e` (Playwright, including the RLS approval gate)                                                                                                             |
+| 8   | Update the docs in the same change                                                 | This file's §1, README Prerequisites + Install & Run, and TECH-STACK §6 if the workflow changes                                                                              |
 
 **Expected friction at step 4.** If `db reset` fails while the remote works, the migration
 chain is not replayable — usually a migration that assumed state created by hand, or ordering

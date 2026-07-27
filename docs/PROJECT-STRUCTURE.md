@@ -103,14 +103,14 @@ specs live in `e2e/`, separate from unit tests.
 
 ## 2. The Four Placement Questions
 
-Every new file has exactly one home, decidable in one pass. Ask in order; first *yes* wins:
+Every new file has exactly one home, decidable in one pass. Ask in order; first _yes_ wins:
 
-| # | Question | Goes in |
-| --- | --- | --- |
-| 1 | Is it a URL? | `src/app/` — and nothing that isn't a URL goes there |
-| 2 | Does it render JSX for 2+ routes? | `src/components/` (one route only → that route's `_components/`) |
-| 3 | Does it write to the database? | `src/server/actions/` |
-| 4 | Everything else | `src/lib/` |
+| #   | Question                          | Goes in                                                          |
+| --- | --------------------------------- | ---------------------------------------------------------------- |
+| 1   | Is it a URL?                      | `src/app/` — and nothing that isn't a URL goes there             |
+| 2   | Does it render JSX for 2+ routes? | `src/components/` (one route only → that route's `_components/`) |
+| 3   | Does it write to the database?    | `src/server/actions/`                                            |
+| 4   | Everything else                   | `src/lib/`                                                       |
 
 Consequences worth stating outright:
 
@@ -125,19 +125,19 @@ Consequences worth stating outright:
 
 ## 3. What Lives Where
 
-| Concern | Location | Why |
-| --- | --- | --- |
-| Page/route reads | `src/app/(app)/**/page.tsx` (Server Components) | Read path; session-bound Supabase reads so RLS applies (ARCH §1) |
-| Writes of any kind | `src/server/actions/*.ts` (Server Actions) | Sole mutation path — no direct browser→Postgres writes (ARCH §5) |
-| Route-private UI | `src/app/**/_components/` | Underscore keeps it out of the router; UI used by one route stays next to it |
-| Shared pricing calc | `src/lib/pricing/` | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5) |
-| Input validation | `src/lib/validation/` (Zod) | Single validation tool of record (ARCH §5, TECH-STACK §4) |
-| Supabase access | `src/lib/supabase/` | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1) |
-| Generated DB types | `src/lib/supabase/types.ts` | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4) |
-| Session refresh | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/` |
-| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql` | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6) |
-| Reusable UI | `src/components/` (`ui/` for shadcn) | Not route-specific |
-| The live quote builder | `src/components/quote-builder/` | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1) |
+| Concern                       | Location                                              | Why                                                                                                  |
+| ----------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Page/route reads              | `src/app/(app)/**/page.tsx` (Server Components)       | Read path; session-bound Supabase reads so RLS applies (ARCH §1)                                     |
+| Writes of any kind            | `src/server/actions/*.ts` (Server Actions)            | Sole mutation path — no direct browser→Postgres writes (ARCH §5)                                     |
+| Route-private UI              | `src/app/**/_components/`                             | Underscore keeps it out of the router; UI used by one route stays next to it                         |
+| Shared pricing calc           | `src/lib/pricing/`                                    | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5)     |
+| Input validation              | `src/lib/validation/` (Zod)                           | Single validation tool of record (ARCH §5, TECH-STACK §4)                                            |
+| Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                    |
+| Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)           |
+| Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                    |
+| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                    |
+| Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                   |
+| The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1) |
 
 ## 4. File Placement Rules
 
@@ -148,7 +148,7 @@ Read these before creating any new feature, route, action, or component.
    action file here — not a client-side write, not a separate API route.
 2. **Any code that computes a cost or margin imports from `src/lib/pricing/`.** Never inline a
    pricing formula in a component or an action. Client preview and server recompute must use
-   the *same* module so they agree; the server value is the trusted one (ARCH §1, §5).
+   the _same_ module so they agree; the server value is the trusted one (ARCH §1, §5).
 3. **Every Server Action validates its input with a Zod schema from `src/lib/validation/`.** No
    hand-rolled validation (ARCH §5).
 4. **Multi-row writes go through a Postgres RPC in `supabase/migrations/`, called from one
@@ -163,7 +163,7 @@ Read these before creating any new feature, route, action, or component.
 7. **Data access is session-bound.** Import the Supabase client from `src/lib/supabase/` —
    never construct a client with a service-role key; none exists in this app (ARCH §1).
 8. **Nothing in `src/server/` is imported by a client component.** Keep `import 'server-only'`
-   at the top of every file there. Client components may *invoke* a Server Action (form
+   at the top of every file there. Client components may _invoke_ a Server Action (form
    `action=` / `useActionState`) — that's the supported path; a direct value import is not.
 9. **Do not add a datastore, API layer, email/PDF, or analytics tool.** The stack is fixed in
    docs/TECH-STACK.md §5; anything not listed there is out of scope until that file changes.
@@ -184,7 +184,7 @@ Read these before creating any new feature, route, action, or component.
 - **Migrations** — Supabase CLI default `NNNN_snake_case_description.sql`; ordering is by the
   numeric prefix. One logical change per migration.
 - **`src/lib/` modules** — no JSX, no React imports; pure TypeScript so they're unit-testable
-  and reusable across client and server. The `library/` *route* (component library UI) is a
+  and reusable across client and server. The `library/` _route_ (component library UI) is a
   distinct thing from `lib/` — don't conflate them.
 - **Middleware** — the entry file is `src/proxy.ts`, Next 16's name for it. Next 16.2 still
   accepts `middleware.ts`; use `proxy.ts` so the repo has one name for one thing, and keep the

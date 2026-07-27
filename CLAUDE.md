@@ -33,7 +33,7 @@ alias resolves to `./src/*`. **None of the intended architecture is built yet** 
 `src/server/actions/`, `src/lib/`, `src/components/`, `src/proxy.ts`, `supabase/` migrations,
 `e2e/`, or `.env.example`. Treat the layout in
 [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) and the commands/versions in the
-docs/README as *intended*, not verified. Confirm a script or file exists before assuming it
+docs/README as _intended_, not verified. Confirm a script or file exists before assuming it
 does.
 
 ## Approved stack (TECH-STACK.md — do not deviate)
@@ -52,8 +52,8 @@ These are structural guarantees, not conventions — don't write code that break
 - **RLS-enforced approval gate** — `Pending Approval → Approved` is restricted to
   `role = 'admin'` by a Postgres RLS policy, never a UI-only check.
 - **Atomic multi-row save** — quote (header + line items) and product (fab tiers + defaults
-  + price history) writes go through a single Postgres RPC transaction. No client-side
-  multi-step writes that can leave a row half-written.
+  - price history) writes go through a single Postgres RPC transaction. No client-side
+    multi-step writes that can leave a row half-written.
 - **Server-side pricing trust boundary** — the Server Action recomputes the canonical cost
   breakdown from stored data at save time. Client-calculated numbers are for UX only and
   are never persisted as the trusted value.

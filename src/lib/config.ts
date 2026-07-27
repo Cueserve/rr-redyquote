@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Validated environment configuration.
@@ -20,15 +20,15 @@ const parsed = envSchema.safeParse({
 
 if (!parsed.success) {
   const details = parsed.error.issues
-    .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)
-    .join('\n');
+    .map((issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`)
+    .join("\n");
 
   // Fail at startup rather than surfacing as an opaque Supabase error on the
   // first query. Missing configuration is not a runtime condition to handle.
   throw new Error(
     `Invalid environment configuration:\n${details}\n\n` +
-      'Copy .env.example to .env.local and fill in the values from your Supabase ' +
-      'project (Dashboard -> Project Settings -> API).',
+      "Copy .env.example to .env.local and fill in the values from your Supabase " +
+      "project (Dashboard -> Project Settings -> API).",
   );
 }
 

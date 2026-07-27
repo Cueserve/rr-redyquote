@@ -1,9 +1,9 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-import { env } from '@/lib/config';
+import { env } from "@/lib/config";
 
-import type { Database } from './types';
+import type { Database } from "./types";
 
 /**
  * Refreshes the Supabase session for an incoming request and returns the
@@ -17,31 +17,35 @@ import type { Database } from './types';
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet, headers) {
-        for (const { name, value } of cookiesToSet) {
-          request.cookies.set(name, value);
-        }
+  const supabase = createServerClient<Database>(
+    env.supabaseUrl,
+    env.supabaseAnonKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet, headers) {
+          for (const { name, value } of cookiesToSet) {
+            request.cookies.set(name, value);
+          }
 
-        response = NextResponse.next({ request });
+          response = NextResponse.next({ request });
 
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
+          for (const { name, value, options } of cookiesToSet) {
+            response.cookies.set(name, value, options);
+          }
 
-        // @supabase/ssr supplies no-store cache headers alongside the cookies.
-        // A response carrying Set-Cookie must never be cached by a CDN or
-        // reverse proxy, or one user's session token can be served to another.
-        for (const [key, value] of Object.entries(headers)) {
-          response.headers.set(key, value);
-        }
+          // @supabase/ssr supplies no-store cache headers alongside the cookies.
+          // A response carrying Set-Cookie must never be cached by a CDN or
+          // reverse proxy, or one user's session token can be served to another.
+          for (const [key, value] of Object.entries(headers)) {
+            response.headers.set(key, value);
+          }
+        },
       },
     },
-  });
+  );
 
   // getUser() revalidates the token against the Auth server and triggers the
   // refresh. getSession() only decodes the cookie and would not be trustworthy

@@ -1,6 +1,6 @@
-import type { NextRequest } from 'next/server';
+import type { NextRequest } from "next/server";
 
-import { updateSession } from '@/lib/supabase/update-session';
+import { updateSession } from "@/lib/supabase/update-session";
 
 /**
  * Next 16 middleware entry (renamed from `middleware.ts`). The framework calls
@@ -26,6 +26,6 @@ export const config = {
      * Every path except static assets and image files. Auth cookies must be
      * refreshed on real navigations, not on asset fetches.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

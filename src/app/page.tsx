@@ -1,65 +1,128 @@
-import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+// TEMPORARY -- design-token reference surface, replacing the create-next-app
+// boilerplate that was here. It exists so the token layer in globals.css can be
+// eyeballed in both light and dark before real routes are built on top of it.
+// Delete this along with public/*.svg when the first real route lands
+// (docs/TODO.md §C.1).
+
+const SURFACES = [
+  ["background", "bg-background"],
+  ["card", "bg-card"],
+  ["muted / secondary / accent", "bg-muted"],
+  ["border", "bg-border"],
+  ["input", "bg-input"],
+  ["input-editable", "bg-input-editable"],
+] as const;
+
+const SERIES = ["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"] as const;
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-12">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-3xl font-semibold tracking-tight">RedyQuote</h1>
+        <p className="text-muted-foreground text-sm">
+          Design token reference — brand red{" "}
+          <span className="text-primary-text font-semibold">#ad0000</span>,
+          Barlow / Barlow Condensed.
+        </p>
+      </header>
+
+      <Section title="Status">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" dot>
+            Draft
+          </Badge>
+          <Badge variant="warning" dot>
+            Pending Approval
+          </Badge>
+          <Badge variant="success" dot>
+            Approved
+          </Badge>
+          <Badge variant="info" dot>
+            Sent
+          </Badge>
+          <Badge variant="destructive" dot>
+            Rejected
+          </Badge>
+          <Badge dot>Brand</Badge>
+          <Badge variant="outline">Outline</Badge>
+        </div>
+      </Section>
+
+      <Section title="Actions">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button>Save Quote</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="outline">Outline</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="destructive">Delete Line</Button>
+          <Button variant="link">Link</Button>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          The primary CTA is a solid brand-red fill; destructive is a tint, so
+          the two never compete as the same signal.
+        </p>
+      </Section>
+
+      <Section title="Surfaces">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {SURFACES.map(([label, cls]) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <div className={`h-12 rounded-lg border border-border ${cls}`} />
+              <span className="text-muted-foreground text-xs">{label}</span>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Chart series (fixed order, never cycled)">
+        <div className="flex gap-2">
+          {SERIES.map((name, i) => (
+            <div key={name} className="flex flex-1 flex-col gap-1.5">
+              <div
+                className="h-12 rounded-lg"
+                style={{ backgroundColor: `var(--chart-${i + 1})` }}
+              />
+              <span className="text-muted-foreground text-xs">{name}</span>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Typography">
+        <div className="flex flex-col gap-2">
+          <p className="font-heading text-5xl leading-none font-bold tabular-nums">
+            42.8%
+          </p>
+          <p className="text-sm">
+            Barlow at 14px is the UI default — narrow enough that a quote table
+            keeps its numeric columns without shrinking the type.
+          </p>
+          <p className="font-mono text-sm tabular-nums">
+            $12,480.00 · $1,204.50 · $98,001.75
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </Section>
+    </main>
   );
 }

@@ -19,7 +19,7 @@ paste this block into a new issue — each `- [ ]` line converts to its own issu
 - [x] [4. ESLint boundary rule for `src/components/ui/`](#4-eslint-boundary-rule--keep-srccomponentsui-app-agnostic)
 - [x] [5. `.env.example`](#5-envexample) — already existed and verified
 - [ ] [6. CI workflow + branch protection](#6-ci-workflow-tech-stack-3--blocking-job)
-- [ ] [7. Brand design tokens](#7-brand-design-tokens--blocked-on-input-redyref-brand-values) — **blocked:** needs RedyRef brand values from Viral
+- [x] [7. Brand design tokens](#7-brand-design-tokens) — unblocked; brand values derived from the logo + redyref.com
 - [x] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — signed off by Viral; doc updated to 4.x
 - [x] [9. Make `docs/superpowers/specs/` visible](#9-make-docssuperpowersspecs-visible--keep-the-path-fix-the-visibility) — signed off by Viral; rename rejected, visibility fixed instead
 
@@ -173,18 +173,44 @@ The advisory/nightly Playwright job waits until `e2e/` exists (§C.2).
 **Done when:** the workflow passes on a PR. Then enable branch protection on `main`
 requiring the `check` job (GitHub → Settings → Branches).
 
-### 7. Brand design tokens — **blocked on input: RedyRef brand values**
+### 7. Brand design tokens
 
-- Replace the neutral oklch values in `:root` and `.dark` in `src/app/globals.css`
-  (`--primary`, `--accent`, `--radius`, fonts) with RedyRef brand values. One edit
-  themes every current and future component.
-- Team rule from day one: components use **semantic tokens only**
-  (`bg-background`, `text-muted-foreground`, `bg-primary`) — never raw palette
-  classes (`bg-zinc-50`, `text-black`). Raw colors bypass theming and break dark mode.
-- New `ui/` components define variants via `cva()` (pattern already in `button.tsx`).
+**Done.** The blocker resolved itself — the brand values were derivable from source rather
+than needing to be supplied:
 
-**Needs from Viral:** RedyRef brand colors (hex is fine, convert to oklch), preferred
-radius, font choice.
+- **Brand red `#ad0000`** — decoded from `Final-RedyRef_logo_main.png` (the only two colors in
+  the logo are `#ad0000` and `#000000`), and confirmed as the interactive color in
+  redyref.com's Oxygen stylesheets.
+- **Barlow + Barlow Condensed** — from the proposal-system prototype. Chosen over the corporate
+  site's Montserrat, which is too wide for the quote builder's numeric columns.
+- **`--radius` unchanged** at `0.625rem`; the existing `calc()` chain already yields
+  sm 6px / md 8px / lg 10px, matching the prototype's controls and panels exactly.
+
+Two decisions were signed off by Viral: brand red as `--primary` with `--destructive` retuned
+to a lighter red so the two never read as the same signal, and dark tokens authored now (no
+theme toggle shipped).
+
+**The prototype's palette was not copied verbatim** — its status colors measured 3.09–4.27:1
+and fail WCAG AA at the 11px they are used at. Each hue was re-stepped to the lightest value
+that clears 4.5:1 in both roles (as ink, and as a fill under white text). `--chart-*` went from
+five greys to a validated categorical set.
+
+The "semantic tokens only" team rule is now **enforced, not documented**, in two layers:
+
+- Tier-1 brand primitives are declared in `:root` but deliberately kept out of `@theme`, so
+  Tailwind emits no utility for them — `bg-brand-red-600` does not exist.
+- A `no-restricted-syntax` rule in `eslint.config.mjs` rejects raw palette classes and hex
+  literals (`bg-zinc-50`, `text-black`, `bg-[#ad0000]`) in `className` strings and template
+  literals across `src/**/*.tsx`.
+
+New `ui/` components define variants via `cva()` — `button.tsx`, and now `badge.tsx`.
+
+`src/app/page.tsx` is temporarily a token reference surface; it goes away with the boilerplate
+in §C.1.
+
+Also fixed in passing: `--font-sans` was mapped to itself in `globals.css` while `layout.tsx`
+defined `--font-geist-sans`, so `font-sans` resolved to nothing and the app was rendering in
+the browser default font.
 
 ---
 

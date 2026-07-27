@@ -14,6 +14,8 @@ decisions from memory.**
 - [docs/TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 - [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
+- [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, and the
+  WCAG AA floor. Read it before adding a color, a font, or a `ui/` component.
 
 **Approved design specs** — same authority as the docs above, for the slice they cover. They
 live under `docs/superpowers/specs/` because the `superpowers` plugin writes them there; the

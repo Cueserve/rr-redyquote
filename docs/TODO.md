@@ -20,7 +20,7 @@ paste this block into a new issue — each `- [ ]` line converts to its own issu
 - [x] [5. `.env.example`](#5-envexample) — already existed and verified
 - [ ] [6. CI workflow + branch protection](#6-ci-workflow-tech-stack-3--blocking-job)
 - [ ] [7. Brand design tokens](#7-brand-design-tokens--blocked-on-input-redyref-brand-values) — **blocked:** needs RedyRef brand values from Viral
-- [ ] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — **gated:** doc edit, needs Viral's sign-off
+- [x] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — signed off by Viral; doc updated to 4.x
 - [x] [9. Make `docs/superpowers/specs/` visible](#9-make-docssuperpowersspecs-visible--keep-the-path-fix-the-visibility) — signed off by Viral; rename rejected, visibility fixed instead
 
 §C/§D items are deliberately not here — they have triggers, not checkboxes. Add them to
@@ -192,9 +192,12 @@ radius, font choice.
 
 ### 8. Zod version drift
 
-`docs/TECH-STACK.md` §4 pins Zod **3.x**; `package.json` has **^4.4.3**.
-Decide: update the doc to 4.x (recommended — 4 is installed and current) or downgrade
-the package. Fix whichever in one commit that says why.
+**Resolved — doc updated to 4.x, package unchanged at `^4.4.3`.** Signed off by Viral.
+
+`docs/TECH-STACK.md` §4 pinned Zod **3.x** while `package.json` had **^4.4.3** (4.4.3
+installed). Downgrading was never viable: the only Zod code in the repo,
+`src/lib/config.ts`, already uses the v4 API — `z.url()` is Zod 4's top-level string
+format, which in v3 was `z.string().url()`. The doc was the stale side of the drift.
 
 ### 9. Make `docs/superpowers/specs/` visible — **keep the path, fix the visibility**
 

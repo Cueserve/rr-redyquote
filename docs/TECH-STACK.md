@@ -45,7 +45,7 @@ no external integrations in v1).
 | ------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Tailwind CSS                    | 4.x                      | Utility styling                                                                                                                        |
 | shadcn/ui                       | CLI-pinned (Radix-based) | Accessible component primitives                                                                                                        |
-| Zod                             | 3.x                      | Server Action input validation — single tool of record, no hand-rolled validation                                                      |
+| Zod                             | 4.x                      | Server Action input validation — single tool of record, no hand-rolled validation                                                      |
 | `@supabase/supabase-js`         | 2.x                      | Postgres/Storage access, session-bound so RLS applies                                                                                  |
 | `@supabase/ssr`                 | 0.x                      | Supabase Auth session handling via httpOnly cookies in Server Components/Actions                                                       |
 | Supabase CLI                    | latest                   | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |

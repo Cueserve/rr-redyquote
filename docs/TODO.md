@@ -13,11 +13,11 @@ Order matters: 1→7 build on each other (CI calls the scripts created in 1–4)
 Tick the box in the same PR that completes the item. To migrate to GitHub Issues later,
 paste this block into a new issue — each `- [ ]` line converts to its own issue in one click.
 
-- [ ] [1. Add missing npm scripts](#1-add-missing-npm-scripts)
+- [x] [1. Add missing npm scripts](#1-add-missing-npm-scripts)
 - [ ] [2. Minimal Vitest config](#2-minimal-vitest-config)
-- [ ] [3. Install Prettier + Husky + lint-staged](#3-install-prettier--husky--lint-staged-tech-stack-4--approved-not-yet-installed)
-- [ ] [4. ESLint boundary rule for `src/components/ui/`](#4-eslint-boundary-rule--keep-srccomponentsui-app-agnostic)
-- [ ] [5. `.env.example`](#5-envexample)
+- [x] [3. Install Prettier + Husky + lint-staged](#3-install-prettier--husky--lint-staged-tech-stack-4--approved-not-yet-installed)
+- [x] [4. ESLint boundary rule for `src/components/ui/`](#4-eslint-boundary-rule--keep-srccomponentsui-app-agnostic)
+- [x] [5. `.env.example`](#5-envexample) — already existed and verified
 - [ ] [6. CI workflow + branch protection](#6-ci-workflow-tech-stack-3--blocking-job)
 - [ ] [7. Brand design tokens](#7-brand-design-tokens--blocked-on-input-redyref-brand-values) — **blocked:** needs RedyRef brand values from Viral
 - [ ] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — **gated:** doc edit, needs Viral's sign-off
@@ -62,6 +62,10 @@ export default defineConfig({
 
 Remove `passWithNoTests` when the first real test lands (pricing calc), so an
 accidentally-empty test glob fails instead of passing silently.
+
+> **Note (item 1 landed first):** because this config was skipped, the `test` script
+> currently carries the flag inline — `vitest run --passWithNoTests`. When this config
+> lands, move `include` + `passWithNoTests` into it and drop the flag from the script.
 
 **Done when:** `npm run test` exits 0.
 
@@ -214,10 +218,10 @@ Tool jargon hiding a real design doc (`2026-07-23-authorization-matrix-design.md
 
 When a second RedyRef app is concrete, pick one:
 
-| Option | Trade-off |
-| --- | --- |
-| Template repo | Zero overhead now; fixes don't propagate between apps |
+| Option                  | Trade-off                                                         |
+| ----------------------- | ----------------------------------------------------------------- |
+| Template repo           | Zero overhead now; fixes don't propagate between apps             |
 | Private shadcn registry | shadcn-native sharing, no monorepo; updates = re-run `shadcn add` |
-| npm workspace monorepo | True single-version sharing; highest daily complexity for 3 devs |
+| npm workspace monorepo  | True single-version sharing; highest daily complexity for 3 devs  |
 
 The §A.4 boundary rule keeps all three options cheap. Revisit then.

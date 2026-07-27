@@ -13,6 +13,25 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Extraction boundary for the future shared RedyRef component library:
+  // src/components/ui/ must not reach into app-specific layers.
+  {
+    files: ["src/components/ui/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/server/*", "@/lib/supabase/*", "@/app/*"],
+              message:
+                "ui/ must stay app-agnostic — it is the future shared RedyRef library.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

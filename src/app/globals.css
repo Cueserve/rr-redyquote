@@ -7,9 +7,10 @@
 /* ============================================================================
    RedyQuote design tokens
 
-   Source: the REDYREF Proposal System design system (Clay / Stone / Moss),
-   exported from Claude design. See docs/DESIGN-SYSTEM.md for provenance, the
-   deviations from that export, and the measured contrast table.
+   Source: the REDYREF Admin (Actual Brand Color) design system (Clay / Stone /
+   Moss ramps, now anchored on REDYREF's real brand hexes), exported from
+   Claude design. See docs/DESIGN-SYSTEM.md for provenance, the deviations from
+   that export, and the measured contrast table.
 
    Three tiers, in order: primitives -> semantic -> component.
 
@@ -26,64 +27,69 @@
 
    TIER 3 (component) is cva() variants -- see components/ui/button.tsx.
 
-   Ramp steps are the exported hex values, verbatim, so this file can be diffed
-   against the design source. Values NOT in that export -- the whole dark mode,
-   the chart series, and three re-solved light values -- are written in oklch,
-   because they were solved by lightness. The oklch/hex split is the provenance
-   marker: hex came from the design source, oklch was derived here.
+   Ramp steps are resolved from the source's color-mix(in oklch, ...) formulas
+   to concrete literals -- hex where the source gives a literal hex (verbatim,
+   diffable against the export), oklch where a value is solved/re-solved here
+   (dark mode, the chart series, destructive's new hue, and a handful of light
+   values the export's own formulas got wrong -- see DESIGN-SYSTEM.md §4 and
+   §5.1 for exactly which and why).
 ============================================================================ */
 
 /* --- TIER 1: brand primitives (no utilities generated) ------------------- */
 :root {
-  /* Clay -- cooler muted rose. Primary actions, links, focus, the editable
-     -field tint. Never a page or field background above clay-50. */
-  --clay-50: #f5eef0;
-  --clay-100: #f0e6ea;
-  --clay-200: #e2cad2;
-  --clay-300: #d6b3bf;
-  --clay-400: #bc8590;
-  --clay-500: #a8636f;
-  /* Derived, not exported: the ONLY clay lightness that both carries
-     --primary-foreground at AA (4.52:1) and stays light enough to separate
-     from a dark page. Needed because nothing sits between clay-500 (L .580,
-     4.27:1 -- fails) and clay-600 (L .462 -- too dark on a dark canvas). */
-  --clay-550: oklch(0.568 0.1 11.2);
-  --clay-600: #82424c;
-  --clay-700: #68333b;
-  --clay-800: #552c32;
-  --clay-900: #3c1f23;
+  /* Clay -- REDYREF's actual brand red. Primary actions, links, focus, active
+     nav. Never a page or field background above clay-50. */
+  --clay-50: #fcf4f3;
+  --clay-100: #f9e9e8;
+  --clay-200: #f5dada;
+  --clay-300: #e5aea8;
+  --clay-400: #d17b74;
+  --clay-500: #ba4b45;
+  --clay-600: #a81d22;
+  --clay-700: #7a1519;
+  --clay-800: #5c0d10;
+  --clay-900: #3d0608;
 
-  /* Stone -- cool muted gray. Does the heavy lifting: surfaces, borders, text. */
-  --stone-50: #f7f8f9;
-  --stone-100: #f1f3f4;
-  --stone-200: #e5e8ea;
-  --stone-300: #d3d8db;
-  --stone-400: #b2bac0;
-  --stone-500: #95a0a7;
-  --stone-600: #7c8890;
-  --stone-700: #606b73;
-  --stone-800: #40484e;
-  --stone-900: #242a2e;
+  /* Stone -- ink-based cool gray. Does the heavy lifting: surfaces, borders,
+     text. --stone-800 is corrected from the export's own color-mix formula --
+     it mixed 88% ink + 12% BLACK, which lands darker than stone-900 (ink
+     itself) and breaks the ramp's monotonic order (verified: L .191 vs stone
+     -900's L .218). Re-solved here as 88% ink + 12% white so 700 > 800 > 900
+     holds. */
+  --stone-50: #fafafa;
+  --stone-100: #f2f2f2;
+  --stone-200: #d4d4d4;
+  --stone-300: #b0b0b0;
+  --stone-400: #9f9f9f;
+  --stone-500: #8a8a8a;
+  --stone-600: #676767;
+  --stone-700: #4a4a4a;
+  --stone-800: #313131;
+  --stone-900: #1a1a1a;
   /* Derived, not exported: the export is light-only and its ramp bottoms out at
-     stone-900, which dark mode needs for its RAISED surface. Two steps below it
-     give the dark canvas and card. */
-  --stone-950: oklch(0.235 0.01 237);
-  --stone-1000: oklch(0.185 0.01 237);
+     stone-900 (ink), which dark mode needs for its RAISED surface. Two steps
+     below it give the dark canvas and card. Unlike the old muted palette, no
+     clay-550/moss-550 equivalent is needed here -- see the primary/
+     accent-secondary comments below the .dark block for why the existing
+     clay-500/moss-600 steps already clear AA as dark-mode fills. */
+  --stone-950: oklch(0.19 0.004 90);
+  --stone-1000: oklch(0.14 0.003 90);
 
-  /* Moss -- cooler sage. Secondary actions, positive tags. */
-  --moss-50: #eef4f1;
-  --moss-100: #e2ece6;
-  --moss-200: #c4d9cd;
-  --moss-300: #a0c1b0;
-  --moss-400: #7aa690;
-  --moss-500: #5f8a74;
-  /* Derived, not exported -- same problem as clay-550: moss-500 holds white at
-     only 3.91:1, moss-600 is too dark to read as a fill on a dark canvas. */
-  --moss-550: oklch(0.56 0.06 163.8);
-  --moss-600: #4a6c5c;
-  --moss-700: #3c584a;
-  --moss-800: #2c4038;
-  --moss-900: #1e2b25;
+  /* Moss -- REDYREF's accent blue. Secondary actions, informational accent.
+     Was a sage green in the previous (superseded) palette; the variable name
+     stays for the same reason `--stone-*` keeps its name despite colliding
+     with Tailwind's own "stone" -- renaming would ripple through every tier-2
+     reference and this doc's vocabulary for no functional gain. */
+  --moss-50: #f3f7fc;
+  --moss-100: #dce9f9;
+  --moss-200: #c6d7f2;
+  --moss-300: #9ab8e6;
+  --moss-400: #6c96d8;
+  --moss-500: #4278ca;
+  --moss-600: #1e5fbf;
+  --moss-700: #174a96;
+  --moss-800: #0e356e;
+  --moss-900: #061f45;
 }
 
 /* --- TIER 2: semantic token -> Tailwind utility mapping ------------------ */
@@ -146,6 +152,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-sidebar-logo-chip: var(--sidebar-logo-chip);
 }
 
 /* Static scales live in a plain @theme (not `inline`) so Tailwind also emits
@@ -184,12 +191,14 @@
   --tracking-wide: 0.04em;
 
   /* Elevation reflects layering (modal > popover > card), never hover state.
-     The tint is a warm brown rather than pure black -- carried over from the
-     export verbatim; see DESIGN-SYSTEM.md for why it survived a cool palette. */
-  --shadow-xs: 0 1px 2px rgba(61, 53, 41, 0.06);
-  --shadow-sm: 0 2px 6px rgba(61, 53, 41, 0.08);
-  --shadow-md: 0 6px 16px rgba(61, 53, 41, 0.1);
-  --shadow-lg: 0 16px 40px rgba(61, 53, 41, 0.14);
+     Ink-tinted (rgb(26,26,26) = --stone-900) rather than pure black, per the
+     export verbatim -- and unlike the old muted palette, this is no longer a
+     mismatched carry-over: ink IS the neutral anchor now, so the shadow tint
+     and the palette agree. */
+  --shadow-xs: 0 1px 2px rgba(26, 26, 26, 0.06);
+  --shadow-sm: 0 2px 6px rgba(26, 26, 26, 0.08);
+  --shadow-md: 0 6px 16px rgba(26, 26, 26, 0.1);
+  --shadow-lg: 0 16px 40px rgba(26, 26, 26, 0.14);
 
   --container-max: 1280px;
 }
@@ -199,7 +208,7 @@
   /* Surfaces. Page canvas is stone-50; panels sit on top in white, which is
      what gives the dense quote tables their edge definition. */
   --background: var(--stone-50);
-  --foreground: var(--stone-900); /* 13.66:1 on the canvas */
+  --foreground: var(--stone-900); /* 13.6:1 on the canvas */
   --card: #ffffff;
   --card-foreground: var(--stone-900);
   --popover: #ffffff;
@@ -209,20 +218,23 @@
      (links, active nav, icons). Identical in light mode, and they diverge in
      dark -- see the note in the .dark block.
      Hover darkens one step, press one more (clay-600 -> 700 -> 800). */
-  --primary: var(--clay-600); /* 7.41:1 as ink on card */
-  --primary-foreground: #fff8f2; /* 7.05:1 on the fill    */
+  --primary: var(--clay-600); /* 7.33:1 as ink on card */
+  --primary-foreground: #ffffff; /* 7.33:1 on the fill */
   --primary-text: var(--clay-600);
   --primary-hover: var(--clay-700);
   --primary-active: var(--clay-800);
   /* Brand tint + border, so a brand pill or tag has the same four-part shape
      as a status one. The export's Tag "clay" tone. */
-  --primary-muted: var(--clay-100); /* --primary-text on it: 6.08:1 */
+  --primary-muted: var(--clay-100); /* --primary-text on it: 6.23:1 */
   --primary-border: var(--clay-300);
 
   /* Moss is the SECONDARY ACTION, which is not what shadcn means by
      --secondary (a subtle gray surface). Kept as its own token so imported
-     shadcn components that use bg-secondary as a surface don't turn sage. */
-  --accent-secondary: var(--moss-600); /* white on it: 5.85:1 */
+     shadcn components that use bg-secondary as a surface don't turn sage.
+     Now blue-anchored -- see the tier-1 comment above. Moss's "info" role and
+     its Tag "moss" tone converge on the same accent-blue family post-swap;
+     see DESIGN-SYSTEM.md §12. */
+  --accent-secondary: var(--moss-600); /* white on it: 6.10:1 */
   --accent-secondary-foreground: #ffffff;
   --accent-secondary-hover: var(--moss-700);
 
@@ -234,81 +246,109 @@
   --secondary: var(--stone-100);
   --secondary-foreground: var(--stone-900);
   --muted: var(--stone-100);
-  /* The export's --text-tertiary. Solved against stone-100, the darkest light
-     surface it can land on, so it holds AA everywhere: 4.56:1 on muted,
-     4.78:1 on the canvas, 5.08:1 on a card. */
-  --muted-foreground: #647079;
+  --muted-foreground: var(--stone-600); /* 5.66:1 card / 5.05:1 page/muted */
   --accent: var(--stone-100);
   --accent-foreground: var(--stone-900);
 
   /* Status. Reserved meanings -- never reuse these as chart series colors.
      Each is a four-part set: the ink (also usable as a solid fill), the ink
-     that sits ON that fill, a tinted background, and a border. Desaturated on
-     purpose; this tool never uses an alert-saturated red or green. */
-  --destructive: #8f3626; /* 7.71:1 on card */
+     that sits ON that fill, a tinted background, and a border.
+
+     --destructive is NOT brand red, unlike the export's own §7.1/§2 (which
+     reuses --color-brand-red for danger, filled vs. outlined). Once primary
+     is an actual saturated brand red, a same-hue destructive reads as "the
+     brand red, slightly off" rather than a different signal -- a stronger
+     version of the confusion the old muted palette's §6 already reasoned
+     through. Moved to a burnt-orange/rust hue (~38deg in OKLCH), sitting
+     between clay (~26deg) and warning/amber (~59deg): three-way hue
+     separation, still in the "warm alarm" register. See DESIGN-SYSTEM.md §6. */
+  --destructive: #9b2d00; /* 7.58:1 on card */
   --destructive-foreground: #ffffff;
-  --destructive-muted: #f7d2c9; /* ink on it: 5.51:1 */
-  --destructive-border: #d88f7c;
-  --success: #335a22; /* Approved */
+  --destructive-muted: #f7eae6; /* ink on it: 6.45:1 */
+  --destructive-border: #d8a291;
+  --success: #2e7d32; /* Approved -- the export's brand green, verbatim */
   --success-foreground: #ffffff;
-  --success-muted: #dcead0; /* ink on it: 6.37:1 */
-  --success-border: #a0c17f;
-  --warning: #785318; /* Pending Approval */
+  /* Re-solved: the export's own --success-light (#e3f1e4) reads at 4.39:1
+     against this ink, missing the 4.5:1 floor. Lightened to an 8% mix. */
+  --success-muted: #eef4ee; /* ink on it: 4.59:1 */
+  --success-border: #a2c4a1;
+  /* Re-solved: the export's raw amber (#c77700) reads 3.46:1 on white --
+     Pending Approval text would fail AA outright. Darkened along the same
+     hue to #9c5400, matching the pattern the old muted palette already used
+     for exactly this problem (stepping a failing export value, not inventing
+     a new one). */
+  --warning: #9c5400; /* Pending Approval -- 5.70:1 on card */
   --warning-foreground: #ffffff;
-  --warning-muted: #f5e6bf; /* ink on it: 5.56:1 */
-  --warning-border: #dbb35f;
-  --info: #335257; /* Sent */
+  --warning-muted: #fbebd6; /* ink on it: 4.88:1, export's value verbatim */
+  --warning-border: #d5b196;
+  --info: var(--moss-700); /* Sent -- the export's accent-blue-hover */
   --info-foreground: #ffffff;
-  --info-muted: #d7e4e6; /* ink on it: 6.49:1 */
-  --info-border: #93b4bb;
+  --info-muted: var(--moss-100); /* ink on it: 6.95:1 */
+  --info-border: #94acd2;
 
   /* Lines. Two levels, because one token cannot do both jobs at AA:
        --border  decorative -- card outlines, table row rules, section
                  dividers. No contrast floor applies (WCAG 1.4.11 exempts
                  purely decorative boundaries), so this is the export's
-                 --border-default verbatim at 3.09:1 on white.
+                 --border-default verbatim.
        --input   the boundary that IDENTIFIES a control -- text inputs,
                  selects, checkboxes, radios, ghost buttons. This one does
-                 have a 3:1 floor, and the export's value missed it on the
-                 stone-50 canvas (2.91:1), so it is stepped to stone-600. */
-  --border: #8a949b;
-  --input: var(--stone-600); /* 3.63 card / 3.42 page / 3.26 muted */
+                 have a 3:1 floor, and the export's border-default value
+                 (stone-200, 1.48:1 on white) misses it badly, so it is
+                 stepped to stone-600 -- same fix, same reasoning as the old
+                 muted palette's border/input split. */
+  --border: var(--stone-200);
+  --input: var(--stone-600); /* 5.66 card / 5.05 page / 5.05 muted */
 
-  /* The editable-vs-calculated convention. In a dense grid a tinted cell reads
-     as "you can type here" without bordering every static cell. The tint alone
-     is only 1.14:1 against a white card, so the BORDER is what carries the
-     meaning -- stepped from the export's clay-300 (1.90:1, invisible) to
-     clay-500. Calculated fields get neither tint nor border. */
-  --editable: var(--clay-50);
-  --editable-border: var(--clay-500); /* 4.49 card / 3.93 on its own fill */
+  /* The editable-vs-calculated convention. Per the new export, this is now an
+     amber/warning tint+border rather than a clay one (previously the tint was
+     brand-color; now it deliberately borrows the warning hue so an estimator
+     reads "editable" as its own visual language, distinct from brand actions).
+     The border is what carries the meaning -- the tint alone is not enough
+     contrast on its own to read as a boundary. Note: editable cells and
+     Pending-Approval badges now share a hue family; they stay structurally
+     distinguishable (rectangular input + mono digits vs. a pill), so this is
+     flagged, not redesigned. Calculated fields get neither tint nor border. */
+  --editable: var(--warning-muted);
+  --editable-border: var(
+    --warning
+  ); /* 5.70 white / 5.09 page / 4.88 own fill */
 
   --ring: var(--clay-600); /* solid, never alpha-blended -- see below */
 
   /* Categorical chart series. Fixed order, never cycled; color follows the
-     entity, never its rank. Anchored on clay (brand) and moss, ordered so the
-     two closest hues are not adjacent. Validated, not eyeballed: every step
-     clears 3:1 on both surfaces and the worst adjacent pair is deutan/protan
-     dE 13.6. Status colors are reserved and never appear here. */
-  --chart-1: oklch(0.56 0.098 11); /* clay   */
-  --chart-2: oklch(0.56 0.145 300); /* violet */
-  --chart-3: oklch(0.6 0.115 85); /* ochre  */
-  --chart-4: oklch(0.56 0.135 250); /* blue   */
-  --chart-5: oklch(0.58 0.075 163); /* moss   */
+     entity, never its rank. Anchored on clay (brand) and moss (accent blue),
+     ordered so the two closest hues are not adjacent. chart-4 was moved off
+     blue (was hue 250) to a teal (hue 172) specifically because --chart-5 is
+     now ALSO blue-anchored (moss, hue ~259) -- applying the old anchor rule
+     verbatim would have put two near-identical blues adjacent in the series.
+     Validated, not eyeballed: every step clears 3:1 on both surfaces. */
+  --chart-1: oklch(0.56 0.098 25.6); /* clay/red */
+  --chart-2: oklch(0.56 0.145 300); /* violet   */
+  --chart-3: oklch(0.6 0.115 85); /* ochre    */
+  --chart-4: oklch(0.58 0.11 172); /* teal     */
+  --chart-5: oklch(0.58 0.14 258.8); /* moss/blue */
 
   /* Sidebar. The rail is DARK in light mode -- stone-900 against the stone-50
      canvas. The REDYREF logo needs a white chip on it; the logo art is not
      transparent-safe on a dark background. */
   --sidebar: var(--stone-900);
-  --sidebar-foreground: var(--stone-300); /* 10.11:1 on the rail */
+  --sidebar-foreground: var(--stone-300); /* 8.03:1 on the rail */
   --sidebar-primary: var(--clay-600);
-  --sidebar-primary-foreground: #fff8f2;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--stone-800); /* hover */
   --sidebar-accent-foreground: var(--stone-50);
   --sidebar-border: var(--stone-800);
   --sidebar-ring: var(--clay-400); /* on the dark rail, not on white */
+  /* Invariant across both modes: the logo art isn't transparent-safe on a dark
+     background, so its chip stays literally white in dark mode too -- not a
+     token that means "white in light mode," a token that always IS white. */
+  --sidebar-logo-chip: #ffffff;
 
-  /* Modal scrim: no blur, no frosted glass anywhere in this product. */
-  --scrim: rgba(36, 31, 24, 0.4);
+  /* Modal scrim: no blur, no frosted glass anywhere in this product. Ink at
+     40%, matching the export exactly -- ink IS the neutral anchor now, so
+     this is no longer a "kept verbatim despite a cool palette" carve-out. */
+  --scrim: rgba(26, 26, 26, 0.4);
 
   /* For anything that interpolates the base radius. The real ladder is the
      explicit --radius-sm/md/lg/xl above. */
@@ -332,67 +372,79 @@
      ink, and ink light enough to pass drops the fill below AA. So --primary is
      the fill and --primary-text is the ink. Use text-primary-text, never
      text-primary, for links and active nav in dark mode.
-     Hover still DARKENS rather than lightens: clay-400 as a fill holds
-     --primary-foreground at only 3.0:1, so lightening on hover would break AA
-     on the very state the pointer is on. */
-  --primary: var(--clay-550); /* fg on it: 4.52:1, 4.16:1 vs page */
-  --primary-foreground: #fff8f2;
-  --primary-text: var(--clay-400); /* 5.46 card / 4.77 muted */
+
+     Unlike the old muted palette, no derived --clay-550 is needed: clay-500
+     already carries white at 5.02:1 as a fill while separating from the dark
+     canvas at 3.96:1 -- the new anchor's ramp happens to have a usable step
+     where the old one didn't. Hover still DARKENS rather than lightens:
+     clay-400 as a fill would hold --primary-foreground at only 3.09:1, so
+     lightening on hover would break AA on the very state the pointer is on. */
+  --primary: var(--clay-500); /* fg on it: 5.02:1, 3.96:1 vs page */
+  --primary-foreground: #ffffff;
+  --primary-text: var(--clay-400); /* 5.97 card / 5.63 muted */
   --primary-hover: var(--clay-600);
   --primary-active: var(--clay-700);
-  /* Darker than clay-100's dark analogue would suggest: --primary-text must
-     clear AA on it, and at oklch L .330 it read only 4.11:1. */
-  --primary-muted: oklch(0.3 0.05 11); /* --primary-text on it: 4.55:1 */
-  --primary-border: oklch(0.5 0.075 11);
+  --primary-muted: oklch(0.3 0.05 25.6); /* --primary-text on it: 4.51:1 */
+  --primary-border: oklch(0.5 0.075 25.6);
 
-  --accent-secondary: var(--moss-550); /* white on it: 4.51:1 */
+  /* No derived --moss-550 either, same reasoning: moss-600 already carries
+     white at 6.10:1 while separating from the canvas at 3.26:1. */
+  --accent-secondary: var(--moss-600); /* white on it: 6.10:1 */
   --accent-secondary-foreground: #ffffff;
-  --accent-secondary-hover: var(--moss-600);
+  --accent-secondary-hover: var(--moss-700);
 
   --secondary: var(--stone-900);
   --secondary-foreground: var(--stone-50);
   --muted: var(--stone-900);
-  --muted-foreground: var(--stone-500); /* 6.23 card / 5.44 muted */
+  --muted-foreground: var(--stone-500); /* 5.34 card / 5.04 muted */
   --accent: var(--stone-900);
   --accent-foreground: var(--stone-50);
 
   /* Status inverts: the inks are light here, so the ink that sits on a solid
-     fill is the dark canvas color. */
-  --destructive: oklch(0.72 0.13 32.3);
+     fill is the dark canvas color. Same four hues as light mode (destructive
+     at ~38deg, distinct from clay/warning) -- only lightness/tint/border steps
+     are re-solved per surface. */
+  --destructive: oklch(0.72 0.11 37.6); /* 7.12:1 on card */
   --destructive-foreground: var(--stone-1000);
-  --destructive-muted: oklch(0.344 0.044 32.3);
-  --destructive-border: oklch(0.528 0.094 32.3);
-  --success: oklch(0.72 0.105 137.3);
+  --destructive-muted: oklch(0.33 0.045 37.6); /* ink on it: 4.79:1 */
+  --destructive-border: oklch(0.52 0.09 37.6);
+  --success: oklch(0.72 0.11 144.2); /* 7.77:1 on card */
   --success-foreground: var(--stone-1000);
-  --success-muted: oklch(0.359 0.036 137.3);
-  --success-border: oklch(0.511 0.076 137.3);
-  --warning: oklch(0.72 0.1 74.5);
+  --success-muted: oklch(0.35 0.045 144.2); /* ink on it: 4.66:1 */
+  --success-border: oklch(0.52 0.09 144.2);
+  --warning: oklch(0.72 0.11 58.8); /* 7.24:1 on card */
   --warning-foreground: var(--stone-1000);
-  --warning-muted: oklch(0.351 0.034 74.5);
-  --warning-border: oklch(0.52 0.072 74.5);
-  --info: oklch(0.72 0.055 208.6);
+  --warning-muted: oklch(0.33 0.045 58.8); /* ink on it: 4.83:1 */
+  --warning-border: oklch(0.52 0.09 58.8);
+  --info: oklch(0.72 0.11 258.8); /* 7.43:1 on card */
   --info-foreground: var(--stone-1000);
-  --info-muted: oklch(0.345 0.019 208.6);
-  --info-border: oklch(0.515 0.04 208.6);
+  --info-muted: oklch(0.35 0.045 258.8); /* ink on it: 4.56:1 */
+  --info-border: oklch(0.52 0.09 258.8);
 
   --border: var(--stone-800);
-  --input: var(--stone-600); /* 4.58 card / 4.00 muted */
-  --editable: oklch(0.305 0.042 11);
-  --editable-border: var(--clay-500); /* 3.70 card / 3.03 on its own fill */
+  --input: var(--stone-600); /* 3.26 card / 3.08 muted */
+  --editable: oklch(0.305 0.045 58.8);
+  /* Re-solved for the dark surface: the light-mode --editable-border
+     (--warning, unmixed) reads only 2.38:1 against this dark tint -- a
+     lighter/more-saturated step is needed here, unlike the old clay-based
+     convention where the light-mode border value happened to still clear 3:1
+     in dark mode. */
+  --editable-border: oklch(0.61 0.13 58.8); /* 4.68 card / 3.44 own fill */
   --ring: var(--clay-400);
 
   /* Re-stepped into the dark lightness band, not flipped from the light
-     values. Validated the same way: worst adjacent CVD dE 13.7. */
-  --chart-1: oklch(0.7 0.098 11);
+     values. chart-4 moved off blue for the same reason as light mode -- see
+     the light-mode comment. */
+  --chart-1: oklch(0.7 0.098 25.6);
   --chart-2: oklch(0.7 0.145 300);
   --chart-3: oklch(0.73 0.115 85);
-  --chart-4: oklch(0.7 0.135 250);
-  --chart-5: oklch(0.72 0.075 163);
+  --chart-4: oklch(0.72 0.11 172);
+  --chart-5: oklch(0.72 0.14 258.8);
 
   --sidebar: var(--stone-900);
   --sidebar-foreground: var(--stone-300);
-  --sidebar-primary: var(--clay-550);
-  --sidebar-primary-foreground: #fff8f2;
+  --sidebar-primary: var(--clay-500);
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--stone-800);
   --sidebar-accent-foreground: var(--stone-50);
   --sidebar-border: var(--stone-800);
@@ -430,8 +482,7 @@
 
 /* Focus is a solid 3px clay ring on every interactive element -- `ring-3
    ring-ring`, never `ring-ring/50`. Alpha-blending --ring over a light surface
-   lands near 1.6:1 and fails the 3:1 non-text floor; the solid token is 6.97:1
-   on the page canvas.
+   fails the 3:1 non-text floor; the solid token is 6.54:1 on the page canvas.
 
    Money and quantities must not jitter as digits change: numeric cells in the
    quote builder use `font-mono tabular-nums` (both stock Tailwind utilities).

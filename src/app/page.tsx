@@ -17,11 +17,11 @@ const SURFACES = [
 ] as const;
 
 const SERIES = [
-  ["chart-1", "clay"],
+  ["chart-1", "clay/red"],
   ["chart-2", "violet"],
   ["chart-3", "ochre"],
-  ["chart-4", "blue"],
-  ["chart-5", "moss"],
+  ["chart-4", "teal"],
+  ["chart-5", "moss/blue"],
 ] as const;
 
 const RADII = [
@@ -55,9 +55,8 @@ export default function Home() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl">RedyQuote</h1>
         <p className="text-sm text-muted-foreground">
-          Design token reference — Clay / Stone / Moss, Archivo and IBM Plex
-          Mono. Internal estimating tool, deliberately not the REDYREF marketing
-          brand.
+          Design token reference — REDYREF&apos;s actual brand red / ink /
+          accent blue, Archivo and IBM Plex Mono. Internal estimating tool.
         </p>
       </header>
 
@@ -93,9 +92,10 @@ export default function Home() {
           <Button variant="link">Link</Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          One clay action per screen; moss carries secondary actions.
-          Destructive is a tint, not a solid fill — a solid danger red sits only
-          ΔE 5.3 from the clay fill and the two would read as the same button.
+          One clay (brand red) action per screen; moss (accent blue) carries
+          secondary actions. Destructive is a tint in a different hue family —
+          burnt-orange, not brand red — so Save and Delete never read as the
+          same button.
         </p>
       </Section>
 

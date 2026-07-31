@@ -264,6 +264,9 @@ Files stayed where they were; no `git mv`.
 3. **`src/hooks/`** — shadcn will auto-create it when a component ships a hook (e.g.
    sidebar). Allow it when that happens and update `docs/PROJECT-STRUCTURE.md` in the
    same change (its §6 rule).
+4. **`src/app/preview/`** — static, fixture-data-only design-system component gallery
+   (Quotes/Settings templates from the actual-brand-color design spec) → delete once the
+   real `(app)/quotes` and `(app)/settings` routes land.
 
 ## D. Deferred — app #2 packaging decision (do NOT decide now)
 

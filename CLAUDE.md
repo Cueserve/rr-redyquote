@@ -27,7 +27,9 @@ tool-named path says nothing about their status (see PROJECT-STRUCTURE.md §5, "
   policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
   is superseded, not authoritative.
 
-When a new spec lands there, add it to this list in the same change.
+When a new spec lands there, add it to this list in the same change. A spec's content moves
+into the doc it amends once fully incorporated (see docs/DESIGN-SYSTEM.md's provenance note in
+§1 for the precedent) — remove it from this list in that same change.
 
 **Before creating any new route, Server Action, component, `src/lib/` module, or migration,
 consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2

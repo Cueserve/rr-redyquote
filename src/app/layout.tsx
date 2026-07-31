@@ -1,29 +1,24 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed, Geist_Mono } from "next/font/google";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// Barlow is a narrow grotesk built for UI density -- it fits the quote
-// builder's many numeric columns without shrinking the type. Barlow Condensed
-// carries headings and the large margin/stat readouts. Both are self-hosted by
-// next/font, so there is no external request and no layout shift.
-const barlow = Barlow({
+// Archivo is the only text family: display, body and the rare brand-voice
+// italic. Headings differ from body by weight and tracking, not by face -- one
+// grotesk keeps a dense quote table visually quiet. Loaded as a variable font,
+// so every weight 400-700 costs one file.
+const archivo = Archivo({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const barlowCondensed = Barlow_Condensed({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  display: "swap",
-});
-
-// Tabular figures for currency and quantities.
-const geistMono = Geist_Mono({
+// Tabular numerics only -- costs, SKUs, percentages, quantities, and every
+// editable numeric field. Not a variable font, so the weights are explicit.
+const plexMono = IBM_Plex_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -40,9 +35,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${barlow.variable} ${barlowCondensed.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

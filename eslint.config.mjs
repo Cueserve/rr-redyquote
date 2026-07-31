@@ -2,14 +2,17 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
-// Raw Tailwind palette classes (bg-zinc-50, text-black, bg-[#ad0000]) bypass the
+// Raw Tailwind palette classes (bg-zinc-50, text-black, bg-[#82424c]) bypass the
 // semantic token layer in src/app/globals.css: they don't flip in dark mode and
 // they don't re-theme when a brand value changes. Components must use semantic
 // tokens only -- bg-background, text-muted-foreground, bg-primary, border-border.
 //
 // Tier-1 brand primitives are already unusable by construction (globals.css keeps
-// them out of @theme, so Tailwind emits no utility for them). This rule closes the
-// other half: Tailwind's own built-in palette.
+// clay/stone/moss out of @theme, so Tailwind emits no utility for them). This rule
+// closes the other half: Tailwind's own built-in palette. Note that "stone" below
+// is Tailwind's warm stone, NOT our --stone-* ramp; banning it is intentional, and
+// the two never collide because ours is --stone-500 and Tailwind's is
+// --color-stone-500.
 const TW_PALETTE =
   "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const TW_PROP =

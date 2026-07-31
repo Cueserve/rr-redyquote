@@ -19,7 +19,7 @@ paste this block into a new issue — each `- [ ]` line converts to its own issu
 - [x] [4. ESLint boundary rule for `src/components/ui/`](#4-eslint-boundary-rule--keep-srccomponentsui-app-agnostic)
 - [x] [5. `.env.example`](#5-envexample) — already existed and verified
 - [ ] [6. CI workflow + branch protection](#6-ci-workflow-tech-stack-3--blocking-job)
-- [x] [7. Brand design tokens](#7-brand-design-tokens) — unblocked; brand values derived from the logo + redyref.com
+- [x] [7. Brand design tokens](#7-brand-design-tokens) — superseded by the Proposal System design system (Clay / Stone / Moss)
 - [x] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — signed off by Viral; doc updated to 4.x
 - [x] [9. Make `docs/superpowers/specs/` visible](#9-make-docssuperpowersspecs-visible--keep-the-path-fix-the-visibility) — signed off by Viral; rename rejected, visibility fixed instead
 
@@ -175,42 +175,43 @@ requiring the `check` job (GitHub → Settings → Branches).
 
 ### 7. Brand design tokens
 
-**Done.** The blocker resolved itself — the brand values were derivable from source rather
-than needing to be supplied:
+**Done — then superseded on 2026-07-27.** See
+[DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) for the current system; this entry is kept as the record
+of how the token layer got here.
 
-- **Brand red `#ad0000`** — decoded from `Final-RedyRef_logo_main.png` (the only two colors in
-  the logo are `#ad0000` and `#000000`), and confirmed as the interactive color in
-  redyref.com's Oxygen stylesheets.
-- **Barlow + Barlow Condensed** — from the proposal-system prototype. Chosen over the corporate
-  site's Montserrat, which is too wide for the quote builder's numeric columns.
-- **`--radius` unchanged** at `0.625rem`; the existing `calc()` chain already yields
-  sm 6px / md 8px / lg 10px, matching the prototype's controls and panels exactly.
+**The palette shipped now comes from the REDYREF Proposal System design system** (Clay / Stone
+/ Moss, Archivo + IBM Plex Mono), authored in Claude design and adopted wholesale. It is a
+design for an _internal_ estimating tool and is deliberately not the public marketing brand.
 
-Two decisions were signed off by Viral: brand red as `--primary` with `--destructive` retuned
-to a lighter red so the two never read as the same signal, and dark tokens authored now (no
-theme toggle shipped).
+The first pass derived everything from the marketing brand instead — **brand red `#ad0000`**
+decoded from `Final-RedyRef_logo_main.png` and confirmed in redyref.com's Oxygen stylesheets,
+with **Barlow + Barlow Condensed** from the proposal-system prototype. None of those values
+survive. That derivation was not wrong; it was answering a different question.
 
-**The prototype's palette was not copied verbatim** — its status colors measured 3.09–4.27:1
-and fail WCAG AA at the 11px they are used at. Each hue was re-stepped to the lightest value
-that clears 4.5:1 in both roles (as ink, and as a fill under white text). `--chart-*` went from
-five greys to a validated categorical set.
+**What carried forward from the first pass**, because it turned out to be structural rather
+than cosmetic:
 
-The "semantic tokens only" team rule is now **enforced, not documented**, in two layers:
+- **The three-tier token architecture.** Tier-1 primitives declared in `:root` but kept out of
+  `@theme`, so Tailwind emits no utility for them — `bg-clay-600` does not exist. Plus the
+  `no-restricted-syntax` rule in `eslint.config.mjs` rejecting raw palette classes and hex
+  literals. "Semantic tokens only" stayed **enforced, not documented**.
+- **The measure-don't-eyeball rule.** The new palette needed it too: 24 of the 27 pairs it
+  specifies pass as written, but three of its tokens fail in the roles it assigns them
+  (`--border-default` at 2.78–2.91:1 on the surfaces it actually sits on, `--focus-ring` at
+  2.74–3.05:1, `--editable-field-border` at **1.90:1** while carrying a load-bearing meaning).
+  All three were re-solved. 88 pairs are now checked across both modes.
+- **`--destructive` as a tint, never a solid fill.** Re-justified with a new number: a solid
+  danger fill sits OKLab ΔE 5.3 from the primary clay fill, less separation than primary has
+  from its own hover step (ΔE 7.0).
+- **Dark tokens authored now, no theme toggle shipped.** The design system is light-only, so
+  the entire dark band is derived and measured here rather than designed.
+- **A validated categorical `--chart-*` set**, re-anchored on clay and moss.
 
-- Tier-1 brand primitives are declared in `:root` but deliberately kept out of `@theme`, so
-  Tailwind emits no utility for them — `bg-brand-red-600` does not exist.
-- A `no-restricted-syntax` rule in `eslint.config.mjs` rejects raw palette classes and hex
-  literals (`bg-zinc-50`, `text-black`, `bg-[#ad0000]`) in `className` strings and template
-  literals across `src/**/*.tsx`.
+**`--radius` is no longer a `calc()` chain.** The design system's ladder is 6 → 10 → 16 → 22px,
+which is not a constant multiple; it is now an explicit scale.
 
-New `ui/` components define variants via `cva()` — `button.tsx`, and now `badge.tsx`.
-
-`src/app/page.tsx` is temporarily a token reference surface; it goes away with the boilerplate
-in §C.1.
-
-Also fixed in passing: `--font-sans` was mapped to itself in `globals.css` while `layout.tsx`
-defined `--font-geist-sans`, so `font-sans` resolved to nothing and the app was rendering in
-the browser default font.
+`src/app/page.tsx` is still a token reference surface; it goes away with the boilerplate in
+§C.1.
 
 ---
 

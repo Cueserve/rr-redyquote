@@ -57,12 +57,7 @@ redyquote/
 │  │  │  └─ settings/               # rates, markups, branding      (admin-only)
 │  │  ├─ layout.tsx                 # root layout — html/body shell, fonts
 │  │  ├─ page.tsx                   # entry (redirect to /quotes or /login)
-│  │  ├─ globals.css                # Tailwind entry (`@import "tailwindcss"`)
-│  │  └─ preview/                   # TEMPORARY — static design-system component gallery,
-│  │     ├─ quotes/page.tsx         # fixture-data only, no Server Actions, no real handlers.
-│  │     ├─ settings/page.tsx       # Delete once the real (app)/quotes, (app)/settings land
-│  │     └─ _templates/             # (docs/TODO.md). Thin routes over presentational
-│  │                                # compositions in the underscore (route-private) folder.
+│  │  └─ globals.css                # Tailwind entry (`@import "tailwindcss"`)
 │  ├─ proxy.ts                      # Next 16 middleware — Supabase session refresh
 │  ├─ components/                   # React components used by 2+ routes
 │  │  ├─ ui/                        # shadcn/ui primitives (Radix-based)

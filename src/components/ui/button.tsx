@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 // Sizes, radius and weight follow the Proposal System design system §7.1.
 // Two deliberate departures from it, both recorded in docs/DESIGN-SYSTEM.md:
 //
-//  1. `destructive` is a TINT, never a solid fill. The export specs a solid
-//     --danger-fg background, but that fill sits only OKLab dE 5.3 from the
-//     primary clay fill -- less separation than primary has from its own hover
-//     step (dE 7.0). A "Save Quote" and a "Delete line" button would read as
-//     the same control. The tint keeps danger legible as danger.
+//  1. `destructive` is a TINT, never a solid fill, AND a different hue family
+//     than primary -- not just a darker/desaturated red. The export reuses
+//     brand red for danger (filled vs. outlined); --destructive is instead a
+//     burnt-orange/rust hue (~38deg vs. clay's ~26deg) so a "Save Quote" and a
+//     "Delete line" button read as different controls, not the same one at
+//     different opacity. See DESIGN-SYSTEM.md §6.
 //  2. Press darkens a step (--primary-active) instead of translating. The
 //     design system forbids scale/shrink transforms outright: motion must never
 //     make a number feel imprecise.

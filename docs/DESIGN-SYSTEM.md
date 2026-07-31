@@ -5,16 +5,13 @@
 **Source of truth for:** RedyQuote's design tokens, the rules for using them, and the
 accessibility floor every color must clear.
 
-> Derived from: **REDYREF Admin (Actual Brand Color)**, authored in Claude design —
-> [project 86a2687b](https://claude.ai/design/p/86a2687b-a7f0-416e-aa6e-a2c566fbbd30). The raw
-> export was mirrored at `docs/superpowers/specs/2026-07-31-redyref-admin-actual-brand-color-design.md`
-> during design work; it has been folded into this file in full (§1 below records what carried
-> over verbatim vs. what was re-solved) and is no longer kept as a separate file.
-> Structure (tiers, scales, accessibility methodology) carried forward from the prior source,
-> the **REDYREF Proposal System design system** (Clay / Stone / Moss) —
-> [project dd4df4df](https://claude.ai/design/p/dd4df4df-16e8-45f4-8daf-6a2ca67183bc). Its
-> contrast-computation approach and dark-mode derivation logic are still directly reused; only
-> the color anchors changed.
+> **History:** this file's palette has been superseded twice — see §1 for the full timeline
+> (REDYREF logo red → muted Clay/Stone/Moss → REDYREF's actual brand hexes). The most recent
+> source export was mirrored at
+> `docs/superpowers/specs/2026-07-31-redyref-admin-actual-brand-color-design.md` during design
+> work; it has since been folded into this file in full (§1 records what carried over verbatim
+> vs. what was re-solved), and that file has been deleted — no other file or external project
+> is a dependency of this one.
 > Implemented in: `src/app/globals.css`, `src/app/layout.tsx`, `src/components/ui/`,
 > `eslint.config.mjs`
 

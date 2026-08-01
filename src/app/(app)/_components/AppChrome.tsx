@@ -82,13 +82,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             items={NAV}
             activeHref={activeHref}
             logo={
-              // The tagline-free mark, not the full lockup: at the 160px the
-              // rail's chip affords, "interactive kiosks" renders at ~7px cap
-              // height. The full lockup stays at /redyref-logo.png for surfaces
-              // with room for it. `priority` because the rail is above the fold
-              // on every route -- lazy-loading it just buys a first-paint flash.
+              // Use the current committed brand logo file. `priority` because
+              // the rail is above the fold on every route -- lazy-loading it
+              // just buys a first-paint flash.
               <Image
-                src="/redyref-logo-mark.png"
+                src="/redyref-logo.png"
                 alt="REDYREF"
                 width={1442}
                 height={817}

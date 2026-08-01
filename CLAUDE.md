@@ -32,6 +32,10 @@ that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.m
   policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
   is superseded, not authoritative. Lives under the tool-owned path because the `superpowers`
   plugin wrote it there and would recreate the folder if moved.
+- [docs/superpowers/specs/2026-08-01-branding-assets-upload-design.md](docs/superpowers/specs/2026-08-01-branding-assets-upload-design.md)
+  — future design for settings-branding logo/favicon upload and replacement using deployment-safe
+  asset storage without immediate `settings` schema changes. Design-only in this phase; no code
+  wiring and no DB migration are part of that spec.
 - [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — the full DDL for
   [docs/DATABASE.md](docs/DATABASE.md)'s model: tables, enums, triggers, the atomic RPC
   functions, and every RLS policy. **Feeds `supabase/migrations/*.sql`; delete it once those

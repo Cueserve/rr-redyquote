@@ -125,22 +125,14 @@ on 2026-08-01. The favicon is _not_ here: it lives at `src/app/favicon.ico`, the
 Router convention. Keep this folder to assets the browser fetches by URL; anything a component
 can import belongs under `src/`.
 
-Two files, and the second is derived from the first:
+One file:
 
 - **`redyref-logo.png`** — the supplied lockup, 1442×817 RGBA with a genuinely transparent
   background. Use it where there is width for the "interactive kiosks" tagline.
-- **`redyref-logo-mark.png`** — the same mark with the tagline erased, for the sidebar rail.
-  Regenerate it from the lockup rather than hand-editing: zero the alpha channel for
-  `x >= 440, y >= 500`, then trim. That cut line sits in the empty gutter between the hand
-  (ink spans x 19–375 below y 500) and the tagline (x 512–1438), so it never touches the mark.
 
-**Why a second file rather than a CSS crop.** The hand descends to the same bottom edge as the
-tagline, so the lockup's ink bounding box is 1.76:1 with or without the tagline — cropping buys
-no vertical rail space, only legibility. At the 160px the rail's logo chip affords, the tagline
-would render at roughly 7px cap height. A rectangular crop tight enough to drop the hand as
-well would amputate it mid-stroke and leave a stub through the bottom bar; that was tried and
-rejected. The mark's ink is pure black, which is why the chip in `src/components/layout/
-sidebar.tsx` paints a light surface behind it — transparency is not the issue, contrast is.
+The sidebar now uses this same lockup file directly, and the logo chip in
+`src/components/layout/sidebar.tsx` still paints a light surface behind it so the black mark
+maintains contrast against the dark rail.
 
 **`src/app/favicon.ico` is a synthesized mark, not the logo.** Replaced on 2026-08-01; the
 prior file was the `create-next-app` default. A favicon renders at 16px, where the letterboxed
@@ -157,7 +149,7 @@ before touching it:
   container is assembled by hand. Don't expect a one-line `sharp(...).toFile('*.ico')` to work.
 
 No intermediate PNG is committed — the icon is regenerable from `public/redyref-logo.png`
-alone, and a second copy would only drift.
+alone.
 
 **Why `src/`:** the root stays a pure tooling surface, and `src/**` gives lint, coverage, and
 type-check globs one unambiguous anchor for "code we wrote." Next 16 supports `src/app` and

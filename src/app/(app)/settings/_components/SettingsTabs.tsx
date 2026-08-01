@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Upload } from "lucide-react";
+import Image from "next/image";
 
 import { ReadOnlyNotice } from "@/components/prototype/admin-only";
 import { useIsAdmin } from "@/components/prototype/role-context";
@@ -39,7 +39,7 @@ interface NumericFieldSpec {
   key: keyof Settings;
   label: string;
   help: string;
-  suffix: "%" | "$" | "months";
+  suffix: "%" | "$" | "months" | "×";
 }
 
 const RATE_FIELDS: NumericFieldSpec[] = [
@@ -50,16 +50,16 @@ const RATE_FIELDS: NumericFieldSpec[] = [
     suffix: "$",
   },
   {
-    key: "fab_markup_percent",
+    key: "fab_markup_multiplier",
     label: "Fabrication markup",
-    help: "Applied to the fab tier cost.",
-    suffix: "%",
+    help: "Multiplier applied to the fab tier cost. 1.5 means 1.5× cost.",
+    suffix: "×",
   },
   {
-    key: "component_markup_percent",
+    key: "component_markup_multiplier",
     label: "Component markup",
-    help: "Default markup pre-filled on a new quote line.",
-    suffix: "%",
+    help: "Multiplier pre-filled on a new quote line. 1.2 means 1.2× cost.",
+    suffix: "×",
   },
   {
     key: "cushion_percent",
@@ -215,37 +215,41 @@ export function SettingsTabs({
       <TabsContent value="branding" className="flex flex-col gap-6">
         {readOnly ? <ReadOnlyNotice what="Branding" /> : null}
 
-        <Card className="flex max-w-2xl flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-md font-semibold tracking-tight">Favicon</h2>
-            <p className="text-sm text-muted-foreground">
-              Resized to 64×64 and applied for every user. There is one favicon
-              for the whole organisation.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-5">
-            <div className="flex size-16 items-center justify-center rounded-md border border-border bg-muted">
-              {settings.favicon_url ? (
-                <span className="font-mono text-xs text-muted-foreground">
-                  64×64
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">None</span>
-              )}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-md font-semibold tracking-tight">Logo</h2>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Button variant="outline" disabled={readOnly}>
-                <Upload />
-                Upload favicon
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                PNG or SVG. Anything larger is resized on upload.
-              </span>
+            <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted p-4">
+              <Image
+                src="/redyref-logo.png"
+                alt="Organisation logo preview"
+                width={220}
+                height={125}
+                className="h-auto max-h-28 w-auto max-w-full object-contain"
+                priority
+              />
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          <Card className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-md font-semibold tracking-tight">Favicon</h2>
+            </div>
+
+            <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted p-4">
+              <Image
+                src="/favicon.ico"
+                alt="Favicon preview"
+                width={64}
+                height={64}
+                className="size-16 rounded-sm border border-border"
+                priority
+              />
+            </div>
+          </Card>
+        </div>
       </TabsContent>
 
       <TabsContent value="history" className="flex flex-col gap-4">

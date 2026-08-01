@@ -105,7 +105,8 @@ redyquote/
 │  └─ superpowers/                  # tool-owned path — the `superpowers` Claude Code plugin
 │     ├─ specs/                     #   writes design specs here (YYYY-MM-DD-<topic>-design.md)
 │     └─ plans/                 [ ] #   and implementation plans here, when first used
-├─ public/                      [ ] # static assets — currently EMPTY, see the note below
+├─ public/                          # static assets — brand imagery only, see the note below
+│  └─ redyref-logo.png              #   full lockup (1442×817) — wordmark + hand + tagline
 ├─ package.json  tsconfig.json  next.config.ts
 ├─ eslint.config.mjs  postcss.config.mjs  .prettierrc  .husky/
 └─ CLAUDE.md  README.md
@@ -117,14 +118,46 @@ streamed response starts, status is committed and `notFound()` in `quotes/[id]` 
 404 UI with **HTTP 200**. The current route-group split prevents that by leaving detail routes
 outside the list-loading boundary.
 
-**`public/` is empty and therefore absent from a fresh clone.** The five `create-next-app`
-SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1) and nothing replaced them — the favicon
-lives at `src/app/favicon.ico`, the Next App Router convention, not in `public/`. Git does not
-track empty directories, so the folder simply will not exist until a real static asset lands.
-That is deliberate, and consistent with [§2](#2-the-four-placement-questions)'s "no
-speculative folders" rule: a `.gitkeep` would be propping up a directory that has earned
-nothing yet. Next.js does not require it — verified by a clean production build with `public/`
-absent.
+**`public/` holds the REDYREF brand imagery and nothing else.** The five `create-next-app`
+SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1); the folder then sat empty — and therefore
+absent from a fresh clone, since git does not track empty directories — until the logo landed
+on 2026-08-01. The favicon is _not_ here: it lives at `src/app/favicon.ico`, the Next App
+Router convention. Keep this folder to assets the browser fetches by URL; anything a component
+can import belongs under `src/`.
+
+Two files, and the second is derived from the first:
+
+- **`redyref-logo.png`** — the supplied lockup, 1442×817 RGBA with a genuinely transparent
+  background. Use it where there is width for the "interactive kiosks" tagline.
+- **`redyref-logo-mark.png`** — the same mark with the tagline erased, for the sidebar rail.
+  Regenerate it from the lockup rather than hand-editing: zero the alpha channel for
+  `x >= 440, y >= 500`, then trim. That cut line sits in the empty gutter between the hand
+  (ink spans x 19–375 below y 500) and the tagline (x 512–1438), so it never touches the mark.
+
+**Why a second file rather than a CSS crop.** The hand descends to the same bottom edge as the
+tagline, so the lockup's ink bounding box is 1.76:1 with or without the tagline — cropping buys
+no vertical rail space, only legibility. At the 160px the rail's logo chip affords, the tagline
+would render at roughly 7px cap height. A rectangular crop tight enough to drop the hand as
+well would amputate it mid-stroke and leave a stub through the bottom bar; that was tried and
+rejected. The mark's ink is pure black, which is why the chip in `src/components/layout/
+sidebar.tsx` paints a light surface behind it — transparency is not the issue, contrast is.
+
+**`src/app/favicon.ico` is a synthesized mark, not the logo.** Replaced on 2026-08-01; the
+prior file was the `create-next-app` default. A favicon renders at 16px, where the letterboxed
+lockup is an unreadable smear — so the icon is a **white `R` knocked out of a solid `#ad0000`
+tile**, the `R` lifted from the wordmark's first letterform (`x 182..338, y 137..342` of the
+lockup) and centred at 168px on a 256px canvas. It is a **4-entry ICO — 16/32/48/256px, each
+entry PNG-encoded** (the Vista+ form; every current browser reads it). Two things to know
+before touching it:
+
+- **REDYREF has no square brand mark.** This single letter was invented to fill that gap and
+  has not been through brand review. If a real square mark ever arrives, it wins — replace
+  this rather than reconciling with it.
+- **`sharp` cannot write ICO.** It is used to render the four PNGs; the ICONDIR/ICONDIRENTRY
+  container is assembled by hand. Don't expect a one-line `sharp(...).toFile('*.ico')` to work.
+
+No intermediate PNG is committed — the icon is regenerable from `public/redyref-logo.png`
+alone, and a second copy would only drift.
 
 **Why `src/`:** the root stays a pure tooling surface, and `src/**` gives lint, coverage, and
 type-check globs one unambiguous anchor for "code we wrote." Next 16 supports `src/app` and

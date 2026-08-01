@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Boxes, FileText, Package, SlidersHorizontal } from "lucide-react";
 
@@ -81,9 +82,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             items={NAV}
             activeHref={activeHref}
             logo={
-              <span className="text-sm font-semibold tracking-wide text-sidebar">
-                REDYREF
-              </span>
+              // The tagline-free mark, not the full lockup: at the 160px the
+              // rail's chip affords, "interactive kiosks" renders at ~7px cap
+              // height. The full lockup stays at /redyref-logo.png for surfaces
+              // with room for it. `priority` because the rail is above the fold
+              // on every route -- lazy-loading it just buys a first-paint flash.
+              <Image
+                src="/redyref-logo-mark.png"
+                alt="REDYREF"
+                width={1442}
+                height={817}
+                priority
+                className="h-auto w-40"
+              />
             }
           />
           <div className="flex min-w-0 flex-1 flex-col">

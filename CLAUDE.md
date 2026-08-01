@@ -75,20 +75,31 @@ section — it is a snapshot, and a stale one is worse than none.
 - **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
 - **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
   `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
-- **Migrations, authored but _not applied_** — `supabase/migrations/0001`–`0003` (extensions
-  and enums; `profiles` + auth + `is_admin()`; `settings` + `settings_history` + seed row),
-  each with its own RLS. **Nothing has been pushed to the remote**, so the hosted schema is
-  still empty and `src/lib/supabase/types.ts` is still types-for-nothing. `0004` onward
-  (categories, products, quotes, RPCs) is untranscribed — see
+- **Migrations `0001`–`0004`, all applied to the linked project** — extensions and enums;
+  `profiles` + auth + `is_admin()` + the role-escalation guard; `settings` +
+  `settings_history` + seed row; and `0004`, which renames the two markup columns from
+  `*_multiplier` to `*_percent`. Each table ships with its own RLS, verified enabled on the
+  remote. `src/lib/supabase/types.ts` is generated against this schema and is current.
+  `0005` onward (categories, products, quotes, RPCs) is untranscribed — see
   [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
+  - **The hosted schema is real now. Treat every migration file as immutable** — `db push`
+    compares recorded versions, not file contents, so editing an applied file is skipped
+    silently while reading as though it landed. `0004` exists because that happened once.
+  - **`npm run db:types` is broken**: it calls a bare `supabase` that is not on PATH, and its
+    `>` redirect truncates `types.ts` to empty _before_ failing, leaving the repo in a state
+    where `typecheck` fails with three TS2306 errors. Until the script is fixed, run
+    `npx supabase gen types typescript --linked > src/lib/supabase/types.ts` and then
+    `npx prettier --write src/lib/supabase/types.ts` — generator output is not Prettier-clean
+    and `format:check` fails without it.
 - **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
   semantic-token rules.
 
 **Not built.** No `src/server/actions/`, no `src/lib/pricing/`, no `src/lib/validation/`,
 no `e2e/`, no `vitest.config.ts`, no CI workflow. **Nothing in the app talks to the database
 yet**, and no Server Action exists — so any feature work starts by creating that path, not by
-extending one. Migrations existing does not change this: they are files on disk, not an
-applied schema.
+extending one. An applied schema does not change this: `profiles`, `settings`, and
+`settings_history` exist on the remote and hold nothing but the seeded `settings` row —
+zero users, zero history. Every screen still reads `src/lib/mock/`.
 
 **Two prototype-only directories, both delete-on-wiring** — `src/lib/mock/` (fixtures) and
 `src/components/prototype/` (a client-side role switch that is _not_ authorization). Don't

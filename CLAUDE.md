@@ -63,7 +63,7 @@ here and product/architecture facts in `docs/`.
 
 ## Project state
 
-**Last verified: 2026-07-31.** Confirm a file or script still exists before relying on this
+**Last verified: 2026-08-01.** Confirm a file or script still exists before relying on this
 section — it is a snapshot, and a stale one is worse than none.
 
 **Built.** The `@/*` alias resolves to `./src/*`.
@@ -75,13 +75,20 @@ section — it is a snapshot, and a stale one is worse than none.
 - **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
 - **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
   `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
+- **Migrations, authored but _not applied_** — `supabase/migrations/0001`–`0003` (extensions
+  and enums; `profiles` + auth + `is_admin()`; `settings` + `settings_history` + seed row),
+  each with its own RLS. **Nothing has been pushed to the remote**, so the hosted schema is
+  still empty and `src/lib/supabase/types.ts` is still types-for-nothing. `0004` onward
+  (categories, products, quotes, RPCs) is untranscribed — see
+  [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
 - **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
   semantic-token rules.
 
-**Not built.** No `src/server/actions/`, no `supabase/migrations/`, no `src/lib/pricing/`,
-no `src/lib/validation/`, no `e2e/`, no `vitest.config.ts`, no CI workflow. **Nothing in the
-app talks to the database yet**, and no Server Action exists — so any feature work starts by
-creating that path, not by extending one.
+**Not built.** No `src/server/actions/`, no `src/lib/pricing/`, no `src/lib/validation/`,
+no `e2e/`, no `vitest.config.ts`, no CI workflow. **Nothing in the app talks to the database
+yet**, and no Server Action exists — so any feature work starts by creating that path, not by
+extending one. Migrations existing does not change this: they are files on disk, not an
+applied schema.
 
 **Two prototype-only directories, both delete-on-wiring** — `src/lib/mock/` (fixtures) and
 `src/components/prototype/` (a client-side role switch that is _not_ authorization). Don't
@@ -117,14 +124,26 @@ These are structural guarantees, not conventions — don't write code that break
 
 ## Claude Code-specific config
 
-- **Commands** (verified 2026-07-31 — `package.json` is the authority; don't invent scripts):
+- **Commands** (verified 2026-08-01 — `package.json` is the authority; don't invent scripts):
   - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
   - `npm run test` exits 0 but proves nothing — it is `vitest run --passWithNoTests` and there
     are no tests. Treat a green `test` as "not run", not "passed" (docs/TODO.md §A.2).
-  - `npm run db:push` / `db:types` exist and the project is linked, but there is no
-    `supabase/migrations/` yet, so `db:push` has nothing to apply and `db:types` would
-    regenerate types for an empty schema.
+  - `npm run db:push` / `db:types` exist and the project is linked. `db:push` now has three
+    pending migrations to apply; `db:types` still regenerates types for an **empty** schema
+    until that push happens.
   - **`test:e2e` does not exist.** No Playwright config, no `e2e/` (docs/TODO.md §C.2).
+- **Applying migrations: use `/db-migrate`, not a bare `db:push`.** The slash command
+  ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the approved path —
+  pre-flight, dry run, push, `db:types`, then verification that RLS is actually enabled on
+  every new table. `/db-migrate dry-run` stops after the dry run.
+  - Reason it exists: dev runs against a hosted project with **no local stack and no `db reset`**
+    (docs/ENVIRONMENTS.md §1), so a bad migration lands on a real database with no automated
+    backups on the Free tier (PRD NFR-006a). The pre-flight is the whole value; a bare
+    `db push` skips it.
+  - **Never push without the user seeing the migration first**, and never re-apply or edit an
+    already-applied migration file — a new change is a new file.
+  - There is deliberately **no `npm run db:migrate`** wrapper: a one-liner that pushes
+    unreviewed SQL is the thing this command exists to prevent.
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
   installed. Never suggest `supabase start` or `db reset` as a current step — see
   [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.

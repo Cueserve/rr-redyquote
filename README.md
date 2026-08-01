@@ -87,9 +87,10 @@ Two caveats worth knowing before you trust a green run:
 - **`npm run test` proves nothing yet.** It is `vitest run --passWithNoTests` and there are no
   tests, so it exits 0 on an empty suite. Read a pass as "not run" until the pricing-calc
   tests land ([TODO.md](docs/TODO.md) §A.2).
-- **`npm run db:push` has nothing to apply.** The script and the linked project both exist,
-  but `supabase/migrations/` does not — the schema is still a spec (see Further Reading).
-  `npm run db:types` would likewise regenerate types for an empty database.
+- **The migrations exist but have not been applied.** `supabase/migrations/0001`–`0003` are
+  authored and unpushed, so the hosted database is still empty: `npm run db:types` regenerates
+  types for nothing until `npm run db:push` runs. `0004` onward (products, quotes, RPCs) is
+  still a spec — see [DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -110,8 +111,8 @@ deletion.
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, columns, and why each table
   is shaped that way. The SQL that implements it is a
-  [spec](docs/DATABASE-SQL.md) awaiting
-  authoring as migrations.
+  [spec](docs/DATABASE-SQL.md), now **partly** authored as
+  migrations — that file's "Transcription status" says which blocks it no longer governs.
 - [TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 - [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, the WCAG AA floor

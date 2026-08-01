@@ -128,8 +128,8 @@ erDiagram
     SETTINGS {
         boolean id PK
         numeric labor_rate
-        numeric fab_markup_multiplier
-        numeric component_markup_multiplier
+        numeric fab_markup_percent
+        numeric component_markup_percent
         numeric cushion_percent
         numeric commission_percent
         numeric margin_floor_percent
@@ -263,20 +263,28 @@ Singleton row (PRD-012). Enforced as exactly one row via a `boolean` primary key
 `CHECK (id)` constraint — a well-known Postgres singleton pattern (the PK's uniqueness
 does the enforcement; the `CHECK` forbids the row ever being `false`).
 
-| Column                        | Type            | Constraints                                  |
-| ----------------------------- | --------------- | -------------------------------------------- |
-| `id`                          | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
-| `labor_rate`                  | `numeric(10,2)` | NOT NULL, CHECK `>= 0`                       |
-| `fab_markup_multiplier`       | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
-| `component_markup_multiplier` | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
-| `cushion_percent`             | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `commission_percent`          | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `margin_floor_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `freshness_warning_months`    | `smallint`      | NOT NULL, CHECK `>= 1`                       |
-| `freshness_requote_months`    | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
-| `favicon_url`                 | `text`          | NULL                                         |
-| `updated_by`                  | `uuid`          | FK → `profiles(id)`                          |
-| `created_at` / `updated_at`   | `timestamptz`   | NOT NULL                                     |
+| Column                      | Type            | Constraints                                  |
+| --------------------------- | --------------- | -------------------------------------------- |
+| `id`                        | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
+| `labor_rate`                | `numeric(10,2)` | NOT NULL, CHECK `>= 0`                       |
+| `fab_markup_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `component_markup_percent`  | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `cushion_percent`           | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `commission_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `margin_floor_percent`      | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `freshness_warning_months`  | `smallint`      | NOT NULL, CHECK `>= 1`                       |
+| `freshness_requote_months`  | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
+| `favicon_url`               | `text`          | NULL                                         |
+| `updated_by`                | `uuid`          | FK → `profiles(id)`                          |
+| `created_at` / `updated_at` | `timestamptz`   | NOT NULL                                     |
+
+**Every rate on this row is a percent** — the two markups are stored as `50.00` / `20.00`,
+not as the `1.50` / `1.20` multipliers that say the same thing. A multiplier in
+`numeric(5,2)` can only step 0.01, which is one whole percentage point of markup; as a
+percent the same type is 100× finer. `quote_lines.markup_percent` carries the same unit,
+so the component markup pre-fills a new line with no conversion anywhere. The rationale is
+recorded in full in `supabase/migrations/0004_settings_markup_units.sql`, which renamed
+these two columns after `0003_settings.sql` had already shipped them as `*_multiplier`.
 
 ### 4.4 `settings_history`
 

@@ -165,10 +165,7 @@ export function QuoteBuilder({
         hard_cost: component.cost,
         labor_hours: component.default_labor_hours,
         labor_cost: 0,
-        // UNIT MISMATCH, knowingly left in place: the setting is a multiplier
-        // (1.18 = 1.18× cost) and this field is still a percent. Resolved when
-        // `quote_lines` is authored — DATABASE-SQL.md §4.6.
-        markup_percent: settings.component_markup_multiplier,
+        markup_percent: settings.component_markup_percent,
         environment_mismatch:
           component.environment !== "any" &&
           component.environment !== environment,
@@ -220,10 +217,7 @@ export function QuoteBuilder({
           hard_cost: component.cost,
           labor_hours: component.default_labor_hours,
           labor_cost: 0,
-          // UNIT MISMATCH, knowingly left in place: the setting is a multiplier
-          // (1.18 = 1.18× cost) and this field is still a percent. Resolved when
-          // `quote_lines` is authored — DATABASE-SQL.md §4.6.
-          markup_percent: settings.component_markup_multiplier,
+          markup_percent: settings.component_markup_percent,
           // PRD-008 — a component rated for one environment on a quote for the
           // other. A comparison against the two stored values, not a rule.
           environment_mismatch:

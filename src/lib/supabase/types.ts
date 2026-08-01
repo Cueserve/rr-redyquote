@@ -39,16 +39,133 @@ export type Database = {
   };
   public: {
     Tables: {
-      [_ in never]: never;
+      profiles: {
+        Row: {
+          created_at: string;
+          full_name: string;
+          id: string;
+          role: Database["public"]["Enums"]["user_role"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          full_name: string;
+          id: string;
+          role?: Database["public"]["Enums"]["user_role"];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          full_name?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["user_role"];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      settings: {
+        Row: {
+          commission_percent: number;
+          component_markup_percent: number;
+          created_at: string;
+          cushion_percent: number;
+          fab_markup_percent: number;
+          favicon_url: string | null;
+          freshness_requote_months: number;
+          freshness_warning_months: number;
+          id: boolean;
+          labor_rate: number;
+          margin_floor_percent: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          commission_percent: number;
+          component_markup_percent: number;
+          created_at?: string;
+          cushion_percent: number;
+          fab_markup_percent: number;
+          favicon_url?: string | null;
+          freshness_requote_months: number;
+          freshness_warning_months: number;
+          id?: boolean;
+          labor_rate: number;
+          margin_floor_percent: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          commission_percent?: number;
+          component_markup_percent?: number;
+          created_at?: string;
+          cushion_percent?: number;
+          fab_markup_percent?: number;
+          favicon_url?: string | null;
+          freshness_requote_months?: number;
+          freshness_warning_months?: number;
+          id?: boolean;
+          labor_rate?: number;
+          margin_floor_percent?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "settings_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      settings_history: {
+        Row: {
+          actor: string;
+          changed_at: string;
+          changed_field: string;
+          id: string;
+          new_value: string | null;
+          old_value: string | null;
+        };
+        Insert: {
+          actor: string;
+          changed_at?: string;
+          changed_field: string;
+          id?: string;
+          new_value?: string | null;
+          old_value?: string | null;
+        };
+        Update: {
+          actor?: string;
+          changed_at?: string;
+          changed_field?: string;
+          id?: string;
+          new_value?: string | null;
+          old_value?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "settings_history_actor_fkey";
+            columns: ["actor"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      is_admin: { Args: never; Returns: boolean };
     };
     Enums: {
-      [_ in never]: never;
+      environment_type: "any" | "indoor" | "outdoor";
+      quote_environment: "indoor" | "outdoor";
+      quote_status: "draft" | "pending_approval" | "approved" | "sent";
+      user_role: "rep" | "admin";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -178,6 +295,11 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      environment_type: ["any", "indoor", "outdoor"],
+      quote_environment: ["indoor", "outdoor"],
+      quote_status: ["draft", "pending_approval", "approved", "sent"],
+      user_role: ["rep", "admin"],
+    },
   },
 } as const;

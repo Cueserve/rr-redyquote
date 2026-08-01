@@ -23,13 +23,19 @@ historical**. Where a migration file exists, **that file is authoritative and th
 is not** (ARCHITECTURE §5) — the blocks are kept only so the untranscribed remainder stays
 readable in context.
 
-| §1 block                 | Migration file                                      | Status                                      |
-| ------------------------ | --------------------------------------------------- | ------------------------------------------- |
-| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql` | ✅ transcribed verbatim                     |
-| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`    | ✅ transcribed + §4.2 guard, + profiles RLS |
-| `0003` settings tables   | `supabase/migrations/0003_settings.sql`             | ✅ transcribed + CHECKs, RLS, seed row      |
-| `0003` categories onward | —                                                   | ⬜ not yet authored                         |
-| `0004`–`0006`            | —                                                   | ⬜ not yet authored                         |
+| §1 block                 | Migration file                                       | Status                                      |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------------- |
+| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql`  | ✅ transcribed verbatim                     |
+| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`     | ✅ transcribed + §4.2 guard, + profiles RLS |
+| `0003` settings tables   | `supabase/migrations/0003_settings.sql`              | ✅ transcribed + CHECKs, RLS, seed row      |
+| markup units fix         | `supabase/migrations/0004_settings_markup_units.sql` | ✅ renames `0003`'s two markup columns      |
+| `0003` categories onward | —                                                    | ⬜ not yet authored                         |
+| `0005` onward            | —                                                    | ⬜ not yet authored                         |
+
+**`0001`–`0004` are all applied to the linked project.** Never edit an applied file —
+`db push` compares recorded versions, not contents, so the edit is skipped silently while
+reading as though it landed. A new decision is a new file. `0004` exists precisely because
+`0003` had already shipped when the markup units were reversed.
 
 Deviations the authored files make from the blocks below, all deliberate:
 
@@ -38,7 +44,13 @@ Deviations the authored files make from the blocks below, all deliberate:
   reference for the policies not yet authored.
 - **The `settings` seed row is in `0003`**, not a trailing `0007_seed_settings`: every column
   is `NOT NULL` with no default, so a settings table without its row is a broken state to push.
-- **The markup columns are multipliers** — see the note in §1's `0003` block.
+- **`0003` adds CHECK constraints** the block below does not carry (non-negative rates,
+  `freshness_warning_months >= 1`).
+- **`0003` shipped the two markup columns as `*_markup_multiplier` with a `>= 1` floor, and
+  `0004` renames them back to `*_markup_percent` with a `>= 0` floor**, restating the seeded
+  values as `50.00` / `20.00`. The block below shows the end state, i.e. `0003` + `0004` —
+  see §4.6 for why, and the `0004` file for the mechanics (the audit trigger's hardcoded
+  column list has to be replaced in the same migration or every settings update raises).
 - **`0002` carves out `auth.uid() is null`** in the §4.2 role guard — see §4.2.
 
 **Delete this file only when every block above is transcribed**, and remove it from CLAUDE.md's
@@ -74,6 +86,12 @@ _why_ each table looks like this; the SQL below is only _how_.
 > (`NNNN_snake_case_description.sql`): `0001_extensions_and_types`,
 > `0002_profiles_and_auth_trigger`, `0003_master_data`, `0004_quotes`, `0005_rpc_functions`,
 > `0006_rls_policies`, `0007_seed_settings`. Presented here as one consolidated script.
+>
+> **The authored files diverged from that split** — see the deviations above. `0004` is
+> taken by the markup-units fix, RLS ships with each table rather than in one trailing
+> file, and the seed row lives in `0003`. The remaining work is `0005` onward; the block
+> comments below still carry the original suggested numbers, so read them as section
+> labels, not filenames.
 
 ```sql
 -- ============================================================================
@@ -159,18 +177,22 @@ create table categories (
 create trigger categories_set_updated_at
   before update on categories for each row execute function set_updated_at();
 
--- SUPERSEDED by supabase/migrations/0003_settings.sql, which additionally carries
--- CHECK constraints, RLS, and the seed row.
+-- SUPERSEDED by supabase/migrations/0003_settings.sql + 0004_settings_markup_units.sql,
+-- which additionally carry CHECK constraints, RLS, and the seed row. What follows
+-- is the END STATE of those two files, not the contents of either one.
 --
--- UNITS (decided 2026-08-01): the two markup columns are MULTIPLIERS, not percents
--- -- 1.5 means 1.5x cost. They were named `*_markup_percent` here, which is wrong:
--- on a $10,000 fab cost the two readings differ by 48%. cushion / commission /
--- margin_floor remain true percents, so the row is intentionally mixed-unit.
+-- UNITS (decided 2026-08-01): every rate on this row is a PERCENT, so the names
+-- below stand as originally written. The markups are seeded 50.00 / 20.00, not the
+-- equivalent 1.50 / 1.20 multipliers -- a multiplier in numeric(5,2) steps a whole
+-- percentage point, reps type 18 and not 1.18, and quote_lines.markup_percent
+-- carries the same unit so the pre-fill needs no conversion. Full rationale is in
+-- 0004, which had to reverse the `*_multiplier` names 0003 shipped before the
+-- decision landed.
 create table settings (
   id                          boolean primary key default true,
   labor_rate                  numeric(10,2) not null,
-  fab_markup_multiplier       numeric(5,2) not null,
-  component_markup_multiplier numeric(5,2) not null,
+  fab_markup_percent          numeric(5,2) not null,
+  component_markup_percent    numeric(5,2) not null,
   cushion_percent             numeric(5,2) not null,
   commission_percent          numeric(5,2) not null,
   margin_floor_percent        numeric(5,2) not null,
@@ -212,7 +234,7 @@ declare
 begin
   for v_col in
     select unnest(array[
-      'labor_rate','fab_markup_multiplier','component_markup_multiplier','cushion_percent',
+      'labor_rate','fab_markup_percent','component_markup_percent','cushion_percent',
       'commission_percent','margin_floor_percent','freshness_warning_months',
       'freshness_requote_months','favicon_url'
     ])
@@ -987,20 +1009,35 @@ will not confirm:
   (PRD-010, NFR-002). This is the single most important test in the repo: it is the
   assertion that the approval gate is a database guarantee and not a UI convention.
 
-### 4.6 `quote_lines.markup_percent` inherits the units decision — unresolved
+### 4.6 Markup units — **resolved 2026-08-01: percents everywhere**
 
-The 2026-08-01 units decision (§1's `0003` note) settled `settings`, but `quote_lines` is still
-specified below as `markup_percent numeric(5,2) not null default 0` — and
-`settings.component_markup_multiplier` is what **pre-fills that column** on a new line
-(`src/components/quote-builder/quote-builder.tsx`). A multiplier flowing into a column named
-`_percent` with a default of `0` is the same 48%-error class the settings rename just removed.
+An earlier pass renamed the two `settings` markup columns to `*_markup_multiplier` to match
+seed values of `1.50` / `1.20`, leaving `quote_lines.markup_percent` as the odd one out and
+the quote builder's pre-fill knowingly wrong. **That direction is reverted.** The mismatch is
+fixed the other way: the columns go back to `_percent` names and the _values_ are restated as
+`50.00` / `20.00`.
 
-**Resolve before authoring the `0004_quotes` migration.** Either:
+That reversal shipped as `0004_settings_markup_units.sql`, not as an edit to `0003` —
+`0003` was already applied to the linked project by the time the decision changed, and
+`db push` compares recorded versions, not file contents, so an edit to `0003` would have
+been silently skipped while reading as though it had landed.
 
-- rename to `markup_multiplier` with `default 1` and `check (>= 1)`, matching `settings`, or
-- keep `markup_percent` and have the Server Action convert on pre-fill — which means two units
-  for one concept in one save path, and is not recommended.
+`1.5×` and `50%` are the same business fact; only the storage representation was in question.
+Percent won on three counts:
 
-This is a PRD §2A question in substance (the markup's role in the formula), so it may need the
-same sign-off. Until it is resolved, the quote builder's pre-fill line is knowingly wrong: it
-assigns a multiplier to a field labelled and defaulted as a percent.
+- **Precision.** A multiplier in `numeric(5,2)` steps 0.01 — one whole percentage point of
+  markup, so 18.5% is not representable. The same type holding a percent steps 0.01pp, 100×
+  finer. The multiplier naming had quietly locked in the coarser column.
+- **Input boundary.** The quote-line markup cell (`src/components/quote-builder/line-items.tsx`)
+  is typed into by reps, who enter `18`, not `1.18`. A multiplier column would need a
+  conversion at the UI layer — the same "two units in one path" cost, just relocated.
+- **No conversion anywhere.** `settings.component_markup_percent` pre-fills
+  `quote_lines.markup_percent` as a straight copy, and that column's existing `default 0`
+  already means "no markup" (the multiplier reading would have needed `default 1`).
+
+**`quote_lines` needs no change** — `markup_percent numeric(5,2) not null default 0` as
+specified in §1 is correct as written, and the quotes migration (`0005` onward, since `0004`
+is now the markup-units fix) can be authored against it.
+
+The pricing formula applies `cost * (1 + p/100)` in one place, whenever PRD §2A fixes the
+calculation order. That sign-off is still outstanding, but it no longer blocks the schema.

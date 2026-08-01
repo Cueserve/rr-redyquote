@@ -50,16 +50,16 @@ const RATE_FIELDS: NumericFieldSpec[] = [
     suffix: "$",
   },
   {
-    key: "fab_markup_multiplier",
+    key: "fab_markup_percent",
     label: "Fabrication markup",
-    help: "Multiplier applied to the fab tier cost. 1.5 means 1.5× cost.",
-    suffix: "×",
+    help: "Added to the fab tier cost. 50 means 50% over cost.",
+    suffix: "%",
   },
   {
-    key: "component_markup_multiplier",
+    key: "component_markup_percent",
     label: "Component markup",
-    help: "Multiplier pre-filled on a new quote line. 1.2 means 1.2× cost.",
-    suffix: "×",
+    help: "Pre-filled on every new quote line. 20 means 20% over cost.",
+    suffix: "%",
   },
   {
     key: "cushion_percent",

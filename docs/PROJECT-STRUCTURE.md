@@ -13,7 +13,9 @@ docs/ARCHITECTURE.md.
 
 > **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0003`, **authored but not pushed** — `0004` onward is untranscribed.
+> now holds `0001`–`0004`. **`0001`–`0003` are applied to the linked project**; `0004`
+> (the settings markup-units rename) is authored and pending. `0005` onward — categories,
+> products, quotes, RPCs — is untranscribed.
 > Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
 > write path is unbuilt — plus `e2e/`.
 >

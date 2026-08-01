@@ -23,13 +23,19 @@ historical**. Where a migration file exists, **that file is authoritative and th
 is not** (ARCHITECTURE §5) — the blocks are kept only so the untranscribed remainder stays
 readable in context.
 
-| §1 block                 | Migration file                                      | Status                                      |
-| ------------------------ | --------------------------------------------------- | ------------------------------------------- |
-| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql` | ✅ transcribed verbatim                     |
-| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`    | ✅ transcribed + §4.2 guard, + profiles RLS |
-| `0003` settings tables   | `supabase/migrations/0003_settings.sql`             | ✅ transcribed + CHECKs, RLS, seed row      |
-| `0003` categories onward | —                                                   | ⬜ not yet authored                         |
-| `0004`–`0006`            | —                                                   | ⬜ not yet authored                         |
+| §1 block                 | Migration file                                       | Status                                      |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------------- |
+| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql`  | ✅ transcribed verbatim                     |
+| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`     | ✅ transcribed + §4.2 guard, + profiles RLS |
+| `0003` settings tables   | `supabase/migrations/0003_settings.sql`              | ✅ transcribed + CHECKs, RLS, seed row      |
+| markup units fix         | `supabase/migrations/0004_settings_markup_units.sql` | ✅ renames `0003`'s two markup columns      |
+| `0003` categories onward | —                                                    | ⬜ not yet authored                         |
+| `0005` onward            | —                                                    | ⬜ not yet authored                         |
+
+**`0001`–`0004` are all applied to the linked project.** Never edit an applied file —
+`db push` compares recorded versions, not contents, so the edit is skipped silently while
+reading as though it landed. A new decision is a new file. `0004` exists precisely because
+`0003` had already shipped when the markup units were reversed.
 
 Deviations the authored files make from the blocks below, all deliberate:
 
@@ -38,7 +44,13 @@ Deviations the authored files make from the blocks below, all deliberate:
   reference for the policies not yet authored.
 - **The `settings` seed row is in `0003`**, not a trailing `0007_seed_settings`: every column
   is `NOT NULL` with no default, so a settings table without its row is a broken state to push.
-- **The markup columns are multipliers** — see the note in §1's `0003` block.
+- **`0003` adds CHECK constraints** the block below does not carry (non-negative rates,
+  `freshness_warning_months >= 1`).
+- **`0003` shipped the two markup columns as `*_markup_multiplier` with a `>= 1` floor, and
+  `0004` renames them back to `*_markup_percent` with a `>= 0` floor**, restating the seeded
+  values as `50.00` / `20.00`. The block below shows the end state, i.e. `0003` + `0004` —
+  see §4.6 for why, and the `0004` file for the mechanics (the audit trigger's hardcoded
+  column list has to be replaced in the same migration or every settings update raises).
 - **`0002` carves out `auth.uid() is null`** in the §4.2 role guard — see §4.2.
 
 **Delete this file only when every block above is transcribed**, and remove it from CLAUDE.md's
@@ -74,6 +86,12 @@ _why_ each table looks like this; the SQL below is only _how_.
 > (`NNNN_snake_case_description.sql`): `0001_extensions_and_types`,
 > `0002_profiles_and_auth_trigger`, `0003_master_data`, `0004_quotes`, `0005_rpc_functions`,
 > `0006_rls_policies`, `0007_seed_settings`. Presented here as one consolidated script.
+>
+> **The authored files diverged from that split** — see the deviations above. `0004` is
+> taken by the markup-units fix, RLS ships with each table rather than in one trailing
+> file, and the seed row lives in `0003`. The remaining work is `0005` onward; the block
+> comments below still carry the original suggested numbers, so read them as section
+> labels, not filenames.
 
 ```sql
 -- ============================================================================
@@ -159,18 +177,22 @@ create table categories (
 create trigger categories_set_updated_at
   before update on categories for each row execute function set_updated_at();
 
--- SUPERSEDED by supabase/migrations/0003_settings.sql, which additionally carries
--- CHECK constraints, RLS, and the seed row.
+-- SUPERSEDED by supabase/migrations/0003_settings.sql + 0004_settings_markup_units.sql,
+-- which additionally carry CHECK constraints, RLS, and the seed row. What follows
+-- is the END STATE of those two files, not the contents of either one.
 --
--- UNITS (decided 2026-08-01): the two markup columns are MULTIPLIERS, not percents
--- -- 1.5 means 1.5x cost. They were named `*_markup_percent` here, which is wrong:
--- on a $10,000 fab cost the two readings differ by 48%. cushion / commission /
--- margin_floor remain true percents, so the row is intentionally mixed-unit.
+-- UNITS (decided 2026-08-01): every rate on this row is a PERCENT, so the names
+-- below stand as originally written. The markups are seeded 50.00 / 20.00, not the
+-- equivalent 1.50 / 1.20 multipliers -- a multiplier in numeric(5,2) steps a whole
+-- percentage point, reps type 18 and not 1.18, and quote_lines.markup_percent
+-- carries the same unit so the pre-fill needs no conversion. Full rationale is in
+-- 0004, which had to reverse the `*_multiplier` names 0003 shipped before the
+-- decision landed.
 create table settings (
   id                          boolean primary key default true,
   labor_rate                  numeric(10,2) not null,
-  fab_markup_multiplier       numeric(5,2) not null,
-  component_markup_multiplier numeric(5,2) not null,
+  fab_markup_percent          numeric(5,2) not null,
+  component_markup_percent    numeric(5,2) not null,
   cushion_percent             numeric(5,2) not null,
   commission_percent          numeric(5,2) not null,
   margin_floor_percent        numeric(5,2) not null,
@@ -212,7 +234,7 @@ declare
 begin
   for v_col in
     select unnest(array[
-      'labor_rate','fab_markup_multiplier','component_markup_multiplier','cushion_percent',
+      'labor_rate','fab_markup_percent','component_markup_percent','cushion_percent',
       'commission_percent','margin_floor_percent','freshness_warning_months',
       'freshness_requote_months','favicon_url'
     ])
@@ -433,6 +455,13 @@ create index idx_quote_status_history_quote_id on quote_status_history(quote_id)
 create index idx_quote_status_history_actor on quote_status_history(actor);
 
 -- Validate the state machine BEFORE the row is written (PRD-010, NFR-002)
+--
+-- FOUR legal transitions, not three. PRD-010 defines the lifecycle as
+-- Draft -> Pending Approval -> Approved -> Sent PLUS Pending Approval -> Draft
+-- ("request changes"), and states that BOTH exits from Pending Approval --
+-- forward to Approved and back to Draft -- are admin-only. An earlier draft of
+-- this function carried only three and would have raised on request-changes,
+-- silently deleting a documented path (ARCHITECTURE §7, DATABASE.md §1).
 create or replace function validate_quote_status_transition()
 returns trigger
 language plpgsql
@@ -450,6 +479,17 @@ begin
     end if;
     new.approved_by := auth.uid();
     new.approved_at := now();
+  elsif old.status = 'pending_approval' and new.status = 'draft' then
+    -- Request changes. Admin-only for the same reason approval is: PRD-010
+    -- puts both exits from Pending Approval in the admin's hands, so a rep
+    -- cannot pull their own quote back out of review.
+    if not is_admin() then
+      raise exception 'Only an admin may send a quote back to Draft (PRD-010)';
+    end if;
+    -- Clear the submission stamp: these three columns describe where the quote
+    -- IS, not where it has been -- quote_status_history is the trail. Leaving a
+    -- stale submitted_at would make the next submission look like the first.
+    new.submitted_at := null;
   elsif old.status = 'approved' and new.status = 'sent' then
     new.sent_at := now();
   else
@@ -512,7 +552,54 @@ inside them. That's intentional: it's how the app satisfies "no service-role key
 (TECH-STACK §6) while still getting transactional atomicity — the function body itself is
 one transaction, and every row it touches is still subject to RLS as that user.
 
+**One exception to `SECURITY INVOKER`, and it is load-bearing.** `quote_number_sequences`
+has RLS enabled and **zero policies** (§3), which means a caller running as `authenticated`
+cannot touch it at all — not select, not insert. A `SECURITY INVOKER` `fn_save_quote` that
+incremented the counter inline would therefore fail on every new quote with
+`new row violates row-level security policy`, taking PRD-011's numbering with it. The
+counter increment is pulled into a small `SECURITY DEFINER` function so the table can stay
+policy-less: the counter is reachable only through the one function allowed to allocate a
+number, and the quote write itself stays under the caller's own RLS.
+
+Deliberately _not_ done: making `fn_save_quote` itself `SECURITY DEFINER`. That would run
+the entire quote write as the function owner and silently discard the owner-or-admin RLS on
+`quotes` and `quote_lines` — trading a real authorization boundary for a one-line fix.
+
+Accepted trade-off: `fn_next_quote_number()` is callable directly over the Data API by any
+authenticated user, who could burn numbers and leave gaps in the sequence. PRD-011 requires
+uniqueness and race-freedom, not density, so gaps are cosmetic. If that needs closing, move
+this one function to a schema outside `[api] schemas` in `supabase/config.toml` — PostgREST
+will not route to it there, while `fn_save_quote` can still call it.
+
 ```sql
+-- ----------------------------------------------------------------------------
+-- fn_next_quote_number: allocate the next Q-YYYY-NNNN race-free (PRD-011).
+--
+-- SECURITY DEFINER on purpose -- see the note above. The single
+-- INSERT ... ON CONFLICT DO UPDATE ... RETURNING is what makes race-freedom
+-- structural rather than careful: concurrent callers serialize on the year
+-- row, and neither can observe a number the other took.
+-- ----------------------------------------------------------------------------
+create or replace function fn_next_quote_number()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_year smallint := extract(year from now())::smallint;
+  v_seq  integer;
+begin
+  insert into quote_number_sequences(year, last_number)
+  values (v_year, 1)
+  on conflict (year)
+    do update set last_number = quote_number_sequences.last_number + 1
+  returning last_number into v_seq;
+
+  return 'Q-' || v_year || '-' || lpad(v_seq::text, 4, '0');
+end;
+$$;
+
 -- ----------------------------------------------------------------------------
 -- fn_save_quote: atomic upsert of a quote header + full replacement of its
 -- lines (PRD-014). Allocates the quote number race-free on first save
@@ -535,18 +622,12 @@ security invoker
 as $$
 declare
   v_quote   quotes;
-  v_year    smallint := extract(year from now())::smallint;
-  v_seq     integer;
   v_number  text;
 begin
   if p_quote_id is null then
-    insert into quote_number_sequences(year, last_number)
-    values (v_year, 1)
-    on conflict (year)
-      do update set last_number = quote_number_sequences.last_number + 1
-    returning last_number into v_seq;
-
-    v_number := 'Q-' || v_year || '-' || lpad(v_seq::text, 4, '0');
+    -- SECURITY DEFINER hop: quote_number_sequences is policy-less under RLS,
+    -- so this function -- running as the caller -- cannot reach it directly.
+    v_number := fn_next_quote_number();
 
     insert into quotes (
       quote_number, customer_name, product_id, fab_tier_id, fab_cost_snapshot,
@@ -730,10 +811,24 @@ Enforcement model, restated from PRD-019 / ARCHITECTURE §4 (Key Design Decision
 - **Reads are flat** — any authenticated REDYREF user (rep or admin) can read every table.
 - **Master data / settings / branding writes are admin-only.**
 - **Quote content writes are owner-or-admin.**
-- **The `Pending Approval → Approved` transition is admin-only**, enforced _both_ by an
-  RLS `WITH CHECK` and independently by the `validate_quote_status_transition` trigger
-  (§1) — the trigger is the belt, RLS is the suspenders. Either one alone would already
-  satisfy NFR-002; both together mean the rule holds even if one layer is misconfigured.
+- **Both exits from `Pending Approval` — forward to `Approved` and back to `Draft` — are
+  admin-only**, enforced by the `validate_quote_status_transition` trigger (§1), which is a
+  database guarantee and satisfies NFR-002 on its own.
+
+  **There is deliberately no second RLS layer on this, and an earlier version of this bullet
+  wrongly claimed there was** ("enforced both by an RLS `WITH CHECK` and independently by the
+  trigger"). No policy below expresses it: `quotes_update_owner_or_admin` checks
+  owner-or-admin and nothing about status. The claim was false, and a false belt-and-suspenders
+  claim is worse than one layer honestly described — it invites someone to weaken the trigger
+  believing RLS still has them covered.
+
+  A second layer _is_ expressible, but not for free. `WITH CHECK` sees only the new row, never
+  the old, so the closest it gets is `(status <> 'approved' or is_admin())` — "no non-admin may
+  leave a quote sitting in Approved". That also blocks a rep from editing any field of their
+  own already-approved quote, which silently resolves the **"Editing a quote after submission"**
+  open item in [DATABASE.md](DATABASE.md) §6 in the freeze direction. That is a product
+  decision, not a hardening tweak. **Add this policy when §6 is decided, not before.**
+
 - **Append-only audit tables (`price_history`, `quote_status_history`,
   `settings_history`) have no client-facing INSERT/UPDATE/DELETE policy at all** — rows are
   written exclusively by `SECURITY DEFINER` triggers, so "append-only" is a database
@@ -755,9 +850,17 @@ alter table price_history enable row level security;
 alter table quotes enable row level security;
 alter table quote_lines enable row level security;
 alter table quote_status_history enable row level security;
--- quote_number_sequences: RLS enabled, zero policies — reachable only from
--- inside fn_save_quote via the calling user's own privileges on `quotes`;
--- no direct client access is ever needed or granted.
+-- quote_number_sequences: RLS enabled, zero policies, and it STAYS that way.
+-- Zero policies means no `authenticated` caller can reach this table at all --
+-- which is the point, because the counter is the one thing a client must never
+-- be able to rewind. It is reachable only through fn_next_quote_number(),
+-- which is SECURITY DEFINER for exactly this reason (§2).
+--
+-- Do not "fix" a permission-denied here by adding a policy: an earlier version
+-- of this comment claimed the table was reachable "from inside fn_save_quote
+-- via the calling user's own privileges on `quotes`", which is not how RLS
+-- works -- it applies per table, per statement, to whoever the invoker is.
+-- That reading would have made every new quote fail on its first save.
 alter table quote_number_sequences enable row level security;
 
 -- ---------------------------------------------------------------- profiles
@@ -976,31 +1079,60 @@ TypeScript consumers want typed rather than stringly.
 
 ### 4.5 Testing surface
 
-Two places are worth a dedicated test pass beyond the pricing-calc unit tests TECH-STACK.md
-already plans, because both are concurrency or authorization behaviour that reading the SQL
+These are worth a dedicated test pass beyond the pricing-calc unit tests TECH-STACK.md
+already plans, because each is concurrency or authorization behaviour that reading the SQL
 will not confirm:
 
-- **`fn_save_quote`'s counter** — two concurrent calls in the same calendar year must
-  produce distinct quote numbers (PRD-011).
 - **`validate_quote_status_transition` and the approval gate** — a non-admin's direct
   `UPDATE quotes SET status = 'approved'` must be rejected **even when they own the row**
   (PRD-010, NFR-002). This is the single most important test in the repo: it is the
-  assertion that the approval gate is a database guarantee and not a UI convention.
+  assertion that the approval gate is a database guarantee and not a UI convention. Note it
+  is the _only_ layer enforcing this — there is no RLS backstop (§3), so if this test is
+  deleted, nothing catches the regression.
+- **Request changes is admin-only too** — the same `UPDATE` to `status = 'draft'` from
+  `pending_approval` must be rejected for a non-admin owner. Easy to miss because it is the
+  one transition that moves a quote _backwards_, and the obvious-looking reading ("a rep can
+  always take their own quote back to Draft") is the wrong one under PRD-010.
+- **A rejected quote can be resubmitted** — `pending_approval → draft → pending_approval`
+  must succeed and leave `submitted_at` set to the _second_ submission's timestamp, not the
+  first. This is the assertion that the `submitted_at := null` reset in §1 actually fires.
+- **`fn_next_quote_number()`'s counter** — two concurrent calls in the same calendar year
+  must produce distinct quote numbers (PRD-011).
+- **A plain `authenticated` caller cannot touch `quote_number_sequences`** — a direct
+  `select` or `update` must be denied, while `fn_save_quote` still allocates a number
+  successfully. This is the pair that proves the `SECURITY DEFINER` hop is doing the work and
+  that the table's zero-policy state has not been "fixed" by someone chasing a
+  permission-denied error (§2, §3).
 
-### 4.6 `quote_lines.markup_percent` inherits the units decision — unresolved
+### 4.6 Markup units — **resolved 2026-08-01: percents everywhere**
 
-The 2026-08-01 units decision (§1's `0003` note) settled `settings`, but `quote_lines` is still
-specified below as `markup_percent numeric(5,2) not null default 0` — and
-`settings.component_markup_multiplier` is what **pre-fills that column** on a new line
-(`src/components/quote-builder/quote-builder.tsx`). A multiplier flowing into a column named
-`_percent` with a default of `0` is the same 48%-error class the settings rename just removed.
+An earlier pass renamed the two `settings` markup columns to `*_markup_multiplier` to match
+seed values of `1.50` / `1.20`, leaving `quote_lines.markup_percent` as the odd one out and
+the quote builder's pre-fill knowingly wrong. **That direction is reverted.** The mismatch is
+fixed the other way: the columns go back to `_percent` names and the _values_ are restated as
+`50.00` / `20.00`.
 
-**Resolve before authoring the `0004_quotes` migration.** Either:
+That reversal shipped as `0004_settings_markup_units.sql`, not as an edit to `0003` —
+`0003` was already applied to the linked project by the time the decision changed, and
+`db push` compares recorded versions, not file contents, so an edit to `0003` would have
+been silently skipped while reading as though it had landed.
 
-- rename to `markup_multiplier` with `default 1` and `check (>= 1)`, matching `settings`, or
-- keep `markup_percent` and have the Server Action convert on pre-fill — which means two units
-  for one concept in one save path, and is not recommended.
+`1.5×` and `50%` are the same business fact; only the storage representation was in question.
+Percent won on three counts:
 
-This is a PRD §2A question in substance (the markup's role in the formula), so it may need the
-same sign-off. Until it is resolved, the quote builder's pre-fill line is knowingly wrong: it
-assigns a multiplier to a field labelled and defaulted as a percent.
+- **Precision.** A multiplier in `numeric(5,2)` steps 0.01 — one whole percentage point of
+  markup, so 18.5% is not representable. The same type holding a percent steps 0.01pp, 100×
+  finer. The multiplier naming had quietly locked in the coarser column.
+- **Input boundary.** The quote-line markup cell (`src/components/quote-builder/line-items.tsx`)
+  is typed into by reps, who enter `18`, not `1.18`. A multiplier column would need a
+  conversion at the UI layer — the same "two units in one path" cost, just relocated.
+- **No conversion anywhere.** `settings.component_markup_percent` pre-fills
+  `quote_lines.markup_percent` as a straight copy, and that column's existing `default 0`
+  already means "no markup" (the multiplier reading would have needed `default 1`).
+
+**`quote_lines` needs no change** — `markup_percent numeric(5,2) not null default 0` as
+specified in §1 is correct as written, and the quotes migration (`0005` onward, since `0004`
+is now the markup-units fix) can be authored against it.
+
+The pricing formula applies `cost * (1 + p/100)` in one place, whenever PRD §2A fixes the
+calculation order. That sign-off is still outstanding, but it no longer blocks the schema.

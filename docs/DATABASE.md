@@ -40,9 +40,11 @@ RedyQuote is a **single-tenant** quoting system for REDYREF's sales team. Two ro
 component library, quantity-tier fab pricing, global estimating settings, and branding.
 Reps build quotes against that catalog; every quote moves through a fixed
 `Draft → Pending Approval → Approved → Sent` lifecycle plus an explicit
-`Pending Approval → Draft` request-changes path, with the
-`Pending Approval → Approved` and `Pending Approval → Draft` steps and all master-data writes **enforced by Postgres RLS**,
-not application code (PRD-019, NFR-002).
+`Pending Approval → Draft` request-changes path. Both steps out of `Pending Approval` are
+admin-only, and all master-data writes are **enforced inside Postgres, not in application
+code** (PRD-019, NFR-002) — master data by RLS policy, the two review transitions by the
+`validate_quote_status_transition` trigger, because a `WITH CHECK` clause cannot see the old
+row and so cannot express a transition at all.
 
 Three structural guarantees drove this design, matching PRD's stated anti-patterns:
 
@@ -128,8 +130,8 @@ erDiagram
     SETTINGS {
         boolean id PK
         numeric labor_rate
-        numeric fab_markup_multiplier
-        numeric component_markup_multiplier
+        numeric fab_markup_percent
+        numeric component_markup_percent
         numeric cushion_percent
         numeric commission_percent
         numeric margin_floor_percent
@@ -263,20 +265,28 @@ Singleton row (PRD-012). Enforced as exactly one row via a `boolean` primary key
 `CHECK (id)` constraint — a well-known Postgres singleton pattern (the PK's uniqueness
 does the enforcement; the `CHECK` forbids the row ever being `false`).
 
-| Column                        | Type            | Constraints                                  |
-| ----------------------------- | --------------- | -------------------------------------------- |
-| `id`                          | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
-| `labor_rate`                  | `numeric(10,2)` | NOT NULL, CHECK `>= 0`                       |
-| `fab_markup_multiplier`       | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
-| `component_markup_multiplier` | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
-| `cushion_percent`             | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `commission_percent`          | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `margin_floor_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
-| `freshness_warning_months`    | `smallint`      | NOT NULL, CHECK `>= 1`                       |
-| `freshness_requote_months`    | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
-| `favicon_url`                 | `text`          | NULL                                         |
-| `updated_by`                  | `uuid`          | FK → `profiles(id)`                          |
-| `created_at` / `updated_at`   | `timestamptz`   | NOT NULL                                     |
+| Column                      | Type            | Constraints                                  |
+| --------------------------- | --------------- | -------------------------------------------- |
+| `id`                        | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
+| `labor_rate`                | `numeric(10,2)` | NOT NULL, CHECK `>= 0`                       |
+| `fab_markup_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `component_markup_percent`  | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `cushion_percent`           | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `commission_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `margin_floor_percent`      | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `freshness_warning_months`  | `smallint`      | NOT NULL, CHECK `>= 1`                       |
+| `freshness_requote_months`  | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
+| `favicon_url`               | `text`          | NULL                                         |
+| `updated_by`                | `uuid`          | FK → `profiles(id)`                          |
+| `created_at` / `updated_at` | `timestamptz`   | NOT NULL                                     |
+
+**Every rate on this row is a percent** — the two markups are stored as `50.00` / `20.00`,
+not as the `1.50` / `1.20` multipliers that say the same thing. A multiplier in
+`numeric(5,2)` can only step 0.01, which is one whole percentage point of markup; as a
+percent the same type is 100× finer. `quote_lines.markup_percent` carries the same unit,
+so the component markup pre-fills a new line with no conversion anywhere. The rationale is
+recorded in full in `supabase/migrations/0004_settings_markup_units.sql`, which renamed
+these two columns after `0003_settings.sql` had already shipped them as `*_multiplier`.
 
 ### 4.4 `settings_history`
 
@@ -375,7 +385,9 @@ rather than two separate tables — see §5.4 for the trade-off.
 ### 4.10 `quote_number_sequences`
 
 Internal bookkeeping only — never read or written directly by application code, only by
-`fn_save_quote` ([SQL spec §2](DATABASE-SQL.md#2-rpc-functions-atomic-multi-row-writes)). Backs PRD-011's race-free `Q-YYYY-NNNN` numbering.
+`fn_next_quote_number()` ([SQL spec §2](DATABASE-SQL.md#2-rpc-functions-atomic-multi-row-writes)), which `fn_save_quote` calls. Backs PRD-011's
+race-free `Q-YYYY-NNNN` numbering. RLS is on with **zero policies**, so no client can reach
+the counter; that is why the allocator is the schema's one `SECURITY DEFINER` RPC.
 
 | Column        | Type       | Constraints           |
 | ------------- | ---------- | --------------------- |

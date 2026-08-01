@@ -67,13 +67,15 @@ export const CATEGORIES: Category[] = [
 
 // --- Settings (PRD-012) ------------------------------------------------------
 
-// Values mirror the seed row in `supabase/migrations/0003_settings.sql` so the
-// prototype and the database agree on what a fresh install looks like. Keep them
-// in sync; if the seed changes, change these too.
+// Values mirror the live settings row so the prototype and the database agree on
+// what a fresh install looks like: seeded by `supabase/migrations/0003_settings.sql`,
+// with the two markups restated from multipliers to percents by
+// `0004_settings_markup_units.sql`. Keep them in sync; if the seed changes, change
+// these too.
 export const SETTINGS: Settings = {
   labor_rate: 50.0,
-  fab_markup_multiplier: 1.5,
-  component_markup_multiplier: 1.2,
+  fab_markup_percent: 50.0,
+  component_markup_percent: 20.0,
   cushion_percent: 2.5,
   commission_percent: 1.25,
   margin_floor_percent: 20.0,
@@ -121,9 +123,9 @@ export const SETTINGS_HISTORY: SettingsHistoryRow[] = [
   },
   {
     id: "sh-1",
-    changed_field: "component_markup_multiplier",
-    old_value: "1.15",
-    new_value: "1.20",
+    changed_field: "component_markup_percent",
+    old_value: "15.00",
+    new_value: "20.00",
     actor_name: "Priya Raghunathan",
     changed_at: "2026-02-27T15:58:00Z",
   },

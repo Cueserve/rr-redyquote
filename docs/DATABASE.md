@@ -40,9 +40,11 @@ RedyQuote is a **single-tenant** quoting system for REDYREF's sales team. Two ro
 component library, quantity-tier fab pricing, global estimating settings, and branding.
 Reps build quotes against that catalog; every quote moves through a fixed
 `Draft → Pending Approval → Approved → Sent` lifecycle plus an explicit
-`Pending Approval → Draft` request-changes path, with the
-`Pending Approval → Approved` and `Pending Approval → Draft` steps and all master-data writes **enforced by Postgres RLS**,
-not application code (PRD-019, NFR-002).
+`Pending Approval → Draft` request-changes path. Both steps out of `Pending Approval` are
+admin-only, and all master-data writes are **enforced inside Postgres, not in application
+code** (PRD-019, NFR-002) — master data by RLS policy, the two review transitions by the
+`validate_quote_status_transition` trigger, because a `WITH CHECK` clause cannot see the old
+row and so cannot express a transition at all.
 
 Three structural guarantees drove this design, matching PRD's stated anti-patterns:
 
@@ -383,7 +385,9 @@ rather than two separate tables — see §5.4 for the trade-off.
 ### 4.10 `quote_number_sequences`
 
 Internal bookkeeping only — never read or written directly by application code, only by
-`fn_save_quote` ([SQL spec §2](DATABASE-SQL.md#2-rpc-functions-atomic-multi-row-writes)). Backs PRD-011's race-free `Q-YYYY-NNNN` numbering.
+`fn_next_quote_number()` ([SQL spec §2](DATABASE-SQL.md#2-rpc-functions-atomic-multi-row-writes)), which `fn_save_quote` calls. Backs PRD-011's
+race-free `Q-YYYY-NNNN` numbering. RLS is on with **zero policies**, so no client can reach
+the counter; that is why the allocator is the schema's one `SECURITY DEFINER` RPC.
 
 | Column        | Type       | Constraints           |
 | ------------- | ---------- | --------------------- |

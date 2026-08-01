@@ -1,3 +1,7 @@
 .next
 package-lock.json
 supabase/.temp
+
+# Local Python virtualenv — not part of the app, and its vendored JSON breaks
+# `npm run format:check`. Git already doesn't see it; Prettier did.
+.venv

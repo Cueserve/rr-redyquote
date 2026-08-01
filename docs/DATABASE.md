@@ -1,7 +1,7 @@
 # DATABASE.md — Data Model
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-01
 **Source of truth for:** RedyQuote's entities, their columns and constraints, and the
 design decisions behind why each table looks the way it does.
 
@@ -128,8 +128,8 @@ erDiagram
     SETTINGS {
         boolean id PK
         numeric labor_rate
-        numeric fab_markup_percent
-        numeric component_markup_percent
+        numeric fab_markup_multiplier
+        numeric component_markup_multiplier
         numeric cushion_percent
         numeric commission_percent
         numeric margin_floor_percent
@@ -263,20 +263,20 @@ Singleton row (PRD-012). Enforced as exactly one row via a `boolean` primary key
 `CHECK (id)` constraint — a well-known Postgres singleton pattern (the PK's uniqueness
 does the enforcement; the `CHECK` forbids the row ever being `false`).
 
-| Column                      | Type            | Constraints                                  |
-| --------------------------- | --------------- | -------------------------------------------- |
-| `id`                        | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
-| `labor_rate`                | `numeric(10,2)` | NOT NULL                                     |
-| `fab_markup_percent`        | `numeric(5,2)`  | NOT NULL                                     |
-| `component_markup_percent`  | `numeric(5,2)`  | NOT NULL                                     |
-| `cushion_percent`           | `numeric(5,2)`  | NOT NULL                                     |
-| `commission_percent`        | `numeric(5,2)`  | NOT NULL                                     |
-| `margin_floor_percent`      | `numeric(5,2)`  | NOT NULL                                     |
-| `freshness_warning_months`  | `smallint`      | NOT NULL                                     |
-| `freshness_requote_months`  | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
-| `favicon_url`               | `text`          | NULL                                         |
-| `updated_by`                | `uuid`          | FK → `profiles(id)`                          |
-| `created_at` / `updated_at` | `timestamptz`   | NOT NULL                                     |
+| Column                        | Type            | Constraints                                  |
+| ----------------------------- | --------------- | -------------------------------------------- |
+| `id`                          | `boolean`       | PK, DEFAULT `true`, CHECK (`id`)             |
+| `labor_rate`                  | `numeric(10,2)` | NOT NULL, CHECK `>= 0`                       |
+| `fab_markup_multiplier`       | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
+| `component_markup_multiplier` | `numeric(5,2)`  | NOT NULL, CHECK `>= 1`                       |
+| `cushion_percent`             | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `commission_percent`          | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `margin_floor_percent`        | `numeric(5,2)`  | NOT NULL, CHECK `>= 0`                       |
+| `freshness_warning_months`    | `smallint`      | NOT NULL, CHECK `>= 1`                       |
+| `freshness_requote_months`    | `smallint`      | NOT NULL, CHECK `> freshness_warning_months` |
+| `favicon_url`                 | `text`          | NULL                                         |
+| `updated_by`                  | `uuid`          | FK → `profiles(id)`                          |
+| `created_at` / `updated_at`   | `timestamptz`   | NOT NULL                                     |
 
 ### 4.4 `settings_history`
 

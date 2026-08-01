@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# local Python virtualenv (belt-and-braces: git does not currently see it,
+# but nothing in here should ever be committable)
+.venv/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

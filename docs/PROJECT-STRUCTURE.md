@@ -11,10 +11,11 @@ docs/ARCHITECTURE.md.
 
 ---
 
-> **Mostly built, as of 2026-07-31.** `src/app/` (all routes), `src/components/`, `src/lib/`,
-> `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. Still missing:
-> **`src/server/`** — no Server Action has been written, so the app's entire write path is
-> unbuilt — plus `supabase/migrations/` and `e2e/`.
+> **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
+> `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
+> now holds `0001`–`0003`, **authored but not pushed** — `0004` onward is untranscribed.
+> Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
+> write path is unbuilt — plus `e2e/`.
 >
 > Two directories in the tree below are **prototype scaffolding on a delete-when path**, not
 > permanent structure: `src/lib/mock/` and `src/components/prototype/`. They exist because the
@@ -41,8 +42,8 @@ docs/ARCHITECTURE.md.
 All application code lives under `src/`. The repo root holds only tooling config and the
 directories that external tools require there (`supabase/`, `public/`, `e2e/`, `docs/`).
 
-Legend: unmarked = exists · `[ ]` = not built yet · `[tmp]` = prototype scaffolding, delete
-when the data layer lands.
+Legend: unmarked = exists · `[ ]` = not built yet · `[~]` = partly built · `[tmp]` = prototype
+scaffolding, delete when the data layer lands.
 
 ```text
 redyquote/
@@ -94,7 +95,7 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [ ] # *.sql — tables, RLS, quote-number sequence, RPCs
+│  ├─ migrations/               [~] # *.sql — 0001–0003 authored (unpushed); RPCs + quotes TBD
 │  └─ config.toml                   # local stack config
 ├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
@@ -107,6 +108,8 @@ redyquote/
 │     └─ plans/                 [ ] #   and implementation plans here, when first used
 ├─ public/                          # static assets — brand imagery only, see the note below
 │  └─ redyref-logo.png              #   full lockup (1442×817) — wordmark + hand + tagline
+├─ .claude/                         # Claude Code config — tool-owned path
+│  └─ commands/                     # Home for the slash commands (like `db-migrate.md` → `/db-migrate`)
 ├─ package.json  tsconfig.json  next.config.ts
 ├─ eslint.config.mjs  postcss.config.mjs  .prettierrc  .husky/
 └─ CLAUDE.md  README.md

@@ -67,15 +67,18 @@ export const CATEGORIES: Category[] = [
 
 // --- Settings (PRD-012) ------------------------------------------------------
 
+// Values mirror the seed row in `supabase/migrations/0003_settings.sql` so the
+// prototype and the database agree on what a fresh install looks like. Keep them
+// in sync; if the seed changes, change these too.
 export const SETTINGS: Settings = {
-  labor_rate: 78.5,
-  fab_markup_percent: 22.0,
-  component_markup_percent: 18.0,
-  cushion_percent: 5.0,
-  commission_percent: 6.0,
+  labor_rate: 50.0,
+  fab_markup_multiplier: 1.5,
+  component_markup_multiplier: 1.2,
+  cushion_percent: 2.5,
+  commission_percent: 1.25,
   margin_floor_percent: 20.0,
-  freshness_warning_months: 6,
-  freshness_requote_months: 12,
+  freshness_warning_months: 12,
+  freshness_requote_months: 24,
   favicon_url: null,
   updated_at: "2026-07-14T16:22:00Z",
   updated_by_name: "Priya Raghunathan",
@@ -93,8 +96,8 @@ export const SETTINGS_HISTORY: SettingsHistoryRow[] = [
   {
     id: "sh-4",
     changed_field: "labor_rate",
-    old_value: "74.00",
-    new_value: "78.50",
+    old_value: "46.00",
+    new_value: "50.00",
     actor_name: "Priya Raghunathan",
     changed_at: "2026-06-02T13:05:00Z",
   },
@@ -102,23 +105,25 @@ export const SETTINGS_HISTORY: SettingsHistoryRow[] = [
     id: "sh-3",
     changed_field: "freshness_requote_months",
     old_value: "18",
-    new_value: "12",
+    new_value: "24",
     actor_name: "Priya Raghunathan",
     changed_at: "2026-04-19T09:41:00Z",
   },
   {
     id: "sh-2",
+    // Reads as a removal, so it stays coherent with SETTINGS.favicon_url being
+    // null — and still exercises the audit table's null rendering.
     changed_field: "favicon_url",
-    old_value: null,
-    new_value: "branding/favicon-64.png",
+    old_value: "branding/favicon-64.png",
+    new_value: null,
     actor_name: "Priya Raghunathan",
     changed_at: "2026-03-08T11:12:00Z",
   },
   {
     id: "sh-1",
-    changed_field: "component_markup_percent",
-    old_value: "15.00",
-    new_value: "18.00",
+    changed_field: "component_markup_multiplier",
+    old_value: "1.15",
+    new_value: "1.20",
     actor_name: "Priya Raghunathan",
     changed_at: "2026-02-27T15:58:00Z",
   },

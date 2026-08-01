@@ -1,8 +1,8 @@
 # DATABASE-SQL.md — Schema, RPCs, and RLS
 
 **Owner:** Viral Parikh
-**Status:** Approved — ready to author as `supabase/migrations/*.sql`
-**Last updated:** 2026-07-31
+**Status:** Approved — **partly transcribed**; see [Transcription status](#transcription-status-2026-08-01)
+**Last updated:** 2026-08-01
 **Authority:** Same as the source-of-truth docs, for the slice it covers.
 
 > **Transient — the one file in `docs/` that is not permanent.** Delete it once its content
@@ -15,6 +15,34 @@
 > Derived from: [DATABASE.md](DATABASE.md) (the data model this implements), docs/PRD.md,
 > docs/ARCHITECTURE.md
 > Feeds: `supabase/migrations/*.sql`, then `src/lib/supabase/types.ts` via `npm run db:types`
+
+## Transcription status (2026-08-01)
+
+Transcription into `supabase/migrations/` has started, so this file is now **partly
+historical**. Where a migration file exists, **that file is authoritative and the block below
+is not** (ARCHITECTURE §5) — the blocks are kept only so the untranscribed remainder stays
+readable in context.
+
+| §1 block                 | Migration file                                      | Status                                      |
+| ------------------------ | --------------------------------------------------- | ------------------------------------------- |
+| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql` | ✅ transcribed verbatim                     |
+| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`    | ✅ transcribed + §4.2 guard, + profiles RLS |
+| `0003` settings tables   | `supabase/migrations/0003_settings.sql`             | ✅ transcribed + CHECKs, RLS, seed row      |
+| `0003` categories onward | —                                                   | ⬜ not yet authored                         |
+| `0004`–`0006`            | —                                                   | ⬜ not yet authored                         |
+
+Deviations the authored files make from the blocks below, all deliberate:
+
+- **RLS lives in the migration that creates the table**, not a trailing `0006_rls_policies`.
+  A table must never exist on a hosted project with RLS off, even briefly. §3 below stays the
+  reference for the policies not yet authored.
+- **The `settings` seed row is in `0003`**, not a trailing `0007_seed_settings`: every column
+  is `NOT NULL` with no default, so a settings table without its row is a broken state to push.
+- **The markup columns are multipliers** — see the note in §1's `0003` block.
+- **`0002` carves out `auth.uid() is null`** in the §4.2 role guard — see §4.2.
+
+**Delete this file only when every block above is transcribed**, and remove it from CLAUDE.md's
+"Approved design specs" list in the same change.
 
 It sits beside `DATABASE.md` rather than under `docs/superpowers/specs/` deliberately.
 That folder is tool-owned — the `superpowers` plugin hardcodes the path and would recreate
@@ -29,6 +57,9 @@ _why_ each table looks like this; the SQL below is only _how_.
 ---
 
 ## Contents
+
+- [Transcription status](#transcription-status-2026-08-01) — **read first:** which blocks below
+  are already superseded by a migration file
 
 1. [SQL Schema](#1-sql-schema)
 2. [RPC Functions (Atomic Multi-Row Writes)](#2-rpc-functions-atomic-multi-row-writes)
@@ -128,11 +159,18 @@ create table categories (
 create trigger categories_set_updated_at
   before update on categories for each row execute function set_updated_at();
 
+-- SUPERSEDED by supabase/migrations/0003_settings.sql, which additionally carries
+-- CHECK constraints, RLS, and the seed row.
+--
+-- UNITS (decided 2026-08-01): the two markup columns are MULTIPLIERS, not percents
+-- -- 1.5 means 1.5x cost. They were named `*_markup_percent` here, which is wrong:
+-- on a $10,000 fab cost the two readings differ by 48%. cushion / commission /
+-- margin_floor remain true percents, so the row is intentionally mixed-unit.
 create table settings (
   id                          boolean primary key default true,
   labor_rate                  numeric(10,2) not null,
-  fab_markup_percent          numeric(5,2) not null,
-  component_markup_percent    numeric(5,2) not null,
+  fab_markup_multiplier       numeric(5,2) not null,
+  component_markup_multiplier numeric(5,2) not null,
   cushion_percent             numeric(5,2) not null,
   commission_percent          numeric(5,2) not null,
   margin_floor_percent        numeric(5,2) not null,
@@ -174,7 +212,7 @@ declare
 begin
   for v_col in
     select unnest(array[
-      'labor_rate','fab_markup_percent','component_markup_percent','cushion_percent',
+      'labor_rate','fab_markup_multiplier','component_markup_multiplier','cushion_percent',
       'commission_percent','margin_floor_percent','freshness_warning_months',
       'freshness_requote_months','favicon_url'
     ])
@@ -896,7 +934,7 @@ defined value for it to store. At sign-off, confirm the column list still matche
 section's finalized "persisted vs. preview-only" fields and add a reconciling migration if
 it does not.
 
-### 4.2 Profile role self-escalation — fix before go-live
+### 4.2 Profile role self-escalation — **fixed 2026-08-01**
 
 The `profiles_update_self_or_admin` policy in [§3](#3-rls-policies) lets a user update their
 own row, and does not stop them setting `role = 'admin'` on it. RLS `USING` / `WITH CHECK`
@@ -908,6 +946,15 @@ companion trigger.
 `NOT is_admin()`. This is a privilege-escalation hole in the two-role model (PRD-019), not a
 cosmetic gap: without it, RLS-enforced admin-only writes are one self-update away from any
 authenticated rep.
+
+**Shipped as `enforce_profile_role_change()` in `0002_profiles_and_auth.sql`, with one
+addition to the above:** the trigger also requires `auth.uid() is not null`. Without that
+clause there is no way to create the **first** admin — `handle_new_user()` always writes
+`'rep'`, and a promotion run from the dashboard SQL editor executes as `postgres` with a NULL
+`auth.uid()`, so `is_admin()` is false and the trigger rejects it. The carve-out is not a hole:
+every `profiles` policy is `to authenticated`, so an `anon` UPDATE is rejected by RLS before the
+trigger runs, and ARCHITECTURE §1 states no service-role key exists anywhere in the app — so the
+NULL-`auth.uid()` path is unreachable from application code.
 
 ### 4.3 The environment-mismatch flag is client-supplied
 
@@ -939,3 +986,21 @@ will not confirm:
   `UPDATE quotes SET status = 'approved'` must be rejected **even when they own the row**
   (PRD-010, NFR-002). This is the single most important test in the repo: it is the
   assertion that the approval gate is a database guarantee and not a UI convention.
+
+### 4.6 `quote_lines.markup_percent` inherits the units decision — unresolved
+
+The 2026-08-01 units decision (§1's `0003` note) settled `settings`, but `quote_lines` is still
+specified below as `markup_percent numeric(5,2) not null default 0` — and
+`settings.component_markup_multiplier` is what **pre-fills that column** on a new line
+(`src/components/quote-builder/quote-builder.tsx`). A multiplier flowing into a column named
+`_percent` with a default of `0` is the same 48%-error class the settings rename just removed.
+
+**Resolve before authoring the `0004_quotes` migration.** Either:
+
+- rename to `markup_multiplier` with `default 1` and `check (>= 1)`, matching `settings`, or
+- keep `markup_percent` and have the Server Action convert on pre-fill — which means two units
+  for one concept in one save path, and is not recommended.
+
+This is a PRD §2A question in substance (the markup's role in the formula), so it may need the
+same sign-off. Until it is resolved, the quote builder's pre-fill line is knowingly wrong: it
+assigns a multiplier to a field labelled and defaulted as a percent.

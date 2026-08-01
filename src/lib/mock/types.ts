@@ -54,8 +54,13 @@ export interface Category {
 
 export interface Settings {
   labor_rate: number;
-  fab_markup_percent: number;
-  component_markup_percent: number;
+  /**
+   * Multipliers, not percents: 1.5 means 1.5x cost. The other rate fields on
+   * this row are true percents -- the row is intentionally mixed-unit, matching
+   * `supabase/migrations/0003_settings.sql`.
+   */
+  fab_markup_multiplier: number;
+  component_markup_multiplier: number;
   cushion_percent: number;
   commission_percent: number;
   margin_floor_percent: number;

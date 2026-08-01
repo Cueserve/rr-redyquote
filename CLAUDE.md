@@ -16,20 +16,37 @@ decisions from memory.**
 - [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
 - [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, and the
   WCAG AA floor. Read it before adding a color, a font, or a `ui/` component.
+- [docs/DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, every column and
+  constraint, and why each table is shaped that way. Read it before touching anything that
+  reads or writes a table. It is the **model**, not the DDL — the SQL that implements it is
+  the spec listed below.
 
-**Approved design specs** — same authority as the docs above, for the slice they cover. They
-live under `docs/superpowers/specs/` because the `superpowers` plugin writes them there; the
-tool-named path says nothing about their status (see PROJECT-STRUCTURE.md §5, "Docs").
+**Approved design specs** — same authority as the docs above, for the slice they cover, but
+**transient**: each one is deleted when its content lands in whatever it feeds. A spec's
+_path says nothing about its status_ — the two below sit in different folders for reasons
+that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.md §5, "Docs").
 
 - [docs/superpowers/specs/2026-07-23-authorization-matrix-design.md](docs/superpowers/specs/2026-07-23-authorization-matrix-design.md)
   — the complete two-role (`rep` / `admin`) authorization model. **Amends** PRD-010 and
   ARCHITECTURE §2/§7, and resolves PRD §2A, PRD-012, PRD-013. Read it before writing any RLS
   policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
-  is superseded, not authoritative.
+  is superseded, not authoritative. Lives under the tool-owned path because the `superpowers`
+  plugin wrote it there and would recreate the folder if moved.
+- [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — the full DDL for
+  [docs/DATABASE.md](docs/DATABASE.md)'s model: tables, enums, triggers, the atomic RPC
+  functions, and every RLS policy. **Feeds `supabase/migrations/*.sql`; delete it once those
+  migrations are authored**, because ARCHITECTURE §5 makes the migrations the authoritative
+  schema and two copies of the same SQL would drift. Carries two go-live blockers in its §4 —
+  a `profiles` role self-escalation hole, and the rule not to wire the save RPC before
+  PRD §2A is signed off. Hand-authored, so it sits beside the model doc it implements rather
+  than in the plugin's folder.
 
-When a new spec lands there, add it to this list in the same change. A spec's content moves
-into the doc it amends once fully incorporated (see docs/DESIGN-SYSTEM.md's provenance note in
-§1 for the precedent) — remove it from this list in that same change.
+When a new spec lands, add it to this list in the same change, wherever it lives. A spec's
+content moves into what it feeds once fully incorporated (see docs/DESIGN-SYSTEM.md's
+provenance note in §1 for the precedent) — remove it from this list in that same change.
+
+**Everything else in `docs/*.md` is permanent.** The specs above are the only exceptions, and
+each says so in its own header. Don't add a transient file to `docs/` without listing it here.
 
 **Before creating any new route, Server Action, component, `src/lib/` module, or migration,
 consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2

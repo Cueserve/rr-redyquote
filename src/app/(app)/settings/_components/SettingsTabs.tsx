@@ -39,7 +39,15 @@ interface NumericFieldSpec {
   key: keyof Settings;
   label: string;
   help: string;
-  suffix: "%" | "$" | "months" | "×";
+  /**
+   * Rendered after the input, so the units form one column down the form.
+   *
+   * `$` trails too, which is deliberate and not an en-US currency slip: on this
+   * screen it annotates a RATE -- "dollars, per labor hour" -- rather than
+   * formatting a currency value. Leading it would break the column for the one
+   * field that is least like a price. Decided 2026-08-01.
+   */
+  unit: "%" | "$" | "months";
 }
 
 const RATE_FIELDS: NumericFieldSpec[] = [
@@ -47,37 +55,37 @@ const RATE_FIELDS: NumericFieldSpec[] = [
     key: "labor_rate",
     label: "Labor rate",
     help: "Applied to every labor hour on a quote, per hour.",
-    suffix: "$",
+    unit: "$",
   },
   {
     key: "fab_markup_percent",
     label: "Fabrication markup",
     help: "Added to the fab tier cost. 50 means 50% over cost.",
-    suffix: "%",
+    unit: "%",
   },
   {
     key: "component_markup_percent",
     label: "Component markup",
     help: "Pre-filled on every new quote line. 20 means 20% over cost.",
-    suffix: "%",
+    unit: "%",
   },
   {
     key: "cushion_percent",
     label: "Cushion",
     help: "Contingency added to the cost basis.",
-    suffix: "%",
+    unit: "%",
   },
   {
     key: "commission_percent",
     label: "Sales commission",
     help: "Rep commission carried in the cost basis.",
-    suffix: "%",
+    unit: "%",
   },
   {
     key: "margin_floor_percent",
     label: "Margin floor",
     help: "A quote below this is flagged. Advisory only — it never blocks a save or a submit.",
-    suffix: "%",
+    unit: "%",
   },
 ];
 
@@ -86,13 +94,13 @@ const FRESHNESS_FIELDS: NumericFieldSpec[] = [
     key: "freshness_warning_months",
     label: "Aging after",
     help: "A cost older than this shows an Aging badge.",
-    suffix: "months",
+    unit: "months",
   },
   {
     key: "freshness_requote_months",
     label: "Re-quote after",
     help: "A cost older than this shows a Re-quote badge. Must be greater than the aging threshold.",
-    suffix: "months",
+    unit: "months",
   },
 ];
 
@@ -112,9 +120,6 @@ function NumericField({
         {spec.label}
       </label>
       <div className="flex items-center gap-2">
-        {spec.suffix === "$" ? (
-          <span className="font-mono text-sm text-muted-foreground">$</span>
-        ) : null}
         <Input
           id={id}
           variant="editable"
@@ -123,9 +128,7 @@ function NumericField({
           disabled={disabled}
           className="w-32 text-right"
         />
-        {spec.suffix !== "$" ? (
-          <span className="text-sm text-muted-foreground">{spec.suffix}</span>
-        ) : null}
+        <span className="text-sm text-muted-foreground">{spec.unit}</span>
       </div>
       <span className="max-w-prose text-xs text-muted-foreground">
         {spec.help}

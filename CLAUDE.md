@@ -59,15 +59,32 @@ here and product/architecture facts in `docs/`.
 
 ## Project state
 
-A **default `create-next-app` scaffold** exists, moved under `src/`: root `package.json`,
-`tsconfig.json`, `next.config.ts`, `node_modules/`, and boilerplate `src/app/`
-(`page.tsx`, `layout.tsx`, `globals.css`, `favicon.ico`) plus `public/*.svg`. The `@/*` path
-alias resolves to `./src/*`. **None of the intended architecture is built yet** — no
-`src/server/actions/`, `src/lib/`, `src/components/`, `src/proxy.ts`, `supabase/` migrations,
-`e2e/`, or `.env.example`. Treat the layout in
-[docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) and the commands/versions in the
-docs/README as _intended_, not verified. Confirm a script or file exists before assuming it
-does.
+**Last verified: 2026-07-31.** Confirm a file or script still exists before relying on this
+section — it is a snapshot, and a stale one is worse than none.
+
+**Built.** The `@/*` alias resolves to `./src/*`.
+
+- **UI, end to end but unwired.** All routes under `src/app/(app)/` (quotes list, quote
+  builder, products, component library, settings) plus `src/app/(auth)/login/`, the app shell,
+  and 15 primitives in `src/components/ui/`. Every screen reads from **`src/lib/mock/`**, not
+  from Supabase.
+- **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
+- **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
+  `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
+- **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
+  semantic-token rules.
+
+**Not built.** No `src/server/actions/`, no `supabase/migrations/`, no `src/lib/pricing/`,
+no `src/lib/validation/`, no `e2e/`, no `vitest.config.ts`, no CI workflow. **Nothing in the
+app talks to the database yet**, and no Server Action exists — so any feature work starts by
+creating that path, not by extending one.
+
+**Two prototype-only directories, both delete-on-wiring** — `src/lib/mock/` (fixtures) and
+`src/components/prototype/` (a client-side role switch that is _not_ authorization). Don't
+build on either; replace them.
+
+**Two open product decisions block real work** — the pricing formula (PRD §2A) and the
+fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 
 ## Approved stack (TECH-STACK.md — do not deviate)
 
@@ -96,9 +113,14 @@ These are structural guarantees, not conventions — don't write code that break
 
 ## Claude Code-specific config
 
-- **Commands:** `npm install`, `npm run dev`, `npm run build`, and `npm run lint` are verified
-  to work. Anything else (`db push`, `db:types`, `test`, `test:e2e`) does not exist yet — don't
-  invent scripts; confirm they exist first.
+- **Commands** (verified 2026-07-31 — `package.json` is the authority; don't invent scripts):
+  - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
+  - `npm run test` exits 0 but proves nothing — it is `vitest run --passWithNoTests` and there
+    are no tests. Treat a green `test` as "not run", not "passed" (docs/TODO.md §A.2).
+  - `npm run db:push` / `db:types` exist and the project is linked, but there is no
+    `supabase/migrations/` yet, so `db:push` has nothing to apply and `db:types` would
+    regenerate types for an empty schema.
+  - **`test:e2e` does not exist.** No Playwright config, no `e2e/` (docs/TODO.md §C.2).
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
   installed. Never suggest `supabase start` or `db reset` as a current step — see
   [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.

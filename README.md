@@ -49,11 +49,6 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Prerequisites
 
-> **Pending scaffold — unverified.** The app is not scaffolded in this repository yet — no
-> `package.json`, `.env.example`, or `supabase/` directory exists on `main`. The versions
-> below are the approved stack from [TECH-STACK.md](docs/TECH-STACK.md). The exact list
-> will be confirmed and tested once we scaffold the app.
-
 - Node.js 24 LTS (Active LTS) — pinned in `.nvmrc`; `nvm use` picks it up
 - npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm
   or yarn
@@ -71,34 +66,69 @@ product-analytics need for a single internal tool.
 
 ## Install & Run
 
-> **Pending scaffold — unverified.** These commands assume the standard Next.js 16 + npm
-> and Supabase CLI setup from [TECH-STACK.md](docs/TECH-STACK.md). They have **not** been
-> run yet, and will be tested and corrected when we scaffold the app.
-
 ```bash
 npm install
-npx supabase link --project-ref <ref>   # link to the hosted dev project (one time)
-npx supabase db push                    # apply supabase/migrations/ to the linked project
-npm run dev                             # start the Next.js app locally
+cp .env.example .env.local   # fill in the two values from Supabase → Project Settings → API
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Everyday checks — all four are what CI will run:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm run format:check
+npm run test                 # see the caveat below
+npm run build
+```
+
+Two caveats worth knowing before you trust a green run:
+
+- **`npm run test` proves nothing yet.** It is `vitest run --passWithNoTests` and there are no
+  tests, so it exits 0 on an empty suite. Read a pass as "not run" until the pricing-calc
+  tests land ([TODO.md](docs/TODO.md) §A.2).
+- **`npm run db:push` has nothing to apply.** The script and the linked project both exist,
+  but `supabase/migrations/` does not — the schema is still a spec (see Further Reading).
+  `npm run db:types` would likewise regenerate types for an empty database.
+
+Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
+[`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
+external request, no layout shift. See [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) §8.
 
 ## Project Structure
 
-> Today the repo holds `docs/` plus a default `create-next-app` scaffold; the full layout is
-> intended, not yet built. See [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for the
-> complete directory tree and file-placement rules.
+The UI is built end to end but **not yet wired to the database**: every screen reads from
+fixtures in `src/lib/mock/`, and no Server Action exists, so the app has no write path at all.
+See [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for the full directory tree, which marks
+what is built, what is not, and which two directories are prototype scaffolding due for
+deletion.
 
 ## Further Reading
 
+- [PRODUCT.md](docs/PRODUCT.md) — problem statement, scope, success criteria
 - [PRD.md](docs/PRD.md) — requirements and feature scope
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
+- [DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, columns, and why each table
+  is shaped that way. The SQL that implements it is a
+  [spec](docs/DATABASE-SQL.md) awaiting
+  authoring as migrations.
 - [TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
+- [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, the WCAG AA floor
+- [ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
+
+## Open decisions blocking implementation
+
+Two product decisions gate real work, and neither is a coding task:
+
+- **Pricing formula and rounding rules** (PRD §2A) — until signed off, nothing may infer a
+  calculation order or which fields are canonical. The quote builder's cost panel is
+  deliberately inert as a result.
+- **The fixed quote-line category list** (PRD-007A) — the `categories` table ships empty and
+  the UI uses clearly-marked placeholders.
+
+Tracked in [DATABASE.md](docs/DATABASE.md) §6.
 
 ---
 
-> _Last updated:_ 2026-07-23 · _Owner:_ Viral Parikh
+> _Last updated:_ 2026-07-31 · _Owner:_ Viral Parikh

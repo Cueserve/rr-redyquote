@@ -1,6 +1,7 @@
 # TODO — Structure-review hardening plan
 
 **Created:** 2026-07-26 (from project-structure review)
+**Last updated:** 2026-07-31
 **Status:** working checklist — delete this file when all items are done or moved.
 **Scope:** the "do now" items only. Packaging/shared-library decision is deferred to app #2 (§D).
 
@@ -22,6 +23,7 @@ paste this block into a new issue — each `- [ ]` line converts to its own issu
 - [x] [7. Brand design tokens](#7-brand-design-tokens) — superseded by the Proposal System design system (Clay / Stone / Moss)
 - [x] [8. Fix Zod version drift in TECH-STACK.md](#8-zod-version-drift) — signed off by Viral; doc updated to 4.x
 - [x] [9. Make `docs/superpowers/specs/` visible](#9-make-docssuperpowersspecs-visible--keep-the-path-fix-the-visibility) — signed off by Viral; rename rejected, visibility fixed instead
+- [x] [10. Split `docs/DATABASE.md` into model + DDL](#10-split-docsdatabasemd-into-model--ddl) — signed off by Viral; permanent model doc + transient SQL spec
 
 §C/§D items are deliberately not here — they have triggers, not checkboxes. Add them to
 this list (or as issues) only when their trigger fires.
@@ -210,8 +212,8 @@ than cosmetic:
 **`--radius` is no longer a `calc()` chain.** The design system's ladder is 6 → 10 → 16 → 22px,
 which is not a constant multiple; it is now an explicit scale.
 
-`src/app/page.tsx` is still a token reference surface; it goes away with the boilerplate in
-§C.1.
+`src/app/page.tsx` was a token reference surface until 2026-07-31; it is now the entry
+redirect, deleted as part of §C.1 when the first real routes landed.
 
 ---
 
@@ -252,18 +254,61 @@ Fixed by:
 
 Files stayed where they were; no `git mv`.
 
+### 10. Split `docs/DATABASE.md` into model + DDL
+
+**Done 2026-07-31.** Signed off by Viral. The file was 66K, referenced by nothing, and used a
+header format (`Author` / `Target` / `Status`) that no other doc uses — it never declared
+itself a source of truth, and no list pointed at it, so an agent following CLAUDE.md would
+design against ARCHITECTURE §2's four-line summary table instead of the real schema.
+
+Three options were weighed: promote it whole, list it as a spec with an expiry, or split it.
+**Split won** because the file is two documents with opposite lifespans. Entities, ERD, column
+tables, and design rationale are permanent. The DDL is not: ARCHITECTURE §5 makes
+`supabase/migrations/*.sql` the authoritative schema, so once migrations exist, any SQL kept
+alongside them is a second copy free to drift.
+
+- **`docs/DATABASE.md`** — §1–§4 unchanged, plus a new §5 (Design Decisions) and §6 (Open
+  Items) carrying the durable half of the old §8. Permanent; now listed in CLAUDE.md.
+- **`docs/DATABASE-SQL.md`** — SQL, RPCs, RLS (renumbered §1–§3) plus §4 Implementation Notes.
+  Transient; listed under CLAUDE.md's "Approved design specs" with a delete-on-authoring rule.
+
+Verified lossless: SQL statement counts match across the split (13 tables, 31 policies, 16
+triggers, 22 indexes, 4 types), and a line diff of both halves against the original shows only
+the intended heading renumbers and cross-reference repoints.
+
+**On placement** — `DATABASE-SQL.md` sits at the top level, not under
+`docs/superpowers/specs/`, and that refines item 9 above rather than contradicting it. Item 9
+kept the tool-named path because the plugin _recreates_ it; that futility argument applies to
+plugin output only, not to a hand-authored file nothing would regenerate. PROJECT-STRUCTURE.md
+§5 now says this explicitly, and CLAUDE.md's spec block was generalized so a spec's authority
+no longer reads as a property of which folder it is in.
+
 ---
 
 ## C. Deferred — do at the trigger, not before
 
-1. **Boilerplate deletion** — `public/next.svg`, `public/vercel.svg`, `public/file.svg`,
-   `public/globe.svg`, `public/window.svg`, and the create-next-app content of
-   `src/app/page.tsx` → delete when the first real route lands.
+1. ~~**Boilerplate deletion**~~ — **done 2026-07-31.** The trigger fired when the real routes
+   landed: `src/app/page.tsx` became the entry redirect, and `public/{next,vercel,file,globe,
+window}.svg` were deleted after confirming nothing outside this file referenced them. That
+   left `public/` empty, so it no longer exists in a fresh clone — intentional, see
+   PROJECT-STRUCTURE.md §1.
 2. **Playwright wiring** — `playwright.config.ts`, `e2e/`, `test:e2e` script, and the
    advisory nightly CI job → when the first E2E spec is written (quote flow exists).
+   `@playwright/test` is already a devDependency; the config and specs are not.
 3. **`src/hooks/`** — shadcn will auto-create it when a component ships a hook (e.g.
    sidebar). Allow it when that happens and update `docs/PROJECT-STRUCTURE.md` in the
    same change (its §6 rule).
+4. **Prototype scaffolding removal** — `src/lib/mock/` and `src/components/prototype/` →
+   delete when Server Components read real data and Supabase Auth gates `(app)/layout.tsx`.
+   Both are quarantined in named folders so each is one `rm -r`. The role switch in
+   `prototype/` is the urgent half: it is an affordance toggle that must never be mistaken
+   for authorization, which is RLS's job (NFR-002).
+5. **`/quotes/[id]` returns 200 on a bad id** — `quotes/loading.tsx` puts the whole `quotes/`
+   subtree behind a Suspense boundary, so the response status commits before `notFound()`
+   runs. The 404 page renders; the status code is wrong. `products/[id]` and `library/[id]`
+   are correct because they have no loading boundary. Fixing it means separating the list's
+   loading UI from the detail routes → do it when that segment is restructured, and update
+   `docs/PROJECT-STRUCTURE.md` §1 in the same change (the caveat there records the finding).
 
 ## D. Deferred — app #2 packaging decision (do NOT decide now)
 

@@ -303,12 +303,15 @@ window}.svg` were deleted after confirming nothing outside this file referenced 
    Both are quarantined in named folders so each is one `rm -r`. The role switch in
    `prototype/` is the urgent half: it is an affordance toggle that must never be mistaken
    for authorization, which is RLS's job (NFR-002).
-5. **`/quotes/[id]` returns 200 on a bad id** — `quotes/loading.tsx` puts the whole `quotes/`
-   subtree behind a Suspense boundary, so the response status commits before `notFound()`
-   runs. The 404 page renders; the status code is wrong. `products/[id]` and `library/[id]`
-   are correct because they have no loading boundary. Fixing it means separating the list's
-   loading UI from the detail routes → do it when that segment is restructured, and update
-   `docs/PROJECT-STRUCTURE.md` §1 in the same change (the caveat there records the finding).
+5. ~~**`/quotes/[id]` returns 200 on a bad id**~~ — **not a defect; verified 2026-08-01.**
+   The concern was that a `quotes/loading.tsx` boundary would put the whole `quotes/` subtree
+   behind Suspense, committing the response status before `notFound()` runs and rendering the
+   404 page with HTTP 200. No such file exists: loading UI is scoped to `quotes/(list)/`, so
+   the detail routes sit outside that boundary. Measured against a production build —
+   `/quotes/q-1` 200, `/quotes/bogus` 404, `/products/bogus-id` 404, `/library/bogus-id` 404.
+   The interaction is a real Next.js trap, so the rule that prevents a regression stays in
+   `docs/PROJECT-STRUCTURE.md` §1 ("Quotes loading boundary rule") — keep list loading UI in
+   `quotes/(list)/loading.tsx` and never add `quotes/loading.tsx`.
 
 ## D. Deferred — app #2 packaging decision (do NOT decide now)
 

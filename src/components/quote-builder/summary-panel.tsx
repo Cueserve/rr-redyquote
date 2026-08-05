@@ -81,7 +81,7 @@ export function SummaryPanel({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 className="text-md font-semibold tracking-tight">Cost breakdown</h2>
+        <h2 className="text-md font-semibold tracking-tight">Cost Breakdown</h2>
         <p className="text-sm text-muted-foreground">
           Recomputed server-side at save time from the saved line items and
           estimating defaults in effect then.

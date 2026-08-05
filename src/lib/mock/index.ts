@@ -86,10 +86,10 @@ export function getProfile(id: string) {
   return PROFILES.find((p) => p.id === id);
 }
 
-/** Sentence-case labels for the four lifecycle states (DESIGN-SYSTEM.md §11). */
+/** Display labels for the four lifecycle states (DESIGN-SYSTEM.md §11). */
 export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Draft",
-  pending_approval: "Pending approval",
+  pending_approval: "Pending Approval",
   approved: "Approved",
   sent: "Sent",
 };

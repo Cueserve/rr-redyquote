@@ -19,7 +19,7 @@ export default function NewProductPage() {
   return (
     <PageBody>
       <PageHeader
-        title="New product"
+        title="New Product"
         description="Fab pricing tiers and category defaults are saved together with the product in one transaction."
       />
 

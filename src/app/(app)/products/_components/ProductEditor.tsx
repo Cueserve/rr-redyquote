@@ -153,7 +153,7 @@ export function ProductEditor({
         <div className="flex items-start justify-between gap-4 px-2 pt-2">
           <div className="flex flex-col gap-1">
             <h2 className="text-md font-semibold tracking-tight">
-              Quantity-tier fab pricing
+              Quantity-Tier Fab Pricing
             </h2>
             <p className="text-sm text-muted-foreground">
               Changing a cost appends a row to price history — it never
@@ -260,7 +260,7 @@ export function ProductEditor({
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-md font-semibold tracking-tight">
-            Default components
+            Default Components
           </h2>
           <p className="text-sm text-muted-foreground">
             Pre-filled on every new quote for this product. A rep can change any

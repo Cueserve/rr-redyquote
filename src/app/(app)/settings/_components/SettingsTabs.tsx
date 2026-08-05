@@ -150,18 +150,18 @@ export function SettingsTabs({
   return (
     <Tabs defaultValue="defaults" className="flex flex-col gap-6">
       <TabsList>
-        <TabsTrigger value="defaults">Estimating defaults</TabsTrigger>
+        <TabsTrigger value="defaults">Estimating Defaults</TabsTrigger>
         <TabsTrigger value="branding">Branding</TabsTrigger>
-        <TabsTrigger value="history">Change history</TabsTrigger>
+        <TabsTrigger value="history">Change History</TabsTrigger>
       </TabsList>
 
       <TabsContent value="defaults" className="flex flex-col gap-6">
-        {readOnly ? <ReadOnlyNotice what="Estimating defaults" /> : null}
+        {readOnly ? <ReadOnlyNotice what="Estimating Defaults" /> : null}
 
         <Card className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
             <h2 className="text-md font-semibold tracking-tight">
-              Rates and markups
+              Rates and Markups
             </h2>
             <p className="text-sm text-muted-foreground">
               These are the inputs every quote is priced from. Changing one does
@@ -185,7 +185,7 @@ export function SettingsTabs({
         <Card className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
             <h2 className="text-md font-semibold tracking-tight">
-              Price freshness
+              Price Freshness
             </h2>
             <p className="text-sm text-muted-foreground">
               Both badges and the stale-price count on the quotes dashboard are

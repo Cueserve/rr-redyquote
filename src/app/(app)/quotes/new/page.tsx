@@ -20,7 +20,7 @@ export default function NewQuotePage() {
   return (
     <PageBody>
       <PageHeader
-        title="New quote"
+        title="New Quote"
         description="The quote number is assigned by the database when this is first saved."
       />
 

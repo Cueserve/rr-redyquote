@@ -19,7 +19,7 @@ export default function NewComponentPage() {
   return (
     <PageBody>
       <PageHeader
-        title="New component"
+        title="New Component"
         description="The first cost recorded here becomes the first row of this component's price history."
       />
 

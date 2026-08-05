@@ -56,7 +56,7 @@ export default async function ComponentDetailPage({
         <Card className="flex flex-col gap-4" padding="compact">
           <div className="flex flex-col gap-1 px-2 pt-2">
             <h2 className="text-md font-semibold tracking-tight">
-              Price history
+              Price History
             </h2>
             <p className="text-sm text-muted-foreground">
               Append-only. A cost change adds a row; it never rewrites one.

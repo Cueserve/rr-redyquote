@@ -18,7 +18,7 @@ export default function LibraryPage() {
   return (
     <PageBody>
       <PageHeader
-        title="Component library"
+        title="Component Library"
         description="Reusable components by category, with a full price history behind every cost change."
         actions={
           <AdminOnly fallback={<ReadOnlyNotice what="The component library" />}>

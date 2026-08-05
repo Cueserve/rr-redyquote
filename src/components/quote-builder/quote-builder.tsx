@@ -284,7 +284,7 @@ export function QuoteBuilder({
       <div className="flex min-w-0 flex-col gap-6">
         <Card className="flex flex-col gap-5">
           <h2 className="text-md font-semibold tracking-tight">
-            Quote details
+            Quote Details
           </h2>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -400,7 +400,7 @@ export function QuoteBuilder({
 
         <Card className="flex flex-col gap-4" padding="compact">
           <div className="flex flex-col gap-1 px-2 pt-2">
-            <h2 className="text-md font-semibold tracking-tight">Line items</h2>
+            <h2 className="text-md font-semibold tracking-tight">Line Items</h2>
             <p className="text-sm text-muted-foreground">
               One line per category, plus any misc lines this job needs. Amber
               fields are typed; plain figures are computed on save.

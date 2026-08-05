@@ -22,7 +22,7 @@ export default function ProductsError({
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-md font-semibold">
-            Products could not be loaded.
+            Products Could Not Be Loaded.
           </h1>
           <p className="text-sm text-muted-foreground">
             Nothing was changed. Try again, and if it keeps happening give your

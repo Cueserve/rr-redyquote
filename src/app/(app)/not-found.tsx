@@ -34,7 +34,7 @@ export default function AppNotFound() {
     <PageBody>
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-md font-semibold">Not found.</h1>
+          <h1 className="text-md font-semibold">Not Found.</h1>
           <p className="text-sm text-muted-foreground">
             That record does not exist, or the link is out of date.
           </p>

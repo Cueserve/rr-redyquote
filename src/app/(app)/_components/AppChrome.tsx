@@ -25,7 +25,7 @@ const NAV: SidebarNavItem[] = [
     icon: <Package className="size-4" />,
   },
   {
-    label: "Component library",
+    label: "Component Library",
     href: "/library",
     icon: <Boxes className="size-4" />,
   },
@@ -44,7 +44,7 @@ const NAV: SidebarNavItem[] = [
 const SECTION_LABEL: Record<string, string> = {
   quotes: "Quotes",
   products: "Products",
-  library: "Component library",
+  library: "Component Library",
   settings: "Settings",
 };
 
@@ -52,7 +52,15 @@ const SECTION_LABEL: Record<string, string> = {
  *  as the thing it identifies, not as a uuid. Prototype-only lookup; the real
  *  version reads the record the page already fetched. */
 function leafLabel(section: string, id: string) {
-  if (id === "new") return "New quote";
+  if (id === "new") {
+    return (
+      {
+        quotes: "New Quote",
+        products: "New Product",
+        library: "New Component",
+      }[section] ?? "New"
+    );
+  }
   if (section === "quotes") return getQuote(id)?.quote_number ?? "Quote";
   if (section === "products") return getProduct(id)?.name ?? "Product";
   if (section === "library") return getComponent(id)?.name ?? "Component";

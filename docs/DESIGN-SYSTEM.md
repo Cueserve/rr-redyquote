@@ -335,7 +335,8 @@ multiples.
 
 From the original brand-voice export, and it constrains copy in components:
 
-- **Sentence case everywhere** — nav, buttons, table headers. No ALL-CAPS, no Title Case.
+- **Title Case for top-level labels** — primary nav, page headers, tabs, and section headers use Title Case.
+- **Sentence case for supporting UI copy** — buttons, table headers, form labels, help text, and status copy stay sentence case. No ALL-CAPS.
 - **Buttons are short verb phrases** — "New quote", "Save quote", "Submit for approval".
 - **Numbers are the content, not the pitch.** Money, percentages, and counts are primary;
   copy labels a number, it doesn't sell it.

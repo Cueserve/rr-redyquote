@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/components/prototype/role-context";
 import { ReadOnlyNotice } from "@/components/prototype/admin-only";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -46,6 +47,10 @@ import type {
  *
  * Cost and quoted-date fields carry the editable treatment (amber tint + border
  * + mono digits, DESIGN-SYSTEM.md §7); everything the system derives does not.
+ *
+ * `product === null` is create mode, mirroring `quote={null}` in the quote
+ * builder. Numeric fields start blank rather than at 0 — a pre-filled zero for
+ * assembly hours would save as a real "no labor" value if left alone.
  */
 export function ProductEditor({
   product,
@@ -54,7 +59,7 @@ export function ProductEditor({
   categories,
   components,
 }: {
-  product: Product;
+  product: Product | null;
   tiers: FabTier[];
   defaults: ProductDefault[];
   categories: Category[];
@@ -62,8 +67,9 @@ export function ProductEditor({
 }) {
   const isAdmin = useIsAdmin();
   const readOnly = !isAdmin;
+  const isNew = product === null;
 
-  const [active, setActive] = React.useState(product.active);
+  const [active, setActive] = React.useState(product?.active ?? true);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,7 +82,7 @@ export function ProductEditor({
           <Field label="Name" htmlFor="product-name">
             <Input
               id="product-name"
-              defaultValue={product.name}
+              defaultValue={product?.name ?? ""}
               disabled={readOnly}
             />
           </Field>
@@ -84,7 +90,7 @@ export function ProductEditor({
           <Field label="SKU" htmlFor="product-sku">
             <Input
               id="product-sku"
-              defaultValue={product.sku}
+              defaultValue={product?.sku ?? ""}
               disabled={readOnly}
               className="font-mono"
             />
@@ -93,7 +99,7 @@ export function ProductEditor({
           <Field label="Vendor" htmlFor="product-vendor">
             <Input
               id="product-vendor"
-              defaultValue={product.vendor ?? ""}
+              defaultValue={product?.vendor ?? ""}
               disabled={readOnly}
             />
           </Field>
@@ -107,7 +113,7 @@ export function ProductEditor({
               id="product-hours"
               variant="editable"
               inputMode="decimal"
-              defaultValue={product.est_labor_hours}
+              defaultValue={product?.est_labor_hours ?? ""}
               disabled={readOnly}
             />
           </Field>
@@ -119,7 +125,7 @@ export function ProductEditor({
           >
             <Input
               id="product-description"
-              defaultValue={product.description ?? ""}
+              defaultValue={product?.description ?? ""}
               disabled={readOnly}
             />
           </Field>
@@ -129,9 +135,9 @@ export function ProductEditor({
           <div className="flex flex-col gap-1">
             <span className="text-sm font-semibold">Active</span>
             <p className="max-w-prose text-xs text-muted-foreground">
-              Deactivating is a soft state. This product stays on quotes that
-              already reference it, priced as-is and marked deactivated, but is
-              not selectable for new quotes.
+              {isNew
+                ? "Active products are selectable on new quotes. Leave this on unless you are staging a product before it is ready to sell."
+                : "Deactivating is a soft state. This product stays on quotes that already reference it, priced as-is and marked deactivated, but is not selectable for new quotes."}
             </p>
           </div>
           <Switch
@@ -156,80 +162,92 @@ export function ProductEditor({
           </div>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32 text-right">Qty tier</TableHead>
-              <TableHead className="w-36 text-right">Cost</TableHead>
-              <TableHead className="w-44">Quoted date</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead className="w-32">Freshness</TableHead>
-              <TableHead className="w-10">
-                <span className="sr-only">Row actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tiers.map((tier) => (
-              <TableRow key={tier.id}>
-                <TableCell numeric className="text-right">
-                  <Input
-                    variant="editable"
-                    inputMode="numeric"
-                    defaultValue={tier.qty_tier}
-                    disabled={readOnly}
-                    aria-label="Quantity tier"
-                    className="h-8 w-full px-2 py-1 text-right text-sm"
-                  />
-                </TableCell>
-                <TableCell numeric className="text-right">
-                  <Input
-                    variant="editable"
-                    inputMode="decimal"
-                    defaultValue={tier.cost}
-                    disabled={readOnly}
-                    aria-label="Tier cost"
-                    className="h-8 w-full px-2 py-1 text-right text-sm"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    variant="editable"
-                    type="date"
-                    defaultValue={tier.quoted_date}
-                    disabled={readOnly}
-                    aria-label="Quoted date"
-                    className="h-8 w-full px-2 py-1 text-sm"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    defaultValue={tier.vendor ?? ""}
-                    disabled={readOnly}
-                    aria-label="Tier vendor"
-                    className="h-8 w-full px-2 py-1 text-sm"
-                  />
-                </TableCell>
-                <TableCell>
-                  <FreshnessBadge
-                    freshness={tier.freshness}
-                    quotedDate={tier.quoted_date}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={readOnly}
-                    aria-label="Remove tier"
-                  >
-                    <Trash2 />
-                  </Button>
-                </TableCell>
+        {tiers.length === 0 ? (
+          // Reached on /products/new, and on any product whose tiers were never
+          // filled in. The table header alone reads as a rendering bug, so say
+          // what is true and point at the one control that resolves it.
+          <EmptyState size="sm">
+            <p>
+              No fab pricing tiers yet. Add one below — a product with no tiers
+              cannot be priced on a quote.
+            </p>
+          </EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-32 text-right">Qty tier</TableHead>
+                <TableHead className="w-36 text-right">Cost</TableHead>
+                <TableHead className="w-44">Quoted date</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead className="w-32">Freshness</TableHead>
+                <TableHead className="w-10">
+                  <span className="sr-only">Row actions</span>
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {tiers.map((tier) => (
+                <TableRow key={tier.id}>
+                  <TableCell numeric className="text-right">
+                    <Input
+                      variant="editable"
+                      inputMode="numeric"
+                      defaultValue={tier.qty_tier}
+                      disabled={readOnly}
+                      aria-label="Quantity tier"
+                      className="h-8 w-full px-2 py-1 text-right text-sm"
+                    />
+                  </TableCell>
+                  <TableCell numeric className="text-right">
+                    <Input
+                      variant="editable"
+                      inputMode="decimal"
+                      defaultValue={tier.cost}
+                      disabled={readOnly}
+                      aria-label="Tier cost"
+                      className="h-8 w-full px-2 py-1 text-right text-sm"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      variant="editable"
+                      type="date"
+                      defaultValue={tier.quoted_date}
+                      disabled={readOnly}
+                      aria-label="Quoted date"
+                      className="h-8 w-full px-2 py-1 text-sm"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      defaultValue={tier.vendor ?? ""}
+                      disabled={readOnly}
+                      aria-label="Tier vendor"
+                      className="h-8 w-full px-2 py-1 text-sm"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <FreshnessBadge
+                      freshness={tier.freshness}
+                      quotedDate={tier.quoted_date}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={readOnly}
+                      aria-label="Remove tier"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
         <div className="px-2 pb-2">
           <Button variant="outline" size="sm" disabled={readOnly}>
@@ -288,7 +306,7 @@ export function ProductEditor({
 
       {isAdmin ? (
         <div className="flex items-center gap-3">
-          <Button>Save product</Button>
+          <Button>{isNew ? "Create product" : "Save product"}</Button>
           <p className="text-xs text-muted-foreground">
             Product, tiers, defaults, and any price-history rows are written in
             one transaction — all of it saves, or none of it does.

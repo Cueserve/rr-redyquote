@@ -13,9 +13,10 @@ docs/ARCHITECTURE.md.
 
 > **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0004`. **`0001`–`0003` are applied to the linked project**; `0004`
-> (the settings markup-units rename) is authored and pending. `0005` onward — categories,
-> products, quotes, RPCs — is untranscribed.
+> now holds `0001`–`0004`; `0005` onward — categories, products, quotes, RPCs — is
+> untranscribed. **Which of those files have reached the remote is tracked in CLAUDE.md's
+> "Project state", not here.** This file describes layout; push state restated in a second
+> place has already drifted once.
 > Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
 > write path is unbuilt — plus `e2e/`.
 >
@@ -65,8 +66,22 @@ redyquote/
 │  │  │  │  ├─ _components/         # route-private UI (QuoteTable) — not a route
 │  │  │  │  ├─ new/page.tsx         # new quote        (hosts the builder)
 │  │  │  │  └─ [id]/page.tsx        # quote detail     (hosts the builder)
-│  │  │  ├─ products/               # list + [id] detail + _components/  (admin-managed)
-│  │  │  ├─ library/                # list + [id] detail + _components/  (admin-managed)
+│  │  │  ├─ products/               # same shape as quotes/           (admin-managed)
+│  │  │  │  ├─ (list)/              # route group isolating list-only loading boundary
+│  │  │  │  │  ├─ page.tsx          # product catalog   (Server Component — read)
+│  │  │  │  │  └─ loading.tsx       # list loading UI scoped to /products only
+│  │  │  │  ├─ error.tsx            # error boundary scoped to this route
+│  │  │  │  ├─ _components/         # route-private UI (ProductTable, ProductEditor)
+│  │  │  │  ├─ new/page.tsx         # new product      (admin-gated; hosts the editor)
+│  │  │  │  └─ [id]/page.tsx        # product detail   (hosts the editor)
+│  │  │  ├─ library/                # same shape as quotes/           (admin-managed)
+│  │  │  │  ├─ (list)/              # route group isolating list-only loading boundary
+│  │  │  │  │  ├─ page.tsx          # component library (Server Component — read)
+│  │  │  │  │  └─ loading.tsx       # list loading UI scoped to /library only
+│  │  │  │  ├─ error.tsx            # error boundary scoped to this route
+│  │  │  │  ├─ _components/         # route-private UI (ComponentTable, ComponentEditor)
+│  │  │  │  ├─ new/page.tsx         # new component    (admin-gated; no history panel)
+│  │  │  │  └─ [id]/page.tsx        # component detail (editor + append-only history)
 │  │  │  └─ settings/               # rates, markups, branding, audit    (admin-only edit)
 │  │  ├─ layout.tsx                 # root layout — html/body shell, fonts
 │  │  ├─ page.tsx                   # entry (redirect to /quotes or /login)
@@ -97,7 +112,7 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [~] # *.sql — 0001–0003 authored (unpushed); RPCs + quotes TBD
+│  ├─ migrations/               [~] # *.sql — 0001–0004; 0005+ categories/products/quotes/RPCs TBD
 │  └─ config.toml                   # local stack config
 ├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
@@ -117,11 +132,16 @@ redyquote/
 └─ CLAUDE.md  README.md
 ```
 
-**Quotes loading boundary rule.** Keep quote-list loading UI inside `quotes/(list)/loading.tsx`
-only. A `quotes/loading.tsx` boundary wraps the whole subtree, including `[id]`; once a
-streamed response starts, status is committed and `notFound()` in `quotes/[id]` can render the
-404 UI with **HTTP 200**. The current route-group split prevents that by leaving detail routes
-outside the list-loading boundary.
+**List loading boundary rule.** In any `list + [id]` route, keep list loading UI inside
+`<route>/(list)/loading.tsx` only — never at `<route>/loading.tsx`. The bare form wraps the
+whole subtree, including `[id]`; once a streamed response starts, status is committed and
+`notFound()` in `<route>/[id]` can render the 404 UI with **HTTP 200**. The route-group split
+prevents that by leaving detail routes outside the list-loading boundary.
+
+This governs all three `list + [id]` routes — `quotes/`, `products/`, and `library/`. The group
+exists to contain that one file and nothing else, so **add both together or neither**: a
+`loading.tsx` without the group reintroduces the 404-as-200 bug, and a group without the file is
+dead weight. `settings/` is a single page with no detail route, so neither applies to it.
 
 **`public/` holds the REDYREF brand imagery and nothing else.** The five `create-next-app`
 SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1); the folder then sat empty — and therefore

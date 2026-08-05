@@ -26,6 +26,12 @@ import type { Category, EnvironmentType, LibraryComponent } from "@/lib/mock";
  * under the field rather than in a confirmation dialog, because appending
  * history is not a decision the admin makes — it happens either way, and a
  * dialog would imply it were optional.
+ *
+ * `component === null` is create mode, mirroring `quote={null}` in the quote
+ * builder and `product={null}` in the product editor. Cost, quoted date, and
+ * labor hours start blank rather than at 0 — a pre-filled zero cost would save
+ * as a real "free component" if left alone, and it would be the first
+ * `price_history` row, which is append-only and cannot be corrected afterwards.
  */
 
 const ENVIRONMENTS: { value: EnvironmentType; label: string; help: string }[] =
@@ -39,15 +45,16 @@ export function ComponentEditor({
   component,
   categories,
 }: {
-  component: LibraryComponent;
+  component: LibraryComponent | null;
   categories: Category[];
 }) {
   const isAdmin = useIsAdmin();
   const readOnly = !isAdmin;
+  const isNew = component === null;
 
-  const [active, setActive] = React.useState(component.active);
+  const [active, setActive] = React.useState(component?.active ?? true);
   const [environment, setEnvironment] = React.useState<EnvironmentType>(
-    component.environment,
+    component?.environment ?? "any",
   );
 
   return (
@@ -64,7 +71,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-name"
-              defaultValue={component.name}
+              defaultValue={component?.name ?? ""}
               disabled={readOnly}
             />
           </div>
@@ -75,7 +82,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-sku"
-              defaultValue={component.sku}
+              defaultValue={component?.sku ?? ""}
               disabled={readOnly}
               className="font-mono"
             />
@@ -83,9 +90,12 @@ export function ComponentEditor({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-semibold">Category</span>
-            <Select defaultValue={component.category_id} disabled={readOnly}>
+            <Select defaultValue={component?.category_id} disabled={readOnly}>
               <SelectTrigger className="w-full" aria-label="Category">
-                <SelectValue />
+                {/* Placeholder matters only in create mode — with no
+                    `defaultValue` there is nothing for `SelectValue` to render,
+                    so an unlabelled empty trigger is what you'd get. */}
+                <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (
@@ -103,7 +113,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-vendor"
-              defaultValue={component.vendor ?? ""}
+              defaultValue={component?.vendor ?? ""}
               disabled={readOnly}
             />
           </div>
@@ -116,7 +126,7 @@ export function ComponentEditor({
               id="component-cost"
               variant="editable"
               inputMode="decimal"
-              defaultValue={component.cost}
+              defaultValue={component?.cost ?? ""}
               disabled={readOnly}
             />
             <span className="text-xs text-muted-foreground">
@@ -132,7 +142,7 @@ export function ComponentEditor({
               id="component-date"
               variant="editable"
               type="date"
-              defaultValue={component.quoted_date}
+              defaultValue={component?.quoted_date ?? ""}
               disabled={readOnly}
             />
             <span className="text-xs text-muted-foreground">
@@ -149,7 +159,7 @@ export function ComponentEditor({
               id="component-hours"
               variant="editable"
               inputMode="decimal"
-              defaultValue={component.default_labor_hours}
+              defaultValue={component?.default_labor_hours ?? ""}
               disabled={readOnly}
             />
             <span className="text-xs text-muted-foreground">
@@ -193,9 +203,9 @@ export function ComponentEditor({
           <div className="flex flex-col gap-1">
             <span className="text-sm font-semibold">Active</span>
             <p className="max-w-prose text-xs text-muted-foreground">
-              A deactivated component stays on quotes that already use it,
-              priced as-is and marked deactivated, and is not selectable for new
-              lines on any quote.
+              {isNew
+                ? "Active components are selectable on quote lines and eligible as a category default. Leave this on unless you are staging a component before it is ready to use."
+                : "A deactivated component stays on quotes that already use it, priced as-is and marked deactivated, and is not selectable for new lines on any quote."}
             </p>
           </div>
           <Switch
@@ -209,7 +219,7 @@ export function ComponentEditor({
 
       {isAdmin ? (
         <div>
-          <Button>Save component</Button>
+          <Button>{isNew ? "Create component" : "Save component"}</Button>
         </div>
       ) : null}
     </div>

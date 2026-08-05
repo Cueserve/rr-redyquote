@@ -1,7 +1,7 @@
 # TODO — Structure-review hardening plan
 
 **Created:** 2026-07-26 (from project-structure review)
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-05
 **Status:** working checklist — delete this file when all items are done or moved.
 **Scope:** the "do now" items only. Packaging/shared-library decision is deferred to app #2 (§D).
 
@@ -295,6 +295,16 @@ window}.svg` were deleted after confirming nothing outside this file referenced 
 2. **Playwright wiring** — `playwright.config.ts`, `e2e/`, `test:e2e` script, and the
    advisory nightly CI job → when the first E2E spec is written (quote flow exists).
    `@playwright/test` is already a devDependency; the config and specs are not.
+   **The first spec to write is the approval gate**, not a happy path: ARCHITECTURE's
+   database-enforced gate is the one invariant a UI-only test can pass while the real thing is
+   broken — assert that a `rep` session cannot move a quote out of `Pending Approval` even when
+   the request is made directly, bypassing the UI.
+   **Four files claim `test:e2e` does not exist and must be corrected in the same change**
+   (verified 2026-08-05): `CLAUDE.md` § "Claude Code-specific config" (says outright
+   "**`test:e2e` does not exist**"), this file's §A.2 (on `npm run test` proving nothing —
+   revisit once real tests exist), `docs/PROJECT-STRUCTURE.md` §1 (the `e2e/ [ ]` marker), and
+   `docs/ENVIRONMENTS.md` §4 step 7, which already instructs you to run `npm run test:e2e` at
+   local-stack adoption — a command that does not yet exist.
 3. **`src/hooks/`** — shadcn will auto-create it when a component ships a hook (e.g.
    sidebar). Allow it when that happens and update `docs/PROJECT-STRUCTURE.md` in the
    same change (its §6 rule).
@@ -314,6 +324,37 @@ window}.svg` were deleted after confirming nothing outside this file referenced 
    `<route>/(list)/loading.tsx` and never add `<route>/loading.tsx`. `products/` and `library/`
    were given the same `(list)` split when they gained a `loading.tsx`; re-verify every `[id]`
    404 after any change to one of those boundaries.
+6. **Supabase project naming — rename dev, create prod.** Two actions in the Supabase
+   dashboard, not in this repo:
+   1. Rename the existing project from **`RedyQuote`** to **`redyquote-dev`**.
+   2. Create a second project named **`redyquote-prod`**.
+
+   **Why:** `docs/ENVIRONMENTS.md` §1 names the dev database `redyquote-dev`, and its §3 rule 1
+   states as a working rule that `redyquote-dev` and `redyquote-prod` are separate projects.
+   Neither is true yet. Verified 2026-08-05 via `npx supabase projects list`: exactly one
+   project exists, named `RedyQuote` (ref `ypoqkaoasorncpdadllg`, us-west-2, Postgres 17.6).
+   So the doc describes an intended end state as though it were current — the single most
+   dangerous kind of doc error here, because §3 rule 1's whole point is "never point a dev
+   branch at the production project," and today there is only one project to point at.
+
+   **Spelling — get this right the first time.** It is `redyquote`, not `readyquote`: the
+   product is **RedyQuote**, from the REDYREF brand. A project name is a display label and can
+   be corrected later, but an infrastructure name with a typo tends to survive into connection
+   strings, CI secrets, and runbooks.
+
+   **Renaming is safe for this repo.** A Supabase project's ref is a separate immutable
+   identifier, not derived from its name, so the rename does not invalidate the
+   `supabase link --project-ref` in ENVIRONMENTS.md §3, `.env.local`, or
+   `supabase/.temp/`. Nothing needs re-linking.
+
+   **Trigger:** the rename can happen any time and costs nothing — do it before anyone else
+   clones the repo and believes the doc. Creating `redyquote-prod` is gated by the same event
+   as the Pro upgrade (PRD NFR-006b: the first real customer quote), and note ENVIRONMENTS.md
+   §2 — Free allows only **2 active free projects per org**, and prod must be Pro at cutover
+   anyway, so do not create it early just to reserve the name.
+
+   **Update in the same change:** `docs/ENVIRONMENTS.md` §1 (the table's `redyquote-dev` row)
+   and §3 rule 1, so the doc and reality agree in whichever direction you settle.
 
 ## D. Deferred — app #2 packaging decision (do NOT decide now)
 

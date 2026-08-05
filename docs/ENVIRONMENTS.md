@@ -58,14 +58,37 @@ let that trigger pass silently.
 These matter more without a local stack, because there is no disposable database to catch
 mistakes:
 
+**First, in every fresh clone: link it.** The CLI stores the link in `supabase/.temp/`, which is
+gitignored — correctly, but it means a new clone of this repo is **not** linked, even though
+`.env.local` may already be in place and `npm run dev` works fine. Nothing warns you; the only
+symptom is `LegacyProjectNotLinkedError: Cannot find project ref` from `db push`, `db:types`,
+`migration list`, and `projects list` alike. Fix it once per clone:
+
+```bash
+npx supabase link --project-ref ypoqkaoasorncpdadllg   # the RedyQuote project
+```
+
+Let it prompt for the database password rather than passing `-p` — the flag works, but the
+password then lands in shell history. The ref is not a secret; it is the subdomain of the
+`NEXT_PUBLIC_SUPABASE_URL` that ships to every browser. Verify with
+`npx supabase migration list --linked`, which prints a LOCAL and a REMOTE column — a migration
+present in LOCAL but blank in REMOTE has not been applied.
+
 1. **Two projects, never one.** `redyquote-dev` and `redyquote-prod` are separate Supabase
    projects. Never point a dev branch at the production project — without a local stack, the
    dev project _is_ your sandbox.
 2. **Schema changes are still migrations only.** `supabase/migrations/*.sql`, applied with
    `supabase db push`. Hand-editing schema or RLS in the dashboard stays prohibited
    (TECH-STACK §6) — and now it's worse, because there's no `db reset` to reconcile drift.
-3. **Regenerate types after every push:** `npm run db:types` (wraps
-   `supabase gen types typescript --linked > src/lib/supabase/types.ts`).
+3. **Regenerate types after every push:** `npm run db:types`. It pipes
+   `npx supabase gen types typescript --linked` into `src/lib/supabase/types.ts`, then runs
+   `prettier --write --end-of-line crlf` over it. Both details are load-bearing: `npx` because
+   a bare `supabase` is not on PATH, and the explicit `crlf` because `.prettierrc` sets
+   `endOfLine: "auto"`, so Prettier would otherwise keep the generator's LF endings and leave
+   the file permanently dirty in `git status` with an empty diff.
+   **Still true of this script:** the `>` truncates `types.ts` before the generator runs, so a
+   failed generation leaves it empty and `npm run typecheck` fails until you regenerate or
+   `git checkout` it. The CLI has no `--output-file` flag to avoid this.
 4. **`.env.local` holds the dev project's URL + anon key only.** Never the service-role key —
    none is used anywhere in this app (ARCHITECTURE §1). `.env*` is gitignored; `.env.example`
    documents the variable names with placeholder values.

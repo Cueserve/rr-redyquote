@@ -13,9 +13,10 @@ docs/ARCHITECTURE.md.
 
 > **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0004`. **`0001`–`0003` are applied to the linked project**; `0004`
-> (the settings markup-units rename) is authored and pending. `0005` onward — categories,
-> products, quotes, RPCs — is untranscribed.
+> now holds `0001`–`0004`; `0005` onward — categories, products, quotes, RPCs — is
+> untranscribed. **Which of those files have reached the remote is tracked in CLAUDE.md's
+> "Project state", not here.** This file describes layout; push state restated in a second
+> place has already drifted once.
 > Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
 > write path is unbuilt — plus `e2e/`.
 >
@@ -97,7 +98,7 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [~] # *.sql — 0001–0003 authored (unpushed); RPCs + quotes TBD
+│  ├─ migrations/               [~] # *.sql — 0001–0004; 0005+ categories/products/quotes/RPCs TBD
 │  └─ config.toml                   # local stack config
 ├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)

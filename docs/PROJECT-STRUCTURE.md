@@ -66,8 +66,22 @@ redyquote/
 │  │  │  │  ├─ _components/         # route-private UI (QuoteTable) — not a route
 │  │  │  │  ├─ new/page.tsx         # new quote        (hosts the builder)
 │  │  │  │  └─ [id]/page.tsx        # quote detail     (hosts the builder)
-│  │  │  ├─ products/               # list + [id] detail + _components/  (admin-managed)
-│  │  │  ├─ library/                # list + [id] detail + _components/  (admin-managed)
+│  │  │  ├─ products/               # same shape as quotes/           (admin-managed)
+│  │  │  │  ├─ (list)/              # route group isolating list-only loading boundary
+│  │  │  │  │  ├─ page.tsx          # product catalog   (Server Component — read)
+│  │  │  │  │  └─ loading.tsx       # list loading UI scoped to /products only
+│  │  │  │  ├─ error.tsx            # error boundary scoped to this route
+│  │  │  │  ├─ _components/         # route-private UI (ProductTable, ProductEditor)
+│  │  │  │  ├─ new/page.tsx         # new product      (admin-gated; hosts the editor)
+│  │  │  │  └─ [id]/page.tsx        # product detail   (hosts the editor)
+│  │  │  ├─ library/                # same shape as quotes/           (admin-managed)
+│  │  │  │  ├─ (list)/              # route group isolating list-only loading boundary
+│  │  │  │  │  ├─ page.tsx          # component library (Server Component — read)
+│  │  │  │  │  └─ loading.tsx       # list loading UI scoped to /library only
+│  │  │  │  ├─ error.tsx            # error boundary scoped to this route
+│  │  │  │  ├─ _components/         # route-private UI (ComponentTable, ComponentEditor)
+│  │  │  │  ├─ new/page.tsx         # new component    (admin-gated; no history panel)
+│  │  │  │  └─ [id]/page.tsx        # component detail (editor + append-only history)
 │  │  │  └─ settings/               # rates, markups, branding, audit    (admin-only edit)
 │  │  ├─ layout.tsx                 # root layout — html/body shell, fonts
 │  │  ├─ page.tsx                   # entry (redirect to /quotes or /login)
@@ -118,11 +132,16 @@ redyquote/
 └─ CLAUDE.md  README.md
 ```
 
-**Quotes loading boundary rule.** Keep quote-list loading UI inside `quotes/(list)/loading.tsx`
-only. A `quotes/loading.tsx` boundary wraps the whole subtree, including `[id]`; once a
-streamed response starts, status is committed and `notFound()` in `quotes/[id]` can render the
-404 UI with **HTTP 200**. The current route-group split prevents that by leaving detail routes
-outside the list-loading boundary.
+**List loading boundary rule.** In any `list + [id]` route, keep list loading UI inside
+`<route>/(list)/loading.tsx` only — never at `<route>/loading.tsx`. The bare form wraps the
+whole subtree, including `[id]`; once a streamed response starts, status is committed and
+`notFound()` in `<route>/[id]` can render the 404 UI with **HTTP 200**. The route-group split
+prevents that by leaving detail routes outside the list-loading boundary.
+
+This governs all three `list + [id]` routes — `quotes/`, `products/`, and `library/`. The group
+exists to contain that one file and nothing else, so **add both together or neither**: a
+`loading.tsx` without the group reintroduces the 404-as-200 bug, and a group without the file is
+dead weight. `settings/` is a single page with no detail route, so neither applies to it.
 
 **`public/` holds the REDYREF brand imagery and nothing else.** The five `create-next-app`
 SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1); the folder then sat empty — and therefore

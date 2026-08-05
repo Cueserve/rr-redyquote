@@ -310,8 +310,10 @@ window}.svg` were deleted after confirming nothing outside this file referenced 
    the detail routes sit outside that boundary. Measured against a production build —
    `/quotes/q-1` 200, `/quotes/bogus` 404, `/products/bogus-id` 404, `/library/bogus-id` 404.
    The interaction is a real Next.js trap, so the rule that prevents a regression stays in
-   `docs/PROJECT-STRUCTURE.md` §1 ("Quotes loading boundary rule") — keep list loading UI in
-   `quotes/(list)/loading.tsx` and never add `quotes/loading.tsx`.
+   `docs/PROJECT-STRUCTURE.md` §1 ("List loading boundary rule") — keep list loading UI in
+   `<route>/(list)/loading.tsx` and never add `<route>/loading.tsx`. `products/` and `library/`
+   were given the same `(list)` split when they gained a `loading.tsx`; re-verify every `[id]`
+   404 after any change to one of those boundaries.
 
 ## D. Deferred — app #2 packaging decision (do NOT decide now)
 

@@ -28,6 +28,16 @@
 # but nothing in here should ever be committable)
 .venv/
 
+# Claude Code skills installed from a marketplace. .claude/settings.json declares
+# which plugin every developer gets; the installed payload is machine state, not
+# source. Do not commit it — see README "Claude Code setup".
+.claude/skills/
+
+# Impeccable (the design auditor) writes two configs. config.json holds team-wide
+# rule suppressions and IS committed; config.local.json is per-developer machine
+# state. Only the local one is ignored.
+.impeccable/config.local.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

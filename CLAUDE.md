@@ -163,6 +163,67 @@ These are structural guarantees, not conventions — don't write code that break
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
   installed. Never suggest `supabase start` or `db reset` as a current step — see
   [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.
+- **Three design layers, each with exactly one job.** `.claude/settings.json` enables three
+  plugins for every developer. They are **not interchangeable**, and using one for another's
+  job is a mistake — the whole point of declaring them together is the division of labour:
+  - **Layer 1 — Aesthetic guardrails: `frontend-design@claude-plugins-official`.** The
+    baseline for any new UI: visual hierarchy, restraint, and avoiding generic AI-default
+    aesthetics. It sets the bar before anything is written. It does **not** pick a palette, a
+    font, or a spacing value.
+  - **Layer 2 — Code generation framework: `ui-ux-pro-max@ui-ux-pro-max-skill`.** The tool
+    that actually **builds**: layout, interaction patterns, accessibility, component
+    structure, chart selection, and stack-specific idiom. Use it for those, where it has no
+    competing authority here. Its 161 palettes, 57 font pairings, and 67 style presets are
+    **inputs to a conversation, not decisions** — see precedence below.
+  - **Layer 3 — Audit and validation only: `impeccable@impeccable`.** Run it **after** a UI
+    change to catch anti-patterns, contrast failures, and AI-slop tells. **It is not a
+    generator.** Do not reach for `/impeccable polish` or any of its generating commands as
+    the way to write UI — `/impeccable audit` and `/impeccable critique` are the sanctioned
+    entry points, and `npx impeccable detect src/` is the deterministic CLI check (exit `2`
+    means findings, `--json` for tooling).
+  - **Order of operations for UI work:** layer 1 sets the bar → layer 2 builds it → layer 3
+    audits the result → `npm run lint` + `npm run typecheck` decide whether it ships. Skipping
+    layer 3 on a UI change is skipping a step, not saving one.
+- **None of the three outranks this repo's design system.**
+  [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), the semantic tokens in
+  `src/app/globals.css`, and the `no-restricted-syntax` rule in `eslint.config.mjs` are the
+  authority on every color, font, and spacing value in this codebase — all three layers lose
+  on contact, no exceptions.
+  - Do **not** take a palette, a hex literal, a raw Tailwind color class, or a Google Font
+    from any of them. Brand values are Archivo + IBM Plex Mono, and colors come from the
+    semantic layer (`bg-background`, `text-muted-foreground`, …). A suggestion that fails
+    `npm run lint` was never a valid suggestion.
+  - Adding a color or a font is a DESIGN-SYSTEM.md change — a deliberate decision requiring
+    approval, per the "Editing source-of-truth docs" rule below. It is not something a skill
+    recommendation authorizes.
+- **The impeccable baseline is clean — treat any new finding as real.** Verified 2026-08-05
+  against `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and
+  exit 0. That is not luck. Most of its high-signal detectors (`ai-color-palette`,
+  `gray-on-color`, `cream-palette`) key on raw Tailwind palette classes, and
+  `eslint.config.mjs` already makes those unwritable — ESLint gets there first, structurally.
+  So there is no standing noise to triage and **no pre-seeded suppression list**. A finding
+  means something new got past lint.
+  - Suppress only after establishing the finding contradicts
+    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: add
+    the rule id to `detector.ignoreRules` in `.impeccable/config.json` (committed, so the team
+    inherits the decision once) or an `impeccable-disable-next-line <rule>` comment for a
+    genuine one-off. `.impeccable/config.local.json` is per-developer and gitignored — never
+    put a team decision there. **Always report what you suppressed and why.**
+- **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
+  and `gray-on-color` need two resolved colors. Our components use semantic tokens
+  (`bg-background`, `text-muted-foreground`), which resolve at runtime from
+  `src/app/globals.css`, so a `detect src/` pass sees no color pair and stays silent. It is
+  not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the question.
+  - To actually check contrast, audit the rendered page: `npm run dev`, then
+    `npx impeccable detect http://localhost:3000/<route>`. URL mode needs `puppeteer`, an
+    optional dependency — install it in the sandbox, not as a project dependency (it is not
+    in TECH-STACK.md).
+  - The four `design-system-*` rules are also inert: impeccable looks for a `DESIGN.md` with
+    YAML frontmatter at the repo root, `docs/`, or `.agents/context/`, and we have
+    `docs/DESIGN-SYSTEM.md` — different filename, no frontmatter. Leaving it inert is the
+    current, deliberate choice; a second machine-readable copy of the token values would drift
+    from DESIGN-SYSTEM.md, and ESLint already enforces the same constraint. Do not create
+    `DESIGN.md` without approval.
 - **Secrets:** never read, print, or write `.env`, `.env*.local`, or any file holding the
   Supabase service-role key or other credentials.
 - **Editing source-of-truth docs:** changes to anything in `docs/` are deliberate decisions,

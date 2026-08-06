@@ -5,3 +5,9 @@ supabase/.temp
 # Local Python virtualenv — not part of the app, and its vendored JSON breaks
 # `npm run format:check`. Git already doesn't see it; Prettier did.
 .venv
+
+# Claude Code plugin payload installed from a marketplace — third-party machine
+# state, gitignored, and not ours to format. Scoped to .claude/skills/ only:
+# .claude/settings.json and .claude/commands/ are committed source and stay
+# formatted. See README "Claude Code Setup".
+.claude/skills

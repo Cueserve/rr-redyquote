@@ -36,6 +36,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code plugin payload: skills installed from a marketplace ship their
+    // own .cjs/.mjs helper scripts, which are third-party machine state, not our
+    // source. The whole tree is gitignored; linting it just fails the build on
+    // someone else's `require()` style. See README "Claude Code Setup".
+    ".claude/**",
   ]),
   // Extraction boundary for the future shared RedyRef component library:
   // src/components/ui/ must not reach into app-specific layers.

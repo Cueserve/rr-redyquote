@@ -96,6 +96,67 @@ Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hos
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
 external request, no layout shift. See [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) §8.
 
+## Claude Code Setup
+
+Optional — skip it if you don't use Claude Code. The repo declares three shared plugins so
+every developer gets the same UI/UX guidance instead of whatever they happen to have installed
+locally.
+
+**Nothing to run.** `.claude/settings.json` declares the marketplaces and enables all three.
+Claude Code reads it on open and prompts you to trust the workspace; accept, and the plugins
+install themselves.
+
+Each layer has one job, and they are not interchangeable:
+
+| Layer               | Plugin                                    | Job                                                       |
+| ------------------- | ----------------------------------------- | --------------------------------------------------------- |
+| 1 — Guardrails      | `frontend-design@claude-plugins-official` | Baseline taste: hierarchy, restraint, no AI-default look  |
+| 2 — Code generation | `ui-ux-pro-max@ui-ux-pro-max-skill`       | Builds it: layout, interaction, a11y, component structure |
+| 3 — Audit           | `impeccable@impeccable`                   | **Review only:** anti-patterns, contrast, AI-slop tells   |
+
+Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official) (Anthropic) ·
+[ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT) ·
+[impeccable](https://github.com/pbakaus/impeccable) (Apache 2.0)
+
+Order of operations on any UI change: **1 sets the bar → 2 builds it → 3 audits the result →
+`npm run lint` + `npm run typecheck` decide whether it ships.** Impeccable is deliberately
+_not_ a generator here — see the rule in [CLAUDE.md](CLAUDE.md).
+
+Four things to know:
+
+- **Python 3.x must be on your PATH.** ui-ux-pro-max's search scripts (`scripts/search.py`) are
+  Python, standard library only. This is a prerequisite for the plugin, **not** for RedyQuote —
+  the app is Node 24 / npm only, and nothing in `src/` or the build touches Python.
+- **The plugins do not overrule this repo's design system.** ui-ux-pro-max ships 161 color
+  palettes and 57 font pairings, most of which `eslint.config.mjs` will reject on sight.
+  [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) and the semantic tokens in `src/app/globals.css`
+  win every time — see the precedence rule in [CLAUDE.md](CLAUDE.md).
+- **The impeccable baseline is clean, and contrast is its blind spot.** `npx impeccable detect src/`
+  returns zero findings (verified 2026-08-05, v3.5.0) — `eslint.config.mjs` already bans the raw
+  palette classes most of its detectors key on. But its contrast rules need two resolved colors,
+  and our semantic tokens resolve at runtime, so a source scan **skips** the WCAG AA check rather
+  than passing it. For real contrast coverage, audit the rendered page: `npm run dev`, then
+  `npx impeccable detect http://localhost:3000/<route>` (needs `puppeteer`; install it globally,
+  not as a project dependency).
+- **A new finding is a real finding.** Because the baseline is empty, anything impeccable
+  reports got past `npm run lint` and deserves a fix, not a suppression. If you do establish a
+  finding contradicts [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), suppress it by rule id under
+  `detector.ignoreRules` in `.impeccable/config.json` — never by changing a token.
+- **Don't install the same tool twice.** All three come from the plugin system. If you
+  previously installed them by hand (`uipro init`, `npx impeccable skills install`, or
+  `claudekit`), delete the local copies so you aren't loading two versions of one skill.
+
+`.claude/skills/` and `.impeccable/config.local.json` are gitignored: installed payloads and
+per-developer overrides are machine state, not source. `.impeccable/config.json` **is**
+committed — a suppression there is a team decision.
+
+You can also run the auditor outside Claude Code:
+
+```bash
+npx impeccable detect src/          # exit 0 = clean, exit 2 = findings
+npx impeccable detect --json src/   # machine-readable, for CI
+```
+
 ## Project Structure
 
 The UI is built end to end but **not yet wired to the database**: every screen reads from

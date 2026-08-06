@@ -1,25 +1,11 @@
 "use client";
 
-import * as React from "react";
-import Image from "next/image";
-
-import { ReadOnlyNotice } from "@/components/prototype/admin-only";
 import { useIsAdmin } from "@/components/prototype/role-context";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/data-table";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Settings, SettingsHistoryRow } from "@/lib/mock";
-import { formatDateTime } from "@/lib/utils";
+import { SettingsBrandingTab } from "./SettingsBrandingTab";
+import { SettingsDefaultsTab } from "./SettingsDefaultsTab";
+import { SettingsHistoryTab } from "./SettingsHistoryTab";
 
 /**
  * PRD-012 (estimating defaults), PRD-013 (branding), PRD-018A (audit).
@@ -34,108 +20,6 @@ import { formatDateTime } from "@/lib/utils";
  * "who moved the margin floor, and when" is answerable — and a screen that can
  * answer it should.
  */
-
-interface NumericFieldSpec {
-  key: keyof Settings;
-  label: string;
-  help: string;
-  /**
-   * Rendered after the input, so the units form one column down the form.
-   *
-   * `$` trails too, which is deliberate and not an en-US currency slip: on this
-   * screen it annotates a RATE -- "dollars, per labor hour" -- rather than
-   * formatting a currency value. Leading it would break the column for the one
-   * field that is least like a price. Decided 2026-08-01.
-   */
-  unit: "%" | "$" | "months";
-}
-
-const RATE_FIELDS: NumericFieldSpec[] = [
-  {
-    key: "labor_rate",
-    label: "Labor rate",
-    help: "Applied to every labor hour on a quote, per hour.",
-    unit: "$",
-  },
-  {
-    key: "fab_markup_percent",
-    label: "Fabrication markup",
-    help: "Added to the fab tier cost. 50 means 50% over cost.",
-    unit: "%",
-  },
-  {
-    key: "component_markup_percent",
-    label: "Component markup",
-    help: "Pre-filled on every new quote line. 20 means 20% over cost.",
-    unit: "%",
-  },
-  {
-    key: "cushion_percent",
-    label: "Cushion",
-    help: "Contingency added to the cost basis.",
-    unit: "%",
-  },
-  {
-    key: "commission_percent",
-    label: "Sales commission",
-    help: "Rep commission carried in the cost basis.",
-    unit: "%",
-  },
-  {
-    key: "margin_floor_percent",
-    label: "Margin floor",
-    help: "A quote below this is flagged. Advisory only — it never blocks a save or a submit.",
-    unit: "%",
-  },
-];
-
-const FRESHNESS_FIELDS: NumericFieldSpec[] = [
-  {
-    key: "freshness_warning_months",
-    label: "Aging after",
-    help: "A cost older than this shows an Aging badge.",
-    unit: "months",
-  },
-  {
-    key: "freshness_requote_months",
-    label: "Re-quote after",
-    help: "A cost older than this shows a Re-quote badge. Must be greater than the aging threshold.",
-    unit: "months",
-  },
-];
-
-function NumericField({
-  spec,
-  value,
-  disabled,
-}: {
-  spec: NumericFieldSpec;
-  value: number;
-  disabled: boolean;
-}) {
-  const id = `setting-${String(spec.key)}`;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-semibold">
-        {spec.label}
-      </label>
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          variant="editable"
-          inputMode="decimal"
-          defaultValue={value}
-          disabled={disabled}
-          className="w-32 text-right"
-        />
-        <span className="text-sm text-muted-foreground">{spec.unit}</span>
-      </div>
-      <span className="max-w-prose text-xs text-muted-foreground">
-        {spec.help}
-      </span>
-    </div>
-  );
-}
 
 export function SettingsTabs({
   settings,
@@ -156,154 +40,19 @@ export function SettingsTabs({
       </TabsList>
 
       <TabsContent value="defaults" className="flex flex-col gap-6">
-        {readOnly ? <ReadOnlyNotice what="Estimating Defaults" /> : null}
-
-        <Card className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-md font-semibold tracking-tight">
-              Rates and Markups
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              These are the inputs every quote is priced from. Changing one does
-              not reprice quotes that are already saved — each quote snapshots
-              its cost basis at save time.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {RATE_FIELDS.map((spec) => (
-              <NumericField
-                key={String(spec.key)}
-                spec={spec}
-                value={settings[spec.key] as number}
-                disabled={readOnly}
-              />
-            ))}
-          </div>
-        </Card>
-
-        <Card className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-md font-semibold tracking-tight">
-              Price Freshness
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Both badges and the stale-price count on the quotes dashboard are
-              measured against these two thresholds.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {FRESHNESS_FIELDS.map((spec) => (
-              <NumericField
-                key={String(spec.key)}
-                spec={spec}
-                value={settings[spec.key] as number}
-                disabled={readOnly}
-              />
-            ))}
-          </div>
-        </Card>
-
-        {isAdmin ? (
-          <div className="flex items-center gap-3">
-            <Button>Save settings</Button>
-            <p className="text-xs text-muted-foreground">
-              Each changed field writes an audit row in the same transaction.
-            </p>
-          </div>
-        ) : null}
+        <SettingsDefaultsTab
+          settings={settings}
+          readOnly={readOnly}
+          isAdmin={isAdmin}
+        />
       </TabsContent>
 
       <TabsContent value="branding" className="flex flex-col gap-6">
-        {readOnly ? <ReadOnlyNotice what="Branding" /> : null}
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-md font-semibold tracking-tight">Logo</h2>
-            </div>
-
-            <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted p-4">
-              <Image
-                src="/redyref-logo.png"
-                alt="Organisation logo preview"
-                width={220}
-                height={125}
-                className="h-auto max-h-28 w-auto max-w-full object-contain"
-                priority
-              />
-            </div>
-          </Card>
-
-          <Card className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-md font-semibold tracking-tight">Favicon</h2>
-            </div>
-
-            <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted p-4">
-              <Image
-                src="/favicon.ico"
-                alt="Favicon preview"
-                width={64}
-                height={64}
-                className="size-16 rounded-sm border border-border"
-                priority
-              />
-            </div>
-          </Card>
-        </div>
+        <SettingsBrandingTab readOnly={readOnly} />
       </TabsContent>
 
       <TabsContent value="history" className="flex flex-col gap-4">
-        <p className="text-sm text-muted-foreground">
-          Append-only. One row per changed field, written in the same
-          transaction as the change.
-        </p>
-
-        {history.length === 0 ? (
-          <div className="rounded-md border border-border">
-            <EmptyState>
-              <p>No settings changes recorded yet.</p>
-            </EmptyState>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Field</TableHead>
-                <TableHead className="text-right">From</TableHead>
-                <TableHead className="text-right">To</TableHead>
-                <TableHead>Changed by</TableHead>
-                <TableHead>When</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">
-                    {row.changed_field}
-                  </TableCell>
-                  <TableCell
-                    numeric
-                    className="text-right text-muted-foreground"
-                  >
-                    {row.old_value ?? "—"}
-                  </TableCell>
-                  <TableCell numeric className="text-right font-semibold">
-                    {row.new_value ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {row.actor_name}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDateTime(row.changed_at)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <SettingsHistoryTab history={history} />
       </TabsContent>
     </Tabs>
   );

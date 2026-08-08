@@ -39,7 +39,7 @@ export function SettingsTabs({
         <TabsTrigger value="history">Change History</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="defaults" className="flex flex-col gap-6">
+      <TabsContent value="defaults">
         <SettingsDefaultsTab
           settings={settings}
           readOnly={readOnly}
@@ -47,11 +47,11 @@ export function SettingsTabs({
         />
       </TabsContent>
 
-      <TabsContent value="branding" className="flex flex-col gap-6">
+      <TabsContent value="branding">
         <SettingsBrandingTab readOnly={readOnly} />
       </TabsContent>
 
-      <TabsContent value="history" className="flex flex-col gap-4">
+      <TabsContent value="history">
         <SettingsHistoryTab history={history} />
       </TabsContent>
     </Tabs>

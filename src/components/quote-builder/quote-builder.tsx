@@ -373,7 +373,7 @@ export function QuoteBuilder({
                 onValueChange={(value) =>
                   setEnvironment(value as QuoteEnvironment)
                 }
-                className="flex items-center gap-6 py-2.5"
+                className="flex items-center gap-4 py-2.5"
               >
                 {ENVIRONMENTS.map((option) => (
                   <div key={option.value} className="flex items-center gap-2">
@@ -399,7 +399,7 @@ export function QuoteBuilder({
         </Card>
 
         <Card className="flex flex-col gap-4" padding="compact">
-          <div className="flex flex-col gap-1 px-2 pt-2">
+          <div className="flex flex-col gap-1 px-3 pt-2">
             <h2 className="text-md font-semibold tracking-tight">Line Items</h2>
             <p className="text-sm text-muted-foreground">
               One line per category, plus any misc lines this job needs. Amber

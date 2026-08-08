@@ -1,4 +1,35 @@
 {
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env*.local)",
+      "Edit(./.env)",
+      "Edit(./.env*.local)"
+    ],
+    "ask": [
+      "Bash(npm run db:push)",
+      "Bash(npm run db:push *)",
+      "Bash(npx supabase db push)",
+      "Bash(npx supabase db push *)",
+      "Bash(supabase db push)",
+      "Bash(supabase db push *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/block-applied-migration.mjs",
+            "timeout": 10,
+            "statusMessage": "Checking migration immutability"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "impeccable@impeccable": true,

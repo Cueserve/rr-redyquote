@@ -85,12 +85,15 @@ section — it is a snapshot, and a stale one is worse than none.
   - **The hosted schema is real now. Treat every migration file as immutable** — `db push`
     compares recorded versions, not file contents, so editing an applied file is skipped
     silently while reading as though it landed. `0004` exists because that happened once.
-  - **`npm run db:types` is broken**: it calls a bare `supabase` that is not on PATH, and its
-    `>` redirect truncates `types.ts` to empty _before_ failing, leaving the repo in a state
-    where `typecheck` fails with three TS2306 errors. Until the script is fixed, run
-    `npx supabase gen types typescript --linked > src/lib/supabase/types.ts` and then
-    `npx prettier --write src/lib/supabase/types.ts` — generator output is not Prettier-clean
-    and `format:check` fails without it.
+    A `PreToolUse` hook blocks this for committed migrations — see the machine-enforced
+    bullet under "Claude Code-specific config". The rule is still yours to keep: the hook
+    only knows what is _committed_, so a migration pushed but not yet committed is unguarded.
+  - **`npm run db:types` works** (fixed in `d01759e`) — it calls `npx supabase`, not a bare
+    `supabase`, and already pipes through Prettier with `--end-of-line crlf`, so no manual
+    follow-up is needed. One footgun remains: the `>` redirect truncates `types.ts` to empty
+    _before_ the generator runs, so a failure (no network, project unlinked) leaves the file
+    empty and `typecheck` failing with TS2306. If that happens, re-run it once connected —
+    don't hand-edit `types.ts`.
 - **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
   semantic-token rules.
 
@@ -140,13 +143,15 @@ These are structural guarantees, not conventions — don't write code that break
 
 ## Claude Code-specific config
 
-- **Commands** (verified 2026-08-01 — `package.json` is the authority; don't invent scripts):
+- **Commands** (script list verified 2026-08-01, the `db:*` lines re-verified 2026-08-08 —
+  `package.json` is the authority; don't invent scripts):
   - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
   - `npm run test` exits 0 but proves nothing — it is `vitest run --passWithNoTests` and there
     are no tests. Treat a green `test` as "not run", not "passed" (docs/TODO.md §A.2).
-  - `npm run db:push` / `db:types` exist and the project is linked. `db:push` now has three
-    pending migrations to apply; `db:types` still regenerates types for an **empty** schema
-    until that push happens.
+  - `npm run db:push` / `db:types` both run, and the project is linked. Migrations `0001`–`0004`
+    are applied, so `db:push` has **nothing pending**; `db:types` regenerates against the real
+    applied schema and `types.ts` is current (see "Built" above, which is the authority on
+    schema state — don't duplicate the migration list here, it rots).
   - **`test:e2e` does not exist.** No Playwright config, no `e2e/` (docs/TODO.md §C.2).
 - **Applying migrations: use `/db-migrate`, not a bare `db:push`.** The slash command
   ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the approved path —
@@ -157,7 +162,10 @@ These are structural guarantees, not conventions — don't write code that break
     backups on the Free tier (PRD NFR-006a). The pre-flight is the whole value; a bare
     `db push` skips it.
   - **Never push without the user seeing the migration first**, and never re-apply or edit an
-    already-applied migration file — a new change is a new file.
+    already-applied migration file — a new change is a new file. Both halves have an
+    enforcement layer below: `permissions.ask` forces a prompt on any `db push` spelling, and
+    the `PreToolUse` hook blocks edits to committed migrations. The prompt is a speed bump,
+    not the review — it does not show anyone the SQL.
   - There is deliberately **no `npm run db:migrate`** wrapper: a one-liner that pushes
     unreviewed SQL is the thing this command exists to prevent.
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
@@ -228,6 +236,22 @@ These are structural guarantees, not conventions — don't write code that break
     `DESIGN.md` without approval.
 - **Secrets:** never read, print, or write `.env`, `.env*.local`, or any file holding the
   Supabase service-role key or other credentials.
+- **Three of the rules above are machine-enforced now, not advisory** — `permissions` in
+  [.claude/settings.json](.claude/settings.json) plus one `PreToolUse` hook,
+  [.claude/hooks/block-applied-migration.mjs](.claude/hooks/block-applied-migration.mjs).
+  Verified live 2026-08-08. This is a floor under the rules, not a replacement for reading them.
+  - **Applied migrations are unwritable.** The hook denies `Write`/`Edit` on any
+    `supabase/migrations/*.sql` committed to `HEAD` — the proxy for "applied", since this repo
+    pushes then commits. A new migration stays editable until it is committed. It fails open
+    when git is unavailable, so it hardens the immutability rule above without replacing it.
+  - **`.env` and `.env*.local` are denied for read _and_ write**; `.env.example` is
+    deliberately still readable. Consequence: Claude also cannot delete or rotate
+    `.env.local` — lift the rule in `permissions.deny` first, or do it by hand.
+  - **`db push` in any spelling forces a prompt** — `permissions.ask`, not `deny`, because
+    `deny` would break `/db-migrate` itself, which runs `npm run db:push` at its push step.
+  - Writing another hook: use the **shell form** (`"command": "node path/to.mjs"`). The exec
+    form (`"command": "node", "args": [...]`) silently never fires here — indistinguishable
+    from a hook that approved. Prove a new hook fires before trusting it.
 - **Editing source-of-truth docs:** changes to anything in `docs/` are deliberate decisions,
   not incidental edits during feature work — call them out and get approval, don't fold them
   into an unrelated change.

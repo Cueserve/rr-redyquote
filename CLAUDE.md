@@ -88,12 +88,11 @@ section — it is a snapshot, and a stale one is worse than none.
     A `PreToolUse` hook blocks this for committed migrations — see the machine-enforced
     bullet under "Claude Code-specific config". The rule is still yours to keep: the hook
     only knows what is _committed_, so a migration pushed but not yet committed is unguarded.
-  - **`npm run db:types` works** (fixed in `d01759e`) — it calls `npx supabase`, not a bare
-    `supabase`, and already pipes through Prettier with `--end-of-line crlf`, so no manual
-    follow-up is needed. One footgun remains: the `>` redirect truncates `types.ts` to empty
-    _before_ the generator runs, so a failure (no network, project unlinked) leaves the file
-    empty and `typecheck` failing with TS2306. If that happens, re-run it once connected —
-    don't hand-edit `types.ts`.
+  - **`npm run db:types` works, and a failed run is now safe.** It calls `npx supabase`, not a
+    bare `supabase`, generates to `types.ts.tmp` and renames only on exit 0, then pipes through
+    Prettier with `--end-of-line crlf` — so no manual follow-up is needed. A failure (no
+    network, project unlinked) leaves `types.ts` untouched; the CLI's JSON error blob lands in
+    the gitignored `.tmp` instead. Re-run it once connected — don't hand-edit `types.ts`.
 - **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
   semantic-token rules.
 

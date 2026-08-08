@@ -24,10 +24,6 @@
 .DS_Store
 *.pem
 
-# local Python virtualenv (belt-and-braces: git does not currently see it,
-# but nothing in here should ever be committable)
-.venv/
-
 # Impeccable (the design auditor) writes two configs. config.json holds team-wide
 # rule suppressions and IS committed; config.local.json is per-developer machine
 # state. Only the local one is ignored.
@@ -49,3 +45,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# db:types writes here first and renames on success, so a failed run leaves this
+# behind holding the CLI's JSON error blob instead of poisoning types.ts.
+*.ts.tmp

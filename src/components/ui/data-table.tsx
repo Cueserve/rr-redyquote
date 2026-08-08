@@ -93,23 +93,48 @@ function TableHead({
   );
 }
 
+// `header` renders the cell as `<th scope="row">` instead of `<td>`. Exactly one
+// cell per row should carry it: the one naming the thing the row is about. A
+// screen reader walking cell by cell otherwise hears the column name and the
+// value with nothing saying *which* row it is on -- "SKU, RR-WF55-FS" and never
+// "Wayfinder 55 freestanding". It is styled as a body cell, not as a
+// TableHead: `th` defaults to bold and centered in the UA sheet, and the row
+// name is ordinary content, not a column label.
 function TableCell({
   className,
   density = "comfortable",
   numeric = false,
+  header = false,
   ...props
 }: React.ComponentProps<"td"> &
-  VariantProps<typeof cellVariants> & { numeric?: boolean }) {
+  VariantProps<typeof cellVariants> & {
+    numeric?: boolean;
+    header?: boolean;
+  }) {
+  const classes = cn(
+    cellVariants({ density }),
+    "text-foreground",
+    numeric && "font-mono tabular-nums",
+    className,
+  );
+
+  if (header) {
+    return (
+      <th
+        data-slot="table-cell"
+        data-numeric={numeric}
+        scope="row"
+        className={cn("text-left font-normal", classes)}
+        {...props}
+      />
+    );
+  }
+
   return (
     <td
       data-slot="table-cell"
       data-numeric={numeric}
-      className={cn(
-        cellVariants({ density }),
-        "text-foreground",
-        numeric && "font-mono tabular-nums",
-        className,
-      )}
+      className={classes}
       {...props}
     />
   );

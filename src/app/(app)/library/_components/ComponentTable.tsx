@@ -136,7 +136,9 @@ export function ComponentTable({
               const environment = ENVIRONMENT[component.environment];
               return (
                 <TableRow key={component.id}>
-                  <TableCell>
+                  {/* The row's name cell, so cell-by-cell navigation says which
+                      component each value belongs to. Matches ProductTable. */}
+                  <TableCell header>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <Link
@@ -185,7 +187,12 @@ export function ComponentTable({
         </Table>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      {/* `role="status"` (polite + atomic) is what makes the filters audible:
+          search, the category select and the toggle rewrite the table with no
+          page navigation, so without a live region a screen-reader user gets no
+          confirmation the list changed, or that it went empty (WCAG 2.2 4.1.3).
+          Matches ProductTable. */}
+      <p role="status" className="text-xs text-muted-foreground">
         Showing {rows.length} of {components.length} components.
       </p>
     </div>

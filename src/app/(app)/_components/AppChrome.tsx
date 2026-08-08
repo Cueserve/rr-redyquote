@@ -102,11 +102,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               // Use the current committed brand logo file. `priority` because
               // the rail is above the fold on every route -- lazy-loading it
               // just buys a first-paint flash.
+              //
+              // `sizes` is not optional here. width/height are the file's
+              // intrinsic dimensions, and without `sizes` Next emits a
+              // density-descriptor srcset off the *viewport* -- w=1920 at 1x,
+              // w=3840 at 2x -- for a slot that renders at 160px. That is
+              // 17.9 KB where 3.9 KB does the job, preloaded on every route.
+              // Declaring the real slot width makes Next emit width
+              // descriptors and the browser pick w=256.
               <Image
                 src="/redyref-logo.png"
                 alt="REDYREF"
                 width={1442}
                 height={817}
+                sizes="160px"
                 priority
                 className="h-auto w-40"
               />

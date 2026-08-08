@@ -72,7 +72,15 @@ function Sidebar({
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium no-underline transition-colors max-xl:justify-center max-xl:px-0 max-xl:py-3",
+                    // `ring-sidebar-ring`, not the base layer's `ring-ring`:
+                    // clay-600 on the stone-900 rail measures 2.37:1, under the
+                    // 3:1 non-text floor (WCAG 1.4.11). --sidebar-ring is
+                    // clay-400 for exactly this surface -- 5.63:1 on the rail
+                    // (DESIGN-SYSTEM.md §4). The ring is drawn outside the
+                    // border box, so the rail is the adjacent surface that
+                    // matters; against the active item's own clay fill it is
+                    // only 2.37, which is why it must never be drawn inset.
+                    "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium no-underline transition-colors focus-visible:ring-sidebar-ring max-xl:justify-center max-xl:px-0 max-xl:py-3",
                     isActive
                       ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",

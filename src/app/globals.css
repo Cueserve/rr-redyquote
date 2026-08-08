@@ -476,6 +476,16 @@
   a:hover {
     @apply underline;
   }
+  /* The focus ring belongs here, not on each link. Every ui/ primitive carries
+     `focus-visible:ring-3 focus-visible:ring-ring` in its own cva string, but a
+     plain anchor has no cva string to carry it -- so links fell through to the
+     browser's `outline: auto`, which is thinner, differently colored per
+     browser, and not the ring this file declares below. Sidebar links override
+     --ring with --sidebar-ring; a utility class beats @layer base, so that
+     override needs no !important. */
+  a:focus-visible {
+    @apply rounded-sm outline-none ring-3 ring-ring;
+  }
   table {
     border-collapse: collapse;
   }

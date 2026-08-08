@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { DeactivatedBadge, FreshnessBadge } from "@/components/freshness-badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -40,6 +41,13 @@ export function ProductTable({ products }: { products: Product[] }) {
     return matchesActive && matchesQuery;
   });
 
+  // An empty result has two possible causes and the copy has to name the one in
+  // play, because one of them is invisible: the deactivated toggle is off by
+  // default (PRD-018 keeps deactivation soft), so a rep searching for a
+  // deactivated product by name hits a dead end with nothing on screen
+  // explaining why it isn't there.
+  const hiddenByToggle = !showDeactivated && products.some((p) => !p.active);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -69,7 +77,37 @@ export function ProductTable({ products }: { products: Product[] }) {
       {rows.length === 0 ? (
         <div className="rounded-md border border-border">
           <EmptyState>
-            <p>No products match this filter.</p>
+            {products.length === 0 ? (
+              <p>No products yet.</p>
+            ) : (
+              <p>
+                {needle === ""
+                  ? "No active products."
+                  : `No ${showDeactivated ? "" : "active "}products match “${query.trim()}”.`}
+              </p>
+            )}
+            {needle !== "" || hiddenByToggle ? (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                {needle !== "" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                ) : null}
+                {hiddenByToggle ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeactivated(true)}
+                  >
+                    Show deactivated
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </EmptyState>
         </div>
       ) : (
@@ -88,7 +126,9 @@ export function ProductTable({ products }: { products: Product[] }) {
           <TableBody>
             {rows.map((product) => (
               <TableRow key={product.id}>
-                <TableCell>
+                {/* The row's name cell, so cell-by-cell navigation says which
+                    product each value belongs to. */}
+                <TableCell header>
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/products/${product.id}`}
@@ -125,7 +165,12 @@ export function ProductTable({ products }: { products: Product[] }) {
         </Table>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      {/* `role="status"` (polite + atomic) is what makes the filter audible:
+          search and the toggle rewrite the table with no page navigation, so
+          without a live region a screen-reader user gets no confirmation the
+          list changed, or that it went empty (WCAG 2.2 4.1.3). This sentence is
+          already the right one -- it needs the role, not new copy. */}
+      <p role="status" className="text-xs text-muted-foreground">
         Showing {rows.length} of {products.length} products.
       </p>
     </div>

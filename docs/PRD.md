@@ -6,7 +6,7 @@
 RedyQuote v1.
 
 > Derived from: docs/PRODUCT.md
-> Downstream: docs/ARCHITECTURE.md, docs/TECH-STACK.md
+> Downstream: docs/ARCHITECTURE.md, docs/TECH-STACK.md, docs/DESIGN-SYSTEM.md (NFR-008 only)
 
 ---
 
@@ -47,6 +47,7 @@ RedyQuote v1.
 | NFR-005 | Auditability: `price_history` (cost changes) and `quote_status_history` (status changes) are append-only and written in the same transaction as the change they record.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | NFR-006 | Durability, **phased by environment** — quote and pricing data is real and un-recreatable, but the protection required scales with whether that data exists yet. **(a) Development / pre-production (current):** Supabase **Free** tier; no automated backups exist on Free, and none are required, because the database holds only seed and test data. Take a `supabase db dump` before any destructive migration. **(b) Production cutover — the trigger is the first real customer quote being stored:** the project MUST be on **Pro** ($25/mo), whose included daily backups (7-day retention) are the accepted recovery mechanism for v1. **(c) PITR is explicitly NOT required for v1** — it is a $100/mo add-on that replaces daily backups with finer granularity, and a sub-24-hour RPO is not justified at REDYREF's scale. Revisit only if a stated RPO ever drops below 24 hours. |
 | NFR-007 | Server-side is the source of truth for both **access** and **computed pricing values** — a client-submitted cost breakdown is never trusted verbatim; the canonical GP%/total-cost figures are recomputed server-side from stored line items and settings before being persisted or used for the margin-floor flag.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| NFR-008 | **Supported viewports are tablet and up (≥768px CSS width).** Every screen MUST be usable at 768px and above with no horizontal scrolling of the page itself; a dense table MAY scroll horizontally inside its own container, which is the designed behaviour and not a defect. Phone widths are out of scope (§3): nothing below 768px is designed or tested, and the app is not expected to degrade gracefully there. The navigation rail's two-width collapse, and the measurement rule that fixes its breakpoint, are specified in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) §9.                                                                                                                                                                                                                                                                                                                |
 
 ## 2A. Placeholder Specifications
 
@@ -88,3 +89,8 @@ Status: **Resolved 2026-07-23.** See
 
 Multi-tenancy, PDF/email quote delivery, RBAC beyond the one approval gate, and legacy
 data migration are out of scope for v1.
+
+**Phone-width support is also out of scope** (NFR-008). Reps quote from a desk or a tablet,
+and the screens are dense tables and multi-column forms that a 390px viewport cannot carry
+without a separate design. Nothing below 768px is designed or tested. This is a scope
+decision, not a deferred defect — treat a phone-width bug report as a request to widen scope.

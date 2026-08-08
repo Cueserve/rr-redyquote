@@ -11,7 +11,10 @@ accessibility floor every color must clear.
 > `docs/superpowers/specs/2026-07-31-redyref-admin-actual-brand-color-design.md` during design
 > work; it has since been folded into this file in full (§1 records what carried over verbatim
 > vs. what was re-solved), and that file has been deleted — no other file or external project
-> is a dependency of this one.
+> is a dependency of this one — with one exception, below.
+> Depends on: [PRD.md](PRD.md) **NFR-008** for the supported viewport range, which §9's rail
+> breakpoints are derived from and must not restate. That row is upstream of this file; the
+> palette and token rules remain self-contained.
 > Implemented in: `src/app/globals.css`, `src/app/layout.tsx`, `src/components/ui/`,
 > `eslint.config.mjs`
 
@@ -300,9 +303,29 @@ imprecise. The press state darkens a step (`--primary-active`) instead.
 
 **Elevation** — increases with layering (modal > popover > card), never with hover.
 
-**Layout** — fixed left sidebar (220px) + persistent top bar (breadcrumb-style, e.g.
-"Home / Quotes / New") + an independently-scrolling content area. Primary content pattern is
-either "toolbar + KPI strip + table" or "form + live-calculated summary panel."
+**Layout** — left sidebar, a persistent top bar (breadcrumb-style, e.g. "Home / Quotes / New"),
+and an independently-scrolling content area. Primary content pattern is either "toolbar + KPI
+strip + table" or "form + live-calculated summary panel."
+
+**Supported viewports are set by [PRD.md](PRD.md) NFR-008 — tablet and up (≥768px)**, and that
+row is the authority; don't restate the range here, it will drift. What follows from it for the
+chrome: there is no phone drawer and no hamburger, and 768px is the narrowest width any layout
+below is designed against.
+
+**The rail collapses, it does not resize.** 220px at `xl` (≥1280px) and above; 64px icons-only
+below it. Two widths, no intermediate step. A fixed 220px is 29% of a 768px tablet, which cost
+the quotes table 297px of its 787px of columns — the collapse returns 152px of that. Below `xl`
+the wordmark chip is hidden rather than scaled (it is the only brand asset, and it is illegible
+at 40px), each item keeps its label as `sr-only` for its accessible name, and a right-side
+tooltip carries the label for sighted users.
+
+**Why `xl` and not `lg`.** A two-width rail always makes the content area shrink at the moment
+it expands; the step cannot be removed, only placed. At `lg` it landed badly — 959px of content
+at 1023px, then 804px at 1024px, which clipped 41px off the quotes table exactly when the
+window got bigger. At `xl` the same 155px step falls at 1280px, where 1060px of content still
+clears the 787px table with room over. **The rule is not that content width grows monotonically;
+it is that the narrow side of the step still fits the widest table.** Check that measurement
+before moving this breakpoint, and re-check it if a table gains columns.
 
 **Surfaces** — flat color only: no gradients, no photographic imagery, no textures or patterns.
 

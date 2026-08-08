@@ -246,11 +246,21 @@ description advertises.
     [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: run
     `npx impeccable ignores add-rule <rule>`, which writes `detector.ignoreRules` into
     `.impeccable/config.json` — or an `impeccable-disable-next-line <rule>` comment for a
-    genuine one-off. **`.impeccable/` does not exist yet** (verified 2026-08-08): the first
-    suppression creates it, and that file has to be committed so the team inherits the decision
-    once. The command's `--local` scope writes `.impeccable/config.local.json`, which is
-    per-developer and gitignored — never put a team decision there. **Always report what you
-    suppressed and why.**
+    genuine one-off. `.impeccable/config.json` **exists and is committed** as of 2026-08-08,
+    carrying exactly one entry — see the next bullet. The command's `--local` scope writes
+    `.impeccable/config.local.json`, which is per-developer and gitignored — never put a team
+    decision there. **Always report what you suppressed and why.**
+  - **`--reason` does not work on `add-rule`** — it is accepted silently and dropped (the CLI
+    stores reasons only for `add-value`). So the rationale goes in a `$comment` key at the top
+    of `config.json`, which the parser ignores harmlessly; this is verified, not assumed. Keep
+    writing it there: an unexplained suppression is indistinguishable from a mistake.
+  - **One rule is suppressed: `cramped-padding`.** It fires on the scroll container in
+    `src/components/ui/data-table.tsx`, which carries no padding deliberately — an inset would
+    peel the `bg-muted` header row off its border, contradicting DESIGN-SYSTEM.md §7.11.
+    `ignoreRules` has no per-file scope (only `ignoreValues` does), so repo-wide is the
+    granularity the tool offers. **The cost is real: a genuinely cramped container anywhere in
+    `src/` now goes unreported.** `npx impeccable detect src/ --no-config` bypasses the whole
+    config and is the way to audit what is being hidden.
 - **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
   and `gray-on-color` need two resolved colors. Our components use semantic tokens, which
   resolve at runtime from `src/app/globals.css`, so a `detect src/` pass sees no color pair and

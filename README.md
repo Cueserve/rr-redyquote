@@ -142,10 +142,15 @@ Five things to know:
   previously installed one by hand (`npx impeccable skills install` or `claudekit`), delete the
   local copy so you aren't loading two versions of one skill.
 
-`.claude/skills/` and `.impeccable/config.local.json` are gitignored: installed payloads and
-per-developer overrides are machine state, not source. There is **no `.impeccable/` directory
-yet** — the first suppression creates it, and the `.impeccable/config.json` written there has to
-be committed, because a suppression is a team decision.
+`.impeccable/config.local.json` is gitignored: per-developer overrides are machine state, not
+source. Nothing else here is. Plugins install to `~/.claude/plugins/cache/`, outside the repo,
+so there is no local payload to ignore — a `.claude/skills/` directory should not exist, and if
+one appears you hand-installed something (see the bullet above) and it **will** be committed.
+
+`.impeccable/config.json` **is** committed, because a suppression is a team decision. It holds
+one: `cramped-padding`, which misfires on the data table's scroll container (the rationale is in
+the file's `$comment`). That suppression is repo-wide, since the tool has no per-file scope for
+rules — run `npx impeccable detect src/ --no-config` to see what it hides.
 
 You can also run the auditor outside Claude Code:
 

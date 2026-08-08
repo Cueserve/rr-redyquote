@@ -1,0 +1,8 @@
+{
+  "$comment": "cramped-padding: suppressed repo-wide 2026-08-08. It fires on the scroll container in src/components/ui/data-table.tsx, which carries no padding on purpose -- an inset would peel the bg-muted header row away from its border, contradicting DESIGN-SYSTEM.md 7.11. The detector has no per-file scope for rules (only for values), so repo-wide is the available granularity. Cost of that: a genuinely cramped container elsewhere will not be reported. Re-check by running `npx impeccable detect src/ --no-config` before trusting a clean run.",
+  "detector": {
+    "ignoreRules": ["cramped-padding"],
+    "ignoreFiles": [],
+    "ignoreValues": []
+  }
+}

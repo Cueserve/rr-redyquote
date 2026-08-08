@@ -99,8 +99,15 @@ export default async function ComponentDetailPage({
                     <TableCell numeric className="text-muted-foreground">
                       {formatDate(row.quoted_date)}
                     </TableCell>
+                    {/* See ComponentTable: the dash is visual only, the word is
+                        what a screen reader reads. */}
                     <TableCell className="text-muted-foreground">
-                      {row.vendor ?? "—"}
+                      {row.vendor ?? (
+                        <>
+                          <span aria-hidden="true">—</span>
+                          <span className="sr-only">No vendor</span>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(row.created_at)}

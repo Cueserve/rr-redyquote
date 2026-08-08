@@ -73,7 +73,14 @@ export function ComponentTable({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
+          {/* The 320px width belongs to the wrapper, not the Input, and only
+              from `sm` up: as a flat `w-80` on the Input it could not shrink,
+              so below ~430px of content it pushed the toolbar wider than the
+              scroll container and `main` gained a horizontal scrollbar. Under
+              `sm` it now fills the row instead. No change at any width PRD
+              NFR-008 actually supports (≥768px); this is defence against the
+              layout breaking silently outside that range. */}
+          <div className="relative w-full sm:w-80">
             <Search
               aria-hidden="true"
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -83,7 +90,7 @@ export function ComponentTable({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search name, SKU, or vendor"
               aria-label="Search components"
-              className="w-80 pl-9"
+              className="pl-9"
             />
           </div>
 
@@ -154,21 +161,42 @@ export function ComponentTable({
                       </span>
                     </div>
                   </TableCell>
+                  {/* A bare "—" is silence to a screen reader: most announce
+                      nothing for it, so an intentionally-empty cell is
+                      indistinguishable from a broken one. The dash stays as the
+                      visual convention; the word is what actually gets read. */}
                   <TableCell className="text-muted-foreground">
-                    {categoryName.get(component.category_id) ?? "—"}
+                    {categoryName.get(component.category_id) ?? (
+                      <>
+                        <span aria-hidden="true">—</span>
+                        <span className="sr-only">Uncategorised</span>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {component.vendor ?? "—"}
+                    {component.vendor ?? (
+                      <>
+                        <span aria-hidden="true">—</span>
+                        <span className="sr-only">No vendor</span>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={environment.variant}>
                       {environment.label}
                     </Badge>
                   </TableCell>
-                  <TableCell numeric className="text-right">
+                  {/* Cost carries the weight: it is the number a rep scans this
+                      table for, and at eight columns of identical treatment
+                      nothing anchored the row. Matches how the price-history
+                      table on /library/[id] already renders a cost cell. */}
+                  <TableCell numeric className="text-right font-semibold">
                     {formatMoney(component.cost)}
                   </TableCell>
-                  <TableCell numeric className="text-right">
+                  <TableCell
+                    numeric
+                    className="text-right text-muted-foreground"
+                  >
                     {formatHours(component.default_labor_hours)}
                   </TableCell>
                   <TableCell numeric className="text-muted-foreground">

@@ -31,18 +31,25 @@ export function FreshnessBadge({
   quotedDate,
 }: {
   freshness: Freshness;
-  /** Shown as the accessible title so a badge is never the only carrier. */
+  /** Read out after the label so the badge is never the only carrier. */
   quotedDate?: string;
 }) {
   const { label, variant } = FRESHNESS[freshness];
 
   return (
-    <Badge
-      variant={variant}
-      dot
-      title={quotedDate ? `Quoted ${formatDate(quotedDate)}` : undefined}
-    >
+    <Badge variant={variant} dot>
       {label}
+      {/* `sr-only`, not `title`. A `title` tooltip is mouse-hover only: it never
+          appears on keyboard focus (this badge is not focusable, and making it
+          focusable would add one tab stop per table row), never on touch, and
+          screen readers treat it inconsistently -- so the date it carried was
+          reachable by exactly one input method. The repo's Tooltip primitive is
+          the wrong tool for the same reason it is right in line-items.tsx:
+          there it wraps a single warning icon, here it would repeat down a
+          21-row column. */}
+      {quotedDate ? (
+        <span className="sr-only">, quoted {formatDate(quotedDate)}</span>
+      ) : null}
     </Badge>
   );
 }

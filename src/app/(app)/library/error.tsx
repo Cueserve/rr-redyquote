@@ -23,7 +23,7 @@ export default function LibraryError({
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-md font-semibold">
-            The Component Library Could Not Be Loaded.
+            The Component Library could not be loaded
           </h1>
           <p className="text-sm text-muted-foreground">
             Nothing was changed. Try again, and if it keeps happening give your

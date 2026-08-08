@@ -26,6 +26,24 @@ const cellVariants = cva("px-3 py-2.5", {
 // The wrapper carries no padding on purpose -- it is the horizontal scroll
 // container, and an inset would peel the `bg-muted` header away from the
 // border. impeccable's `cramped-padding` flags it; that finding is wrong here.
+//
+// It IS a tab stop, though (WCAG 2.1.1). An `overflow-x: auto` container that
+// clips content is unreachable by keyboard unless it is focusable itself: only
+// the row-name cell holds a link, every column after it is inert, so tabbing
+// through a table scrolls it vertically and never horizontally. Measured on
+// /library at 768px -- PRD NFR-008's narrowest supported width -- the table
+// wants 710px and gets 646px, so the Freshness badge is what falls off the
+// right edge, unreachable without a mouse. `role="region"` named by the caption
+// is what keeps the new stop from announcing itself as an anonymous group.
+//
+// `scrollbar-color` is set for the same reason: platforms with overlay
+// scrollbars (macOS) draw nothing until a scroll is already in progress, so the
+// only cue that content continues is a clipped cell against a 1.42:1 decorative
+// border. Naming a thumb color opts out of the overlay style. --input is the
+// right token rather than --border: this is a control boundary, not a rule, and
+// it carries the 3:1 that --border deliberately does not (globals.css §Lines).
+// A fade or scroll shadow -- the conventional fix -- is not available here:
+// DESIGN-SYSTEM.md §9 "Surfaces" is flat color only, no gradients.
 function Table({
   className,
   caption,
@@ -33,7 +51,12 @@ function Table({
   ...props
 }: React.ComponentProps<"table"> & { caption: string }) {
   return (
-    <div className="w-full overflow-x-auto rounded-md border border-border">
+    <div
+      role="region"
+      aria-label={caption}
+      tabIndex={0}
+      className="w-full overflow-x-auto rounded-md border border-border outline-none [scrollbar-color:var(--input)_transparent] [scrollbar-width:thin] focus-visible:ring-3 focus-visible:ring-ring"
+    >
       <table
         data-slot="table"
         className={cn("w-full border-collapse text-sm", className)}

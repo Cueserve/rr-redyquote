@@ -82,15 +82,9 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-Two caveats worth knowing before you trust a green run:
-
-- **`npm run test` proves nothing yet.** It is `vitest run --passWithNoTests` and there are no
-  tests, so it exits 0 on an empty suite. Read a pass as "not run" until the pricing-calc
-  tests land ([TODO.md](docs/TODO.md) §A.2).
-- **The migrations exist but have not been applied.** `supabase/migrations/0001`–`0003` are
-  authored and unpushed, so the hosted database is still empty: `npm run db:types` regenerates
-  types for nothing until `npm run db:push` runs. `0004` onward (products, quotes, RPCs) is
-  still a spec — see [DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
+One caveat before you trust a green run: **`npm run test` proves nothing yet.** It is
+`vitest run --passWithNoTests` and there are no tests, so it exits 0 on an empty suite. Read a
+pass as "not run" until the pricing-calc tests land ([TODO.md](docs/TODO.md) §A.2).
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no

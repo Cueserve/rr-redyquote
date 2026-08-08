@@ -230,6 +230,12 @@ deterministic CLI check (exit `2` means findings, `--json` for tooling). Do not 
 `/impeccable polish` or any of its other generating commands to build UI, whatever its own
 description advertises.
 
+- **Its context is pinned to `docs/`.** `.claude/settings.json` sets
+  `env.IMPECCABLE_CONTEXT_DIR=docs`, so impeccable's skill loader always reads
+  [docs/PRODUCT.md](docs/PRODUCT.md). Without the pin a `PRODUCT.md`, `DESIGN.md`, or
+  `.impeccable.md` landing at the repo root silently wins and `docs/PRODUCT.md` stops being
+  read, which fails impeccable's product gate and routes it to `/impeccable teach`. **Never run
+  `teach` or `document`** — both write context files, and `document` writes `DESIGN.md`.
 - **The baseline is clean — treat any new finding as real.** Verified 2026-08-05 against
   `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and exit 0. That is
   not luck. Most of its high-signal detectors (`ai-color-palette`, `gray-on-color`,
@@ -237,26 +243,34 @@ description advertises.
   those unwritable — ESLint gets there first, structurally. So there is no standing noise to
   triage and **no pre-seeded suppression list**. A finding means something got past lint.
   - Suppress only after establishing the finding contradicts
-    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: add the
-    rule id to `detector.ignoreRules` in `.impeccable/config.json` (committed, so the team
-    inherits the decision once) or an `impeccable-disable-next-line <rule>` comment for a
-    genuine one-off. `.impeccable/config.local.json` is per-developer and gitignored — never put
-    a team decision there. **Always report what you suppressed and why.**
+    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: run
+    `npx impeccable ignores add-rule <rule>`, which writes `detector.ignoreRules` into
+    `.impeccable/config.json` — or an `impeccable-disable-next-line <rule>` comment for a
+    genuine one-off. **`.impeccable/` does not exist yet** (verified 2026-08-08): the first
+    suppression creates it, and that file has to be committed so the team inherits the decision
+    once. The command's `--local` scope writes `.impeccable/config.local.json`, which is
+    per-developer and gitignored — never put a team decision there. **Always report what you
+    suppressed and why.**
 - **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
   and `gray-on-color` need two resolved colors. Our components use semantic tokens, which
   resolve at runtime from `src/app/globals.css`, so a `detect src/` pass sees no color pair and
   stays silent. It is not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the
   question.
   - To actually check contrast, audit the rendered page: `npm run dev`, then
-    `npx impeccable detect http://localhost:3000/<route>`. URL mode needs `puppeteer`, an
-    optional dependency — install it in the sandbox, not as a project dependency (it is not in
+    `npx impeccable detect http://localhost:3000/<route>`. **Nothing to install:** `puppeteer`
+    is an `optionalDependency` of `impeccable`, so `npx` already pulls it into its own cache
+    (verified 2026-08-08 — URL mode launches Chrome with no separate install). Should it ever
+    go missing, install it outside the project; never into `package.json`, which is what
+    impeccable's own `npm install puppeteer` error message would have you do (it is not in
     TECH-STACK.md).
-  - The four `design-system-*` rules are also inert: impeccable looks for a `DESIGN.md` with
-    YAML frontmatter at the repo root, `docs/`, or `.agents/context/`, and we have
-    `docs/DESIGN-SYSTEM.md` — different filename, no frontmatter. Leaving it inert is the
-    current, deliberate choice; a second machine-readable copy of the token values would drift
-    from DESIGN-SYSTEM.md, and ESLint already enforces the same constraint. Do not create
-    `DESIGN.md` without approval.
+  - The four `design-system-*` rules are also inert: impeccable builds its font/color/radius
+    allowlists from the **YAML frontmatter** of a `DESIGN.md` (repo root, then
+    `.agents/context/`, then `docs/`) and bails the moment that frontmatter is missing — the
+    markdown body is never read for this. We have `docs/DESIGN-SYSTEM.md`: different filename,
+    no frontmatter. Leaving it inert is the current, deliberate choice; a second
+    machine-readable copy of the token values would drift from DESIGN-SYSTEM.md, and ESLint
+    already enforces the same constraint. Do not create `DESIGN.md`, rename DESIGN-SYSTEM.md
+    to it, or add frontmatter, without approval.
 
 **Ship gate:** `npm run lint` and `npm run typecheck`. A suggestion that fails lint was never a
 valid suggestion.

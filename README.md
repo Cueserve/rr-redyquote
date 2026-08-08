@@ -96,9 +96,10 @@ Optional — skip it if you don't use Claude Code. The repo declares three share
 every developer gets the same UI/UX guidance instead of whatever they happen to have installed
 locally.
 
-**Nothing to run.** `.claude/settings.json` declares the marketplaces and enables all three.
-Claude Code reads it on open and prompts you to trust the workspace; accept, and the plugins
-install themselves.
+**Nothing to run.** `.claude/settings.json` declares the marketplaces, enables all three, and
+pins impeccable's context directory to `docs/` (`IMPECCABLE_CONTEXT_DIR`) so it reads
+[PRODUCT.md](docs/PRODUCT.md) from there. Claude Code reads it on open and prompts you to trust
+the workspace; accept, and the plugins install themselves.
 
 | Plugin                                    | Job                                                     |
 | ----------------------------------------- | ------------------------------------------------------- |
@@ -116,7 +117,7 @@ tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on
 is **design system → shadcn → impeccable audit → `npm run lint` + `npm run typecheck`**;
 [CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
 
-Four things to know:
+Five things to know:
 
 - **No plugin overrules this repo's design system.** [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md)
   and the semantic tokens in `src/app/globals.css` win every time, and `eslint.config.mjs`
@@ -131,19 +132,20 @@ Four things to know:
   palette classes most of its detectors key on. But its contrast rules need two resolved colors,
   and our semantic tokens resolve at runtime, so a source scan **skips** the WCAG AA check rather
   than passing it. For real contrast coverage, audit the rendered page: `npm run dev`, then
-  `npx impeccable detect http://localhost:3000/<route>` (needs `puppeteer`; install it globally,
-  not as a project dependency).
+  `npx impeccable detect http://localhost:3000/<route>` — nothing to install, since `npx` pulls
+  `puppeteer` in as one of impeccable's optional dependencies. Never add it to `package.json`.
 - **A new finding is a real finding.** Because the baseline is empty, anything impeccable
   reports got past `npm run lint` and deserves a fix, not a suppression. If you do establish a
-  finding contradicts [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), suppress it by rule id under
-  `detector.ignoreRules` in `.impeccable/config.json` — never by changing a token.
+  finding contradicts [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), suppress it with
+  `npx impeccable ignores add-rule <rule>` — never by changing a token.
 - **Don't install the same tool twice.** All three come from the plugin system. If you
   previously installed one by hand (`npx impeccable skills install` or `claudekit`), delete the
   local copy so you aren't loading two versions of one skill.
 
 `.claude/skills/` and `.impeccable/config.local.json` are gitignored: installed payloads and
-per-developer overrides are machine state, not source. `.impeccable/config.json` **is**
-committed — a suppression there is a team decision.
+per-developer overrides are machine state, not source. There is **no `.impeccable/` directory
+yet** — the first suppression creates it, and the `.impeccable/config.json` written there has to
+be committed, because a suppression is a team decision.
 
 You can also run the auditor outside Claude Code:
 

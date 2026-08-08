@@ -19,14 +19,29 @@ const cellVariants = cva("px-3 py-2.5", {
   },
 });
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+// `caption` is required rather than optional: a screen reader lands on a table
+// with no idea what it lists, and every table here is one of several on a
+// route. Rendered `sr-only` because the visible heading already says it.
+//
+// The wrapper carries no padding on purpose -- it is the horizontal scroll
+// container, and an inset would peel the `bg-muted` header away from the
+// border. impeccable's `cramped-padding` flags it; that finding is wrong here.
+function Table({
+  className,
+  caption,
+  children,
+  ...props
+}: React.ComponentProps<"table"> & { caption: string }) {
   return (
     <div className="w-full overflow-x-auto rounded-md border border-border">
       <table
         data-slot="table"
         className={cn("w-full border-collapse text-sm", className)}
         {...props}
-      />
+      >
+        <caption className="sr-only">{caption}</caption>
+        {children}
+      </table>
     </div>
   );
 }
@@ -61,11 +76,13 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 function TableHead({
   className,
   density = "comfortable",
+  scope = "col",
   ...props
 }: React.ComponentProps<"th"> & VariantProps<typeof cellVariants>) {
   return (
     <th
       data-slot="table-head"
+      scope={scope}
       className={cn(
         cellVariants({ density }),
         "text-left text-xs font-semibold text-muted-foreground",

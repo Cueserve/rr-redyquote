@@ -29,7 +29,7 @@ export function SettingsHistoryTab({
           </EmptyState>
         </div>
       ) : (
-        <Table>
+        <Table caption="Settings change history">
           <TableHeader>
             <TableRow>
               <TableHead>Field</TableHead>

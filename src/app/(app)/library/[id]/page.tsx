@@ -73,7 +73,7 @@ export default async function ComponentDetailPage({
               <p>No cost changes recorded yet.</p>
             </EmptyState>
           ) : (
-            <Table>
+            <Table caption="Cost change history for this component">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-right">Cost</TableHead>

@@ -118,7 +118,7 @@ export function ComponentTable({
           </EmptyState>
         </div>
       ) : (
-        <Table>
+        <Table caption="Component library">
           <TableHeader>
             <TableRow>
               <TableHead>Component</TableHead>

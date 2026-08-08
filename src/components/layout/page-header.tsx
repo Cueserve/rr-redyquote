@@ -28,8 +28,13 @@ function PageHeader({
     >
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-xl leading-tight">{title}</h1>
+        {/* Capped at 70ch, not on PageBody: the measure limit is a property of
+            prose, and the table below wants every pixel it can get. Left
+            unbounded it ran 91ch at 1280. */}
         {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-[70ch] text-sm text-muted-foreground">
+            {description}
+          </p>
         ) : null}
       </div>
       {actions ? (

@@ -93,7 +93,7 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
           </EmptyState>
         </div>
       ) : (
-        <Table>
+        <Table caption="Quotes">
           <TableHeader>
             <TableRow>
               <TableHead>Quote</TableHead>
@@ -142,10 +142,10 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
                       // PRD-016: advisory only. It marks the quote; it never
                       // blocks saving or submitting.
                       <Tooltip>
-                        <TooltipTrigger asChild>
+                        <TooltipTrigger aria-label="Below margin floor">
                           <TriangleAlert
                             className="size-3.5"
-                            aria-label="Below margin floor"
+                            aria-hidden="true"
                           />
                         </TooltipTrigger>
                         <TooltipContent>

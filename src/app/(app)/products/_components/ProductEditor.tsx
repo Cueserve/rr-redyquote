@@ -173,7 +173,7 @@ export function ProductEditor({
             </p>
           </EmptyState>
         ) : (
-          <Table>
+          <Table caption="Fabrication pricing tiers for this product">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-32 text-right">Qty tier</TableHead>

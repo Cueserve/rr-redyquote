@@ -62,8 +62,12 @@ const ENVIRONMENT_LABEL: Record<string, string> = {
 function PendingValue() {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="text-muted-foreground">—</span>
+      {/* Labelled, because the dash alone tells a screen reader nothing. */}
+      <TooltipTrigger
+        aria-label="Pending calculation"
+        className="text-muted-foreground"
+      >
+        —
       </TooltipTrigger>
       <TooltipContent>
         Recomputed server-side when the quote is saved.
@@ -86,7 +90,7 @@ function LineFlags({
         // blocked: the rep may have a reason, and the docs never call it an
         // error.
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <Badge variant="destructive" className="cursor-default">
               <TriangleAlert aria-hidden="true" />
               Environment
@@ -138,7 +142,7 @@ export function LineItems({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table>
+      <Table caption="Line items on this quote">
         <TableHeader>
           <TableRow>
             <TableHead className="w-40">Category</TableHead>

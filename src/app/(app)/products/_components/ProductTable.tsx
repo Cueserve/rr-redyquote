@@ -73,7 +73,7 @@ export function ProductTable({ products }: { products: Product[] }) {
           </EmptyState>
         </div>
       ) : (
-        <Table>
+        <Table caption="Products">
           <TableHeader>
             <TableRow>
               <TableHead>Product</TableHead>

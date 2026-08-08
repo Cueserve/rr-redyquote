@@ -201,6 +201,7 @@
   --shadow-lg: 0 16px 40px rgba(26, 26, 26, 0.14);
 
   --container-max: 1280px;
+  --spacing-dialog-content: 85vh;
 }
 
 /* --- TIER 2 values: light ------------------------------------------------ */

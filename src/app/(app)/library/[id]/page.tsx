@@ -46,14 +46,19 @@ export default async function ComponentDetailPage({
         description={`${category?.name ?? "Uncategorised"} · ${component.sku}`}
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <ComponentEditor component={component} categories={CATEGORIES} />
+      <div className="grid grid-cols-1 gap-6 xl:flex xl:items-start">
+        <div className="min-w-0 xl:flex-1">
+          <ComponentEditor component={component} categories={CATEGORIES} />
+        </div>
 
         {/* NFR-005 — `price_history` is append-only and written in the same
             transaction as the cost change. Rendering it read-only, with no
             edit or delete affordance anywhere, is the design expressing that:
             there is no UI for changing history because there is no way to. */}
-        <Card className="flex flex-col gap-4" padding="compact">
+        <Card
+          className="flex flex-col gap-4 xl:w-96 xl:shrink-0"
+          padding="compact"
+        >
           <div className="flex flex-col gap-1 px-2 pt-2">
             <h2 className="text-md font-semibold tracking-tight">
               Price History

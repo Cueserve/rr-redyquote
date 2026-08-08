@@ -88,12 +88,11 @@ section — it is a snapshot, and a stale one is worse than none.
     A `PreToolUse` hook blocks this for committed migrations — see the machine-enforced
     bullet under "Claude Code-specific config". The rule is still yours to keep: the hook
     only knows what is _committed_, so a migration pushed but not yet committed is unguarded.
-  - **`npm run db:types` works** (fixed in `d01759e`) — it calls `npx supabase`, not a bare
-    `supabase`, and already pipes through Prettier with `--end-of-line crlf`, so no manual
-    follow-up is needed. One footgun remains: the `>` redirect truncates `types.ts` to empty
-    _before_ the generator runs, so a failure (no network, project unlinked) leaves the file
-    empty and `typecheck` failing with TS2306. If that happens, re-run it once connected —
-    don't hand-edit `types.ts`.
+  - **`npm run db:types` works, and a failed run is now safe.** It calls `npx supabase`, not a
+    bare `supabase`, generates to `types.ts.tmp` and renames only on exit 0, then pipes through
+    Prettier with `--end-of-line crlf` — so no manual follow-up is needed. A failure (no
+    network, project unlinked) leaves `types.ts` untouched; the CLI's JSON error blob lands in
+    the gitignored `.tmp` instead. Re-run it once connected — don't hand-edit `types.ts`.
 - **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
   semantic-token rules.
 
@@ -171,69 +170,8 @@ These are structural guarantees, not conventions — don't write code that break
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
   installed. Never suggest `supabase start` or `db reset` as a current step — see
   [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.
-- **Design layers, each with exactly one job.** `.claude/settings.json` is the authority on
-  which plugins every developer gets — that roster changes, and not every plugin on it is a
-  design layer. The layers below are: they are **not interchangeable**, and using one for
-  another's job is a mistake — the whole point of naming them separately is the division of
-  labour:
-  - **Layer 1 — Aesthetic guardrails: `frontend-design@claude-plugins-official`.** The
-    baseline for any new UI: visual hierarchy, restraint, and avoiding generic AI-default
-    aesthetics. It sets the bar before anything is written. It does **not** pick a palette, a
-    font, or a spacing value.
-  - **Layer 2 — Code generation framework: `ui-ux-pro-max@ui-ux-pro-max-skill`.** The tool
-    that actually **builds**: layout, interaction patterns, accessibility, component
-    structure, chart selection, and stack-specific idiom. Use it for those, where it has no
-    competing authority here. Its 161 palettes, 57 font pairings, and 67 style presets are
-    **inputs to a conversation, not decisions** — see precedence below.
-  - **Layer 3 — Audit and validation only: `impeccable@impeccable`.** Run it **after** a UI
-    change to catch anti-patterns, contrast failures, and AI-slop tells. **It is not a
-    generator.** Do not reach for `/impeccable polish` or any of its generating commands as
-    the way to write UI — `/impeccable audit` and `/impeccable critique` are the sanctioned
-    entry points, and `npx impeccable detect src/` is the deterministic CLI check (exit `2`
-    means findings, `--json` for tooling).
-  - **Order of operations for UI work:** layer 1 sets the bar → layer 2 builds it → layer 3
-    audits the result → `npm run lint` + `npm run typecheck` decide whether it ships. Skipping
-    layer 3 on a UI change is skipping a step, not saving one.
-- **No design layer outranks this repo's design system.**
-  [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), the semantic tokens in
-  `src/app/globals.css`, and the `no-restricted-syntax` rule in `eslint.config.mjs` are the
-  authority on every color, font, and spacing value in this codebase — every layer loses
-  on contact, no exceptions.
-  - Do **not** take a palette, a hex literal, a raw Tailwind color class, or a Google Font
-    from any of them. Brand values are Archivo + IBM Plex Mono, and colors come from the
-    semantic layer (`bg-background`, `text-muted-foreground`, …). A suggestion that fails
-    `npm run lint` was never a valid suggestion.
-  - Adding a color or a font is a DESIGN-SYSTEM.md change — a deliberate decision requiring
-    approval, per the "Editing source-of-truth docs" rule below. It is not something a skill
-    recommendation authorizes.
-- **The impeccable baseline is clean — treat any new finding as real.** Verified 2026-08-05
-  against `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and
-  exit 0. That is not luck. Most of its high-signal detectors (`ai-color-palette`,
-  `gray-on-color`, `cream-palette`) key on raw Tailwind palette classes, and
-  `eslint.config.mjs` already makes those unwritable — ESLint gets there first, structurally.
-  So there is no standing noise to triage and **no pre-seeded suppression list**. A finding
-  means something new got past lint.
-  - Suppress only after establishing the finding contradicts
-    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: add
-    the rule id to `detector.ignoreRules` in `.impeccable/config.json` (committed, so the team
-    inherits the decision once) or an `impeccable-disable-next-line <rule>` comment for a
-    genuine one-off. `.impeccable/config.local.json` is per-developer and gitignored — never
-    put a team decision there. **Always report what you suppressed and why.**
-- **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
-  and `gray-on-color` need two resolved colors. Our components use semantic tokens
-  (`bg-background`, `text-muted-foreground`), which resolve at runtime from
-  `src/app/globals.css`, so a `detect src/` pass sees no color pair and stays silent. It is
-  not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the question.
-  - To actually check contrast, audit the rendered page: `npm run dev`, then
-    `npx impeccable detect http://localhost:3000/<route>`. URL mode needs `puppeteer`, an
-    optional dependency — install it in the sandbox, not as a project dependency (it is not
-    in TECH-STACK.md).
-  - The four `design-system-*` rules are also inert: impeccable looks for a `DESIGN.md` with
-    YAML frontmatter at the repo root, `docs/`, or `.agents/context/`, and we have
-    `docs/DESIGN-SYSTEM.md` — different filename, no frontmatter. Leaving it inert is the
-    current, deliberate choice; a second machine-readable copy of the token values would drift
-    from DESIGN-SYSTEM.md, and ESLint already enforces the same constraint. Do not create
-    `DESIGN.md` without approval.
+- **Building UI has its own section below.** `.claude/settings.json` is the authority on which
+  plugins every developer gets; see "Building UI" for which of them touch design and how.
 - **Secrets:** never read, print, or write `.env`, `.env*.local`, or any file holding the
   Supabase service-role key or other credentials.
 - **Three of the rules above are machine-enforced now, not advisory** — `permissions` in
@@ -255,3 +193,73 @@ These are structural guarantees, not conventions — don't write code that break
 - **Editing source-of-truth docs:** changes to anything in `docs/` are deliberate decisions,
   not incidental edits during feature work — call them out and get approval, don't fold them
   into an unrelated change.
+
+## Building UI
+
+Three steps, in order. Only one of them is a plugin decision.
+
+**1. The design system decides how it looks — always.**
+[docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) → the tokens in `src/app/globals.css` → the
+`no-restricted-syntax` rule in `eslint.config.mjs`. Every color, font, radius, and type size
+comes from there. Never a hex literal, never a raw Tailwind color class (`bg-slate-100`), never
+a Google Font — brand values are Archivo + IBM Plex Mono, and colors come from the semantic
+layer (`bg-background`, `text-muted-foreground`, …). Adding a token is a DESIGN-SYSTEM.md
+change requiring approval, per "Editing source-of-truth docs" above. No plugin, skill, or CLI
+output authorizes one.
+
+**2. shadcn/ui builds it.** This is a shadcn project: [components.json](components.json) at the
+root (style `radix-nova`, `cssVariables: true`), `shadcn@4` as a devDependency, and the 15
+primitives in `src/components/ui/` are shadcn components already adapted to our tokens.
+
+- **Reuse before you add.** Check `src/components/ui/` first, then extend a primitive with a
+  `cva` variant — see the `editable` variant in
+  [src/components/ui/input.tsx](src/components/ui/input.tsx) — before pulling in a new one.
+- **Adding a primitive:** `npx shadcn@latest add <name>`. Its output is compatible by
+  construction: shadcn names its tokens exactly as `globals.css` defines them (`background`,
+  `card`, `popover`, `primary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`,
+  `chart-1`–`5`, `sidebar-*`), which is why generated components pass lint. Still read the diff
+  before committing — a generated file needs our comment-the-why convention, and any hardcoded
+  color in it is a bug, not a starting point.
+- **`frontend-design@claude-plugins-official` is optional taste input** for a genuinely new
+  screen: hierarchy, restraint, avoiding the AI-default look. It picks no values. Skip it when
+  editing a screen that already exists, which is most of the work here.
+
+**3. `impeccable@impeccable` audits the result — it never writes it.** `/impeccable audit` and
+`/impeccable critique` are the sanctioned entry points; `npx impeccable detect src/` is the
+deterministic CLI check (exit `2` means findings, `--json` for tooling). Do not use
+`/impeccable polish` or any of its other generating commands to build UI, whatever its own
+description advertises.
+
+- **The baseline is clean — treat any new finding as real.** Verified 2026-08-05 against
+  `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and exit 0. That is
+  not luck. Most of its high-signal detectors (`ai-color-palette`, `gray-on-color`,
+  `cream-palette`) key on raw Tailwind palette classes, and `eslint.config.mjs` already makes
+  those unwritable — ESLint gets there first, structurally. So there is no standing noise to
+  triage and **no pre-seeded suppression list**. A finding means something got past lint.
+  - Suppress only after establishing the finding contradicts
+    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: add the
+    rule id to `detector.ignoreRules` in `.impeccable/config.json` (committed, so the team
+    inherits the decision once) or an `impeccable-disable-next-line <rule>` comment for a
+    genuine one-off. `.impeccable/config.local.json` is per-developer and gitignored — never put
+    a team decision there. **Always report what you suppressed and why.**
+- **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
+  and `gray-on-color` need two resolved colors. Our components use semantic tokens, which
+  resolve at runtime from `src/app/globals.css`, so a `detect src/` pass sees no color pair and
+  stays silent. It is not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the
+  question.
+  - To actually check contrast, audit the rendered page: `npm run dev`, then
+    `npx impeccable detect http://localhost:3000/<route>`. URL mode needs `puppeteer`, an
+    optional dependency — install it in the sandbox, not as a project dependency (it is not in
+    TECH-STACK.md).
+  - The four `design-system-*` rules are also inert: impeccable looks for a `DESIGN.md` with
+    YAML frontmatter at the repo root, `docs/`, or `.agents/context/`, and we have
+    `docs/DESIGN-SYSTEM.md` — different filename, no frontmatter. Leaving it inert is the
+    current, deliberate choice; a second machine-readable copy of the token values would drift
+    from DESIGN-SYSTEM.md, and ESLint already enforces the same constraint. Do not create
+    `DESIGN.md` without approval.
+
+**Ship gate:** `npm run lint` and `npm run typecheck`. A suggestion that fails lint was never a
+valid suggestion.
+
+`superpowers@claude-plugins-official` is the third plugin on the roster — process guidance, not
+a design layer.

@@ -82,15 +82,9 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-Two caveats worth knowing before you trust a green run:
-
-- **`npm run test` proves nothing yet.** It is `vitest run --passWithNoTests` and there are no
-  tests, so it exits 0 on an empty suite. Read a pass as "not run" until the pricing-calc
-  tests land ([TODO.md](docs/TODO.md) §A.2).
-- **The migrations exist but have not been applied.** `supabase/migrations/0001`–`0003` are
-  authored and unpushed, so the hosted database is still empty: `npm run db:types` regenerates
-  types for nothing until `npm run db:push` runs. `0004` onward (products, quotes, RPCs) is
-  still a spec — see [DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
+One caveat before you trust a green run: **`npm run test` proves nothing yet.** It is
+`vitest run --passWithNoTests` and there are no tests, so it exits 0 on an empty suite. Read a
+pass as "not run" until the pricing-calc tests land ([TODO.md](docs/TODO.md) §A.2).
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -106,31 +100,32 @@ locally.
 Claude Code reads it on open and prompts you to trust the workspace; accept, and the plugins
 install themselves.
 
-Each layer has one job, and they are not interchangeable:
+| Plugin                                    | Job                                                     |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `frontend-design@claude-plugins-official` | Optional taste input on a new screen. Picks no values.  |
+| `impeccable@impeccable`                   | **Audit only:** anti-patterns, contrast, AI-slop tells. |
+| `superpowers@claude-plugins-official`     | Process guidance. Not a design tool.                    |
 
-| Layer               | Plugin                                    | Job                                                       |
-| ------------------- | ----------------------------------------- | --------------------------------------------------------- |
-| 1 — Guardrails      | `frontend-design@claude-plugins-official` | Baseline taste: hierarchy, restraint, no AI-default look  |
-| 2 — Code generation | `ui-ux-pro-max@ui-ux-pro-max-skill`       | Builds it: layout, interaction, a11y, component structure |
-| 3 — Audit           | `impeccable@impeccable`                   | **Review only:** anti-patterns, contrast, AI-slop tells   |
-
-Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official) (Anthropic) ·
-[ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT) ·
+Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official) and
+[superpowers](https://github.com/anthropics/claude-plugins-official) (Anthropic) ·
 [impeccable](https://github.com/pbakaus/impeccable) (Apache 2.0)
 
-Order of operations on any UI change: **1 sets the bar → 2 builds it → 3 audits the result →
-`npm run lint` + `npm run typecheck` decide whether it ships.** Impeccable is deliberately
-_not_ a generator here — see the rule in [CLAUDE.md](CLAUDE.md).
+**No plugin builds UI here — shadcn does.** This is a shadcn project ([components.json](components.json),
+`shadcn@4`), and the 15 primitives in `src/components/ui/` are shadcn components adapted to our
+tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on any UI change
+is **design system → shadcn → impeccable audit → `npm run lint` + `npm run typecheck`**;
+[CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
 
 Four things to know:
 
-- **Python 3.x must be on your PATH.** ui-ux-pro-max's search scripts (`scripts/search.py`) are
-  Python, standard library only. This is a prerequisite for the plugin, **not** for RedyQuote —
-  the app is Node 24 / npm only, and nothing in `src/` or the build touches Python.
-- **The plugins do not overrule this repo's design system.** ui-ux-pro-max ships 161 color
-  palettes and 57 font pairings, most of which `eslint.config.mjs` will reject on sight.
-  [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) and the semantic tokens in `src/app/globals.css`
-  win every time — see the precedence rule in [CLAUDE.md](CLAUDE.md).
+- **No plugin overrules this repo's design system.** [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md)
+  and the semantic tokens in `src/app/globals.css` win every time, and `eslint.config.mjs`
+  rejects a hex literal or a raw Tailwind color class on sight. A suggestion that fails
+  `npm run lint` was never a valid suggestion.
+- **`npx shadcn add` output passes lint by construction.** shadcn names its tokens exactly as
+  `globals.css` defines them (`background`, `card`, `primary`, `muted`, `border`, `ring`,
+  `chart-1`–`5`, `sidebar-*`). Read the diff anyway — a hardcoded color in generated output is
+  a bug, not a starting point.
 - **The impeccable baseline is clean, and contrast is its blind spot.** `npx impeccable detect src/`
   returns zero findings (verified 2026-08-05, v3.5.0) — `eslint.config.mjs` already bans the raw
   palette classes most of its detectors key on. But its contrast rules need two resolved colors,
@@ -143,8 +138,8 @@ Four things to know:
   finding contradicts [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), suppress it by rule id under
   `detector.ignoreRules` in `.impeccable/config.json` — never by changing a token.
 - **Don't install the same tool twice.** All three come from the plugin system. If you
-  previously installed them by hand (`uipro init`, `npx impeccable skills install`, or
-  `claudekit`), delete the local copies so you aren't loading two versions of one skill.
+  previously installed one by hand (`npx impeccable skills install` or `claudekit`), delete the
+  local copy so you aren't loading two versions of one skill.
 
 `.claude/skills/` and `.impeccable/config.local.json` are gitignored: installed payloads and
 per-developer overrides are machine state, not source. `.impeccable/config.json` **is**

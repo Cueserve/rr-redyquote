@@ -163,9 +163,11 @@ These are structural guarantees, not conventions — don't write code that break
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not
   installed. Never suggest `supabase start` or `db reset` as a current step — see
   [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.
-- **Three design layers, each with exactly one job.** `.claude/settings.json` enables three
-  plugins for every developer. They are **not interchangeable**, and using one for another's
-  job is a mistake — the whole point of declaring them together is the division of labour:
+- **Design layers, each with exactly one job.** `.claude/settings.json` is the authority on
+  which plugins every developer gets — that roster changes, and not every plugin on it is a
+  design layer. The layers below are: they are **not interchangeable**, and using one for
+  another's job is a mistake — the whole point of naming them separately is the division of
+  labour:
   - **Layer 1 — Aesthetic guardrails: `frontend-design@claude-plugins-official`.** The
     baseline for any new UI: visual hierarchy, restraint, and avoiding generic AI-default
     aesthetics. It sets the bar before anything is written. It does **not** pick a palette, a
@@ -184,10 +186,10 @@ These are structural guarantees, not conventions — don't write code that break
   - **Order of operations for UI work:** layer 1 sets the bar → layer 2 builds it → layer 3
     audits the result → `npm run lint` + `npm run typecheck` decide whether it ships. Skipping
     layer 3 on a UI change is skipping a step, not saving one.
-- **None of the three outranks this repo's design system.**
+- **No design layer outranks this repo's design system.**
   [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), the semantic tokens in
   `src/app/globals.css`, and the `no-restricted-syntax` rule in `eslint.config.mjs` are the
-  authority on every color, font, and spacing value in this codebase — all three layers lose
+  authority on every color, font, and spacing value in this codebase — every layer loses
   on contact, no exceptions.
   - Do **not** take a palette, a hex literal, a raw Tailwind color class, or a Google Font
     from any of them. Brand values are Archivo + IBM Plex Mono, and colors come from the

@@ -13,7 +13,7 @@
 RedyQuote is REDYREF's internal quoting system, replacing ad-hoc, rep-by-rep pricing with
 one tool the sales team can trust. Reps build quotes against a shared product catalog and
 component library, with live cost/margin recalculation as they edit, while every quote
-moves through a controlled Draft → Pending Approval → Approved → Sent lifecycle. It exists
+moves through a controlled Draft → Review → Approved → Sent lifecycle. It exists
 to make a handful of things structurally true — no UI-only approval gate, no data loss on
 save, no colliding quote numbers, one consistent pricing formula, a full audit trail —
 rather than relying on convention. See [PRODUCT.md](docs/PRODUCT.md) for the full problem
@@ -28,7 +28,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 ## Key Concepts
 
 - **Quote** — the core object reps build: a product, fab tier, and set of components,
-  moving through Draft → Pending Approval → Approved → Sent. No other lifecycle exists, and
+  moving through Draft → Review → Approved → Sent. No other lifecycle exists, and
   every status change writes an audit row.
 - **Fab tier** — the fabrication cost for a product at a given order quantity (cost, quoted
   date, vendor). Reps always price against a tier, never a single flat product cost.
@@ -36,7 +36,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
   Outdoor) that plug into a quote line. A cost change appends to `price_history` instead of
   overwriting it, so nothing is lost.
 - **RLS-enforced authorization** — writes are enforced at the database, not the UI. The
-  `Pending Approval → Approved` transition and all master-data / settings / branding writes
+  `Review → Approved` transition and all master-data / settings / branding writes
   are restricted to `role = 'admin'`; quote content edits are owner-or-admin; reads are flat.
   A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §2A)
 - **Atomic multi-row save** — saving a quote (header + line items) or a product (fab tiers +

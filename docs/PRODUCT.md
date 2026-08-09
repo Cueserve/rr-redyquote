@@ -43,7 +43,7 @@ the right person — with a full record of who did what, and when.
 ### Description
 
 RedyQuote is REDYREF's quoting system. Admins maintain a product catalog with a fab tier per quantity break and a component library (with full price history); reps build a quote against a product, one of its fab tiers, and its components, one line per fixed category plus unlimited ad-hoc misc lines, with hard cost, labor cost, cushion, commission, margin, and totals recalculating live as they go. Every quote moves through
-Draft → Pending Approval → Approved → Sent — the approval step enforced by the database,
+Draft → Review → Approved → Sent — the approval step enforced by the database,
 not the UI — and every status change is written to an audit trail.
 
 ## 2. Target Users
@@ -69,8 +69,8 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
   lines. Fixed categories and misc-line rules are defined in docs/PRD.md.
 - **Price freshness tracking** — component and fab-tier cost dates compared against
   configurable warning/re-quote age thresholds, shown as Current/Aging/Re-quote badges.
-- **Approval lifecycle** — Draft → Pending Approval → Approved → Sent; the
-  Pending Approval → Approved transition is admin-only and enforced by the database, not
+- **Approval lifecycle** — Draft → Review → Approved → Sent; the
+  Review → Approved transition is admin-only and enforced by the database, not
   just the UI; every transition writes an audit row (who, when, from/to status).
 - **Estimating defaults** — a single global settings row for labor rate, fab/component
   markup, cushion %, sales commission %, margin floor %, and freshness thresholds.

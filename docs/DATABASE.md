@@ -39,8 +39,8 @@ RedyQuote is a **single-tenant** quoting system for REDYREF's sales team. Two ro
 **rep** and **admin** — sit on top of Supabase Auth. Admins own the product catalog,
 component library, per-product fab tiers, global estimating settings, and branding.
 Reps build quotes against that catalog; every quote moves through a fixed
-`Draft → Pending Approval → Approved → Sent` lifecycle plus an explicit
-`Pending Approval → Draft` request-changes path. Both steps out of `Pending Approval` are
+`Draft → Review → Approved → Sent` lifecycle plus an explicit
+`Review → Draft` request-changes path. Both steps out of `Review` are
 admin-only, and all master-data writes are **enforced inside Postgres, not in application
 code** (PRD-019, NFR-002) — master data by RLS policy, the two review transitions by the
 `validate_quote_status_transition` trigger, because a `WITH CHECK` clause cannot see the old

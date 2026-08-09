@@ -67,11 +67,15 @@ import {
 
 type Row = { id: string; name: string; cost: number; vendor: string | null };
 
+// Insertion order deliberately differs from name-ascending order. When the two
+// match, sorting is a no-op and the paging tests below pass even if the slice
+// runs before the sort — and the no-mutation test passes even without the
+// defensive copy, because there is nothing to mutate.
 const rows: Row[] = [
-  { id: "a", name: "Alpha", cost: 30, vendor: "Acme" },
-  { id: "b", name: "bravo", cost: 10, vendor: null },
   { id: "c", name: "Charlie", cost: 20, vendor: "Zenith" },
+  { id: "a", name: "Alpha", cost: 30, vendor: "Acme" },
   { id: "d", name: "Delta", cost: 20, vendor: null },
+  { id: "b", name: "bravo", cost: 10, vendor: null },
 ];
 
 const byName = byField<Row, string>((row) => row.name, compareText, "asc");
@@ -107,7 +111,7 @@ describe("applyListView", () => {
   it("does not mutate the array it was given", () => {
     const input = [...rows];
     applyListView(input, { compare: byName, page: 1, size: 50 });
-    expect(input.map((row) => row.id)).toEqual(["a", "b", "c", "d"]);
+    expect(input.map((row) => row.id)).toEqual(["c", "a", "d", "b"]);
   });
 
   it("splits an exact multiple of size into full pages with no empty tail", () => {
@@ -156,7 +160,7 @@ describe("byField", () => {
       "asc",
     );
     const result = applyListView(rows, { compare, page: 1, size: 50 });
-    expect(ids(result)).toEqual(["a", "c", "b", "d"]);
+    expect(ids(result)).toEqual(["a", "c", "d", "b"]);
   });
 
   it("sorts nulls last descending too", () => {
@@ -166,7 +170,7 @@ describe("byField", () => {
       "desc",
     );
     const result = applyListView(rows, { compare, page: 1, size: 50 });
-    expect(ids(result)).toEqual(["c", "a", "b", "d"]);
+    expect(ids(result)).toEqual(["c", "a", "d", "b"]);
   });
 
   it("keeps tied rows in their input order", () => {

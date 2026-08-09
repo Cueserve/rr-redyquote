@@ -22,11 +22,11 @@ import { formatPercent } from "@/lib/utils";
 /**
  * The lifecycle actions from PRD-010 / ARCHITECTURE.md §3:
  *
- *     Draft → Pending approval → Approved → Sent
- *                    ↑                ↓
- *                    └──── Draft ─────┘  (request changes)
+ *     Draft → Review → Approved → Sent
+ *              ↑           ↓
+ *              └─── Draft ──┘  (request changes)
  *
- * FOUR transitions, not three. The backward one — Pending approval → Draft —
+ * FOUR transitions, not three. The backward one — Review → Draft —
  * is as much a part of the state machine as the other three: it is in PRD-010,
  * in `validate_quote_status_transition` (docs/DATABASE-SQL.md §1, which clears
  * `submitted_at` on the way), and in the lifecycle invariant CLAUDE.md lists as
@@ -64,7 +64,7 @@ function offeredActions({
     // Quote content edits: owner or admin.
     canEdit: (isOwner || isAdmin) && status === "draft",
     canSubmit: (isOwner || isAdmin) && status === "draft",
-    // The two gated transitions. BOTH exits from Pending approval are
+    // The two gated transitions. BOTH exits from Review are
     // admin-only, and both are enforced by the same `BEFORE UPDATE` trigger --
     // not by RLS, which cannot see the old row and so cannot express a
     // transition at all (docs/DATABASE-SQL.md §3).
@@ -179,8 +179,8 @@ export function LifecycleBar({
           <DialogHeader>
             <DialogTitle>Submit for approval</DialogTitle>
             <DialogDescription>
-              This moves the quote to Pending approval. An admin has to approve
-              it before it can be marked sent.
+              This moves the quote to Review. An admin has to approve it before
+              it can be marked sent.
             </DialogDescription>
           </DialogHeader>
 

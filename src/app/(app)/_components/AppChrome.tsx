@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Boxes, FileText, Package, SlidersHorizontal } from "lucide-react";
 
 import { RoleProvider } from "@/components/prototype/role-context";
-import { RoleToggle } from "@/components/prototype/role-toggle";
+import { PrototypeUserMenu } from "@/components/prototype/prototype-user-menu";
 import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar";
 import { Topbar, type Crumb } from "@/components/layout/topbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -133,7 +133,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             }
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar crumbs={crumbsFor(pathname)} right={<RoleToggle />} />
+            {/* One prototype import, deliberately. `PrototypeUserMenu` is the
+                seam that knows about the fixtures and the client-side role
+                switch; the permanent `UserMenu` it wraps knows neither. Auth
+                wiring swaps this line and deletes the folder. */}
+            <Topbar
+              crumbs={crumbsFor(pathname)}
+              right={<PrototypeUserMenu />}
+            />
             <main
               id="main-content"
               tabIndex={-1}

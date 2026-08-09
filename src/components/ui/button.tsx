@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -61,12 +62,24 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  loading,
+  loadingText,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    loading?: boolean;
+    loadingText?: React.ReactNode;
   }) {
   const Comp = asChild ? Slot.Root : "button";
+  // Only buttons that opt in (pass `loading`/`loadingText` at all, even
+  // `loading={false}`) pay for the width-reserving markup below -- and they
+  // pay for it on every render, not just while `loading` is true. Reserving
+  // the width only once loading flips on would itself be the layout shift
+  // the caller is trying to avoid.
+  const isLoadingAware = loading !== undefined || loadingText !== undefined;
 
   return (
     <Comp
@@ -74,8 +87,34 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={loading || disabled}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {isLoadingAware ? (
+        <span className="grid">
+          <span
+            className={cn(
+              "col-start-1 row-start-1 flex items-center justify-center gap-2",
+              loading && "invisible",
+            )}
+          >
+            {children}
+          </span>
+          <span
+            className={cn(
+              "col-start-1 row-start-1 flex items-center justify-center gap-2",
+              !loading && "invisible",
+            )}
+          >
+            <Loader2 className="animate-spin" />
+            {loadingText ?? children}
+          </span>
+        </span>
+      ) : (
+        children
+      )}
+    </Comp>
   );
 }
 

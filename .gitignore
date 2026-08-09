@@ -50,6 +50,12 @@ next-env.d.ts
 # behind holding the CLI's JSON error blob instead of poisoning types.ts.
 *.ts.tmp
 
+# superpowers' subagent-driven-development scratch: one directory per plan,
+# holding that run's ledger, task briefs, subagent reports, and review-package
+# diffs. Regenerable coordination state -- the record that survives is the git
+# history the ledger points at, not the ledger.
+.superpowers/
+
 # graphify (knowledge graph tool). graph.json/graph.html/GRAPH_REPORT.md are
 # versioned as living documentation of the codebase graph; everything else
 # (per-file extraction cache, machine-local interpreter/root paths, manifest,

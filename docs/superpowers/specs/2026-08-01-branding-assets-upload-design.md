@@ -84,6 +84,13 @@ Assessment: best fit for RedyQuote architecture with minimal schema impact.
 
 Note: if stronger cache busting is required later, a version token can be introduced in a future migration, but that is explicitly out of this phase.
 
+**Unresolved consequence — `settings.favicon_url` has no writer under this option.** That
+column exists today (DATABASE.md §4.3, ARCHITECTURE §2, seeded NULL by `0003`), but Option B's
+fixed object keys mean nothing ever populates it. Settle this before implementation: either
+write the storage URL into it on upload, or drop it in the migration that adds the bucket.
+Leaving a column that no code path writes is how a reader concludes branding is stored
+somewhere it isn't.
+
 ## 6. Validation Rules (proposed)
 
 ### Logo
@@ -95,8 +102,15 @@ Note: if stronger cache busting is required later, a version token can be introd
 ### Favicon
 
 - Allowed types: `image/x-icon`, `image/vnd.microsoft.icon`, `image/png`
-- If PNG is accepted, conversion to ICO is performed server-side before overwrite
-- Target visual: square icon preserving brand legibility at 16px/32px
+- Conversion to a **multi-resolution ICO (16/32/48/256px, each entry PNG-encoded)** is
+  performed server-side before overwrite, whatever the input format — matching PRD-013 and
+  the committed `src/app/favicon.ico`, which is already built that way.
+- **`sharp` cannot write ICO.** It renders the four PNGs; the ICONDIR/ICONDIRENTRY container
+  is assembled by hand. Do not expect `sharp(...).toFile('*.ico')` to work — see
+  PROJECT-STRUCTURE.md §1, which documents the existing build of exactly this file.
+- Target visual: square mark preserving brand legibility at 16px. REDYREF has no square brand
+  mark; the current icon is an invented `R` lockup that has not been through brand review, so
+  a real square mark supersedes it rather than being reconciled with it.
 
 ## 7. Authorization and Security
 
@@ -123,6 +137,29 @@ Note: if stronger cache busting is required later, a version token can be introd
 ## 10. Open Questions
 
 1. Should SVG for logo be allowed initially or deferred to PNG-only for security simplicity?
-2. Do we require automatic ICO generation for favicon uploads from PNG?
+2. ~~Do we require automatic ICO generation for favicon uploads from PNG?~~ **Resolved
+   2026-08-08: yes, always** — see §6. Any accepted input is converted to a multi-resolution
+   ICO server-side.
 3. Is existing `settings_history` sufficient for branding audit, or should branding get a dedicated history table/event model?
 4. Which cache policy should be canonical for branding assets (URL versioning vs response headers)?
+5. Does `settings.favicon_url` get written, or dropped? See the note at the end of §5.
+
+## 11. Source-of-truth doc edits — **made 2026-08-08**
+
+This spec ships a **logo** asset alongside the favicon, which no requirement authorized when it
+was written. PRODUCT §5 promised "a single org-wide favicon" while the Branding tab already
+rendered two cards. Approved by Viral on 2026-08-08 and the docs were amended in the same
+change — recorded here because a spec that silently widens scope is how the requirement and the
+build stop matching:
+
+1. **PRD-013** — now covers a logo **and** a favicon as org-wide branding assets, and replaces
+   "resized to 64×64" with the multi-resolution ICO rule. The 64×64 figure had no source: it
+   originated in the first PRD commit (`5387d18`, 2026-07-23) and matched nothing shipped.
+2. **PRODUCT.md §3** — the Branding feature bullet now reads "an org-wide logo and favicon".
+3. **PRODUCT.md §5** — the success criterion no longer says "a single org-wide favicon"; it
+   now asserts one org-wide source per asset, with no screen carrying its own copy.
+4. **Authorization matrix spec §3.3** — the admin-only row is now "branding assets (logo,
+   favicon)" rather than favicon alone.
+
+Still design-only: no code wiring, no storage bucket, and no `settings` migration are part of
+this phase (§8).

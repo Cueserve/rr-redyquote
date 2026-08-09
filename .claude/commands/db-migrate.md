@@ -3,14 +3,18 @@ description: Push pending Supabase migrations to the linked project, regenerate 
 allowed-tools: Bash, Read, Glob, Grep
 ---
 
-Apply RedyQuote's pending `supabase/migrations/*.sql` to the **linked hosted project** and leave
-the repo in a verified, type-synced state.
+# DB Migrate
+
+Apply RedyQuote's pending `supabase/migrations/*.sql` to the **linked hosted Supabase project**
+and leave the repo in a verified, type-synced state.
 
 Development runs against a hosted Supabase project with no local Docker stack
-([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §1). There is no `db reset` to fall back on,
-which is why the pre-flight below is not optional ceremony.
+([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §1). There is no local stack to `db reset`, so
+every push is irreversible against real data and the pre-flight below is not optional ceremony.
 
 Arguments (optional): `$ARGUMENTS` — pass `dry-run` to stop after step 3 and report only.
+
+---
 
 ## 1. Pre-flight — stop and report if any check fails
 
@@ -85,8 +89,11 @@ Then check whatever the pushed migration specifically claims, e.g.:
   ([docs/DATABASE-SQL.md](../../docs/DATABASE-SQL.md) §4.5 calls this the single most important
   assertion in the repo)
 
-Run these through `npx supabase db execute` if available in this CLI version; if not, print the
-SQL and ask the user to run it in the dashboard SQL editor rather than skipping the step.
+Run these through **`npx supabase db query --linked "<sql>"`** — verified 2026-08-08. It is
+`db query`, **not** `db execute`: the latter does not exist and the CLI answers an unknown
+subcommand by printing help and exiting **0**, so a naive `--help` probe reports success. If the
+subcommand is ever missing, print the SQL and ask the user to run it in the dashboard SQL editor
+rather than skipping the step. Add `--output json` to get parseable rows.
 
 ## 6. Report
 

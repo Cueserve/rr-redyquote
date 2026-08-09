@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — System Architecture
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-23
+**Last updated:** 2026-08-08
 **Source of truth for:** the system structure, component boundaries, and design decisions
 that satisfy docs/PRD.md.
 
@@ -74,19 +74,19 @@ paths to run under an elevated role.
 
 ## 2. Data Design
 
-| Table                  | Purpose                                                                                                                                             | Key relationships                                     |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `profiles`             | id, full_name, role (`rep` \| `admin`)                                                                                                              | 1:1 with a Supabase Auth user                         |
-| `settings`             | Singleton row: labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds, favicon                                          | Referenced by every quote calculation                 |
-| `products`             | Fabricated product catalog: name, SKU, description, vendor, est. labor hours, active                                                                | Has many `fab_tiers`, `product_defaults`              |
-| `fab_tiers`            | Quantity-tier fab cost: product_id, qty_tier, cost, quoted_date, vendor                                                                             | Belongs to a Product                                  |
-| `product_defaults`     | Default component per category per product                                                                                                          | Belongs to a Product; references a Component          |
-| `components`           | Component library: category, name, SKU, vendor, environment, cost, default_labor_hours, active                                                      | Referenced by QuoteLine, ProductDefault               |
-| `price_history`        | Append-only: component_id or (product_id, qty_tier), cost, quoted_date, vendor                                                                      | Written whenever a cost changes                       |
-| `quotes`               | Quote header: quote_number, customer_name, product_id, qty_tier, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
-| `quote_lines`          | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order                  | Belongs to a Quote                                    |
-| `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at                                                                 | Belongs to a Quote                                    |
-| `settings_history`     | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at                                                             | Global audit of settings/branding edits               |
+| Table                  | Purpose                                                                                                                                                                       | Key relationships                                     |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `profiles`             | id, full_name, role (`rep` \| `admin`)                                                                                                                                        | 1:1 with a Supabase Auth user                         |
+| `settings`             | Singleton row: labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds, favicon                                                                    | Referenced by every quote calculation                 |
+| `products`             | Fabricated product catalog: name, SKU, description, vendor, est. labor hours, active                                                                                          | Has many `fab_tiers`, `product_defaults`              |
+| `fab_tiers`            | Fab cost per quantity break: product_id, qty_tier, cost, quoted_date, vendor                                                                                                  | Belongs to a Product                                  |
+| `product_defaults`     | Default component per category per product                                                                                                                                    | Belongs to a Product; references a Component          |
+| `components`           | Component library: category, name, SKU, vendor, environment, cost, default_labor_hours, active                                                                                | Referenced by QuoteLine, ProductDefault               |
+| `price_history`        | Append-only: component_id or (product_id, qty_tier), cost, quoted_date, vendor                                                                                                | Written whenever a cost changes                       |
+| `quotes`               | Quote header: quote_number, customer_name, product_id, **fab_tier_id**, fab_cost_snapshot, environment, computed cost breakdown, final_price_each, status, owner, approved_by | Has many QuoteLines; has many QuoteStatusHistory rows |
+| `quote_lines`          | Line items: quote_id, category, component_id (nullable for misc), description, hard_cost, labor_hours, markup, is_misc, sort_order                                            | Belongs to a Quote                                    |
+| `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at                                                                                           | Belongs to a Quote                                    |
+| `settings_history`     | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at                                                                                       | Global audit of settings/branding edits               |
 
 ## 3. Data Flow
 
@@ -205,12 +205,13 @@ without a reviewed sanitization strategy.
 
 ## 8. Non-Functional Approach
 
-| Requirement                    | Structural response                                                                                                                                                     |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NFR-001 interactive latency    | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke                              |
-| NFR-002 access enforcement     | RLS on every table; the approval gate is a real database policy, not a UI-only check                                                                                    |
-| NFR-003 credential security    | Supabase Auth (GoTrue) bcrypt hashing, managed                                                                                                                          |
-| NFR-004 transport security     | TLS 1.2+ enforced by Vercel/Supabase                                                                                                                                    |
-| NFR-005 auditability           | `price_history` and `quote_status_history`, same-transaction writes                                                                                                     |
-| NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2 |
-| NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                           |
+| Requirement                    | Structural response                                                                                                                                                           |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-001 interactive latency    | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke                                    |
+| NFR-002 access enforcement     | RLS on every table; the two exits from Pending Approval are enforced by the `validate_quote_status_transition` trigger, not a policy — see §5                                 |
+| NFR-003 credential security    | Supabase Auth (GoTrue) bcrypt hashing, managed                                                                                                                                |
+| NFR-004 transport security     | TLS 1.2+ enforced by Vercel/Supabase                                                                                                                                          |
+| NFR-005 auditability           | `price_history` and `quote_status_history`, same-transaction writes                                                                                                           |
+| NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2       |
+| NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                                 |
+| NFR-008 supported viewports    | Tablet-and-up layouts only; the navigation rail collapses 220px → 64px at `xl` rather than resizing, and a dense table scrolls inside its own container — DESIGN-SYSTEM.md §9 |

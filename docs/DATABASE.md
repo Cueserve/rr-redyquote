@@ -1,7 +1,7 @@
 # DATABASE.md — Data Model
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-08
 **Source of truth for:** RedyQuote's entities, their columns and constraints, and the
 design decisions behind why each table looks the way it does.
 
@@ -37,7 +37,7 @@ a reader needs; they are not a second implementation of it.
 
 RedyQuote is a **single-tenant** quoting system for REDYREF's sales team. Two roles only —
 **rep** and **admin** — sit on top of Supabase Auth. Admins own the product catalog,
-component library, quantity-tier fab pricing, global estimating settings, and branding.
+component library, per-product fab tiers, global estimating settings, and branding.
 Reps build quotes against that catalog; every quote moves through a fixed
 `Draft → Pending Approval → Approved → Sent` lifecycle plus an explicit
 `Pending Approval → Draft` request-changes path. Both steps out of `Pending Approval` are
@@ -72,7 +72,7 @@ that are append-only at the database level (not just by application convention).
 | 3   | `settings`               | Singleton row — labor rate, markups, cushion/commission %, margin floor, freshness thresholds, favicon |
 | 4   | `settings_history`       | Append-only audit of `settings` field changes (PRD-018A)                                               |
 | 5   | `products`               | Fabricated product catalog                                                                             |
-| 6   | `fab_tiers`              | Quantity-tier fab cost per product                                                                     |
+| 6   | `fab_tiers`              | Fab cost per product per quantity break                                                                |
 | 7   | `product_defaults`       | Default component per category per product                                                             |
 | 8   | `components`             | Component library (category, environment, cost, labor hours)                                           |
 | 9   | `price_history`          | Append-only cost history for components and fab tiers                                                  |
@@ -84,6 +84,25 @@ that are append-only at the database level (not just by application convention).
 **Two tables not named in ARCHITECTURE.md's data-design table** were added to close gaps
 left open by the source docs — see §5.2 for the rationale on each (`categories`,
 `quote_number_sequences`).
+
+### Naming: fab tier vs. qty tier — two things, not one
+
+Settled 2026-08-08. The docs had used _fab tier_, _fab-tier_, and _quantity tier_
+interchangeably, which reads as either a synonym or a second entity and gave a reader no way
+to tell. They are **two different things**, and the schema already distinguishes them:
+
+- **Fab tier** — a row on `fab_tiers`: the fabrication cost for one product at one quantity
+  break, with its own `cost`, `quoted_date`, and `vendor`. This is what a rep _selects_ on a
+  quote, and what `quotes.fab_tier_id` points at. Prose term: **fab tier** (hyphenate only as
+  a compound modifier — "fab-tier cost dates").
+- **Qty tier** — the `qty_tier` integer on that row: the quantity break itself (25, 50, 100).
+  A number, not a record. It is the shipped column header on the quotes list, right-aligned
+  as a numeric.
+
+Why it matters beyond tidiness: a quote binds a **fab tier row**, not a quantity. Binding the
+integer instead would mean re-looking-up the cost at read time, which destroys the point of
+`quotes.fab_cost_snapshot` (§4.11) — a later tier re-price would silently drift an
+already-saved quote.
 
 ---
 
@@ -280,6 +299,19 @@ does the enforcement; the `CHECK` forbids the row ever being `false`).
 | `updated_by`                | `uuid`          | FK → `profiles(id)`                          |
 | `created_at` / `updated_at` | `timestamptz`   | NOT NULL                                     |
 
+**Seeded values — placeholders, not REDYREF's rates.** `0003` seeds the singleton row with
+`labor_rate 50.00`, `fab_markup_percent 50.00`, `component_markup_percent 20.00`,
+`cushion_percent 2.50`, `commission_percent 1.25`, `margin_floor_percent 20.00`,
+`freshness_warning_months 12`, `freshness_requote_months 24`. **None of these came from
+REDYREF** (confirmed 2026-08-08) — the row exists because every column is `NOT NULL` with no
+default, so a `settings` table without its row is a broken state to push. They are the shape
+of a plausible estimate, nothing more.
+
+Two consequences worth stating, because a placeholder that looks like data is worse than a
+blank: no quote priced against these figures means anything, and the real values arrive with
+PRD §2A sign-off — as a **settings edit by an admin**, not a migration, since the row is
+already there. Do not treat a change to them as a schema change.
+
 **Every rate on this row is a percent** — the two markups are stored as `50.00` / `20.00`,
 not as the `1.50` / `1.20` multipliers that say the same thing. A multiplier in
 `numeric(5,2)` can only step 0.01, which is one whole percentage point of markup; as a
@@ -292,6 +324,12 @@ these two columns after `0003_settings.sql` had already shipped them as `*_multi
 
 Append-only (PRD-018A, NFR-005). One row per changed field, written by a trigger in the
 same transaction as the `settings` update — never insertable directly by a client (see [SQL spec §3](DATABASE-SQL.md#3-rls-policies)).
+
+**The only admin-only read in the schema** (PRD-018B). Every other table is flat-read for any
+authenticated user; this one is not, because markup, commission, and margin-floor history is
+compensation-adjacent. **Live on the remote** since 2026-08-08 — `0003` shipped the flat policy
+and is immutable, so `0005_settings_history_admin_read.sql` replaced it; see
+[§3](DATABASE-SQL.md#3-rls-policies).
 
 | Column          | Type          | Constraints                   |
 | --------------- | ------------- | ----------------------------- |
@@ -317,7 +355,7 @@ same transaction as the `settings` update — never insertable directly by a cli
 
 ### 4.6 `fab_tiers`
 
-Quantity-tier fab pricing (PRD-004). One live row per `(product_id, qty_tier)`; changes to
+Fab tiers (PRD-004) — one per product per quantity break. One live row per `(product_id, qty_tier)`; changes to
 `cost` append a `price_history` row via trigger.
 
 | Column                      | Type            | Constraints                                     |
@@ -542,8 +580,8 @@ alone.
 
 | Item                                 | Blocks                                                     | Owner decision needed                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Pricing formula** (PRD §2A)        | Wiring the save RPC into a real Server Action              | Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not.                                                                                                                                                                                                                                 |
-| **Fixed-category list** (PRD-007A)   | Populating `categories`; the quote builder's row structure | REDYREF's actual category names. The table ships empty — nothing in this repo invents them.                                                                                                                                                                                                                                                                                                                              |
+| **Pricing formula** (PRD §2A)        | Wiring the save RPC into a real Server Action              | **Decider: Viral Parikh (Product Owner), with REDYREF sales and estimating.** Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not.                                                                                                                                                   |
+| **Fixed-category list** (PRD-007A)   | Populating `categories`; the quote builder's row structure | **Decider: Viral Parikh (Product Owner), with REDYREF estimating.** REDYREF's actual category names, ordered. The table ships empty — nothing in this repo invents them.                                                                                                                                                                                                                                                 |
 | **Editing a quote after submission** | Whether `quote_lines` freezes outside `Draft`              | Neither PRD.md nor ARCHITECTURE.md says whether a rep may still edit line items once a quote leaves `Draft` — only that _status transitions_ follow the fixed state machine. This model allows content edits at any status by owner-or-admin. If the real process expects a submitted quote's lines to be frozen, that is a trigger, and it should be a deliberate decision rather than an assumption baked in silently. |
 
 One further item is an implementation risk rather than a product decision, and is tracked in

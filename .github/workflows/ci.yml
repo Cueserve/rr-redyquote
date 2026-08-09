@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      # Currently proves nothing: `vitest.config.ts` sets `passWithNoTests` and
+      # no test file exists. Kept in the blocking job so the first real test is
+      # gated from the moment it lands, rather than needing a CI change too.
+      - run: npm run test
+# The advisory/nightly Playwright job is deliberately absent: no `e2e/`, no
+# `playwright.config.ts`, and no `test:e2e` script exist yet. Add it in the same
+# change as the first E2E spec — which should be the approval gate, not a happy
+# path, since a UI-only test can pass while the database gate is broken.

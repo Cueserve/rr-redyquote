@@ -1,7 +1,7 @@
 # ENVIRONMENTS.md — Where the Database Runs
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-26
+**Last updated:** 2026-08-08
 **Source of truth for:** which Supabase environment development runs against, the working
 rules that follow from that, and the plan for adopting the local Docker stack later.
 
@@ -144,3 +144,28 @@ hosted `redyquote-dev` project becomes the staging target rather than the workin
   It fires on the first real customer quote, which is a product event, not an infrastructure
   one — nobody gets a reminder. Check it at production cutover.
 - Editing this file is a deliberate decision, like any `docs/` change (CLAUDE.md).
+
+### Known divergence: the project names above are an intended end state, not today
+
+**Verified 2026-08-05 via `npx supabase projects list`: exactly one Supabase project exists,
+named `RedyQuote`** (ref `ypoqkaoasorncpdadllg`, us-west-2, Postgres 17.6). §1's table calls
+the dev database `redyquote-dev`, and §3 rule 1 states as a working rule that `redyquote-dev`
+and `redyquote-prod` are separate projects. **Neither is true yet.**
+
+This is the most dangerous kind of error this file can carry, because §3 rule 1's whole point
+is "never point a dev branch at the production project" — and today there is only one project
+to point at. Two actions close it, both in the Supabase dashboard, neither in this repo:
+
+1. **Rename `RedyQuote` → `redyquote-dev`.** Do this any time; it costs nothing. A project's
+   ref is a separate immutable identifier, so the rename does not invalidate the
+   `supabase link --project-ref` in §3, `.env.local`, or `supabase/.temp/`. Nothing needs
+   re-linking.
+2. **Create `redyquote-prod`.** Gated by the same event as the Pro upgrade (NFR-006b, the
+   first real customer quote). Do **not** create it early to reserve the name — Free allows
+   only 2 active projects per org (§2), and prod must be Pro at cutover anyway.
+
+**Spelling:** `redyquote`, not `readyquote`. A display label can be corrected later; an
+infrastructure name with a typo survives into connection strings, CI secrets, and runbooks.
+
+Update §1's table row and §3 rule 1 in the same change, so the doc and reality agree in
+whichever direction you settle.

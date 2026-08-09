@@ -27,7 +27,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Key Concepts
 
-- **Quote** — the core object reps build: a product, quantity tier, and set of components,
+- **Quote** — the core object reps build: a product, fab tier, and set of components,
   moving through Draft → Pending Approval → Approved → Sent. No other lifecycle exists, and
   every status change writes an audit row.
 - **Fab tier** — the fabrication cost for a product at a given order quantity (cost, quoted
@@ -72,7 +72,8 @@ cp .env.example .env.local   # fill in the two values from Supabase → Project 
 npm run dev                  # http://localhost:3000
 ```
 
-Everyday checks — all four are what CI will run:
+Everyday checks — the first four are exactly what CI runs on every PR to `main`
+([.github/workflows/ci.yml](.github/workflows/ci.yml)):
 
 ```bash
 npm run lint
@@ -82,9 +83,10 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-One caveat before you trust a green run: **`npm run test` proves nothing yet.** It is
-`vitest run --passWithNoTests` and there are no tests, so it exits 0 on an empty suite. Read a
-pass as "not run" until the pricing-calc tests land ([TODO.md](docs/TODO.md) §A.2).
+One caveat before you trust a green run: **`npm run test` proves nothing yet.**
+`vitest.config.ts` sets `passWithNoTests` and there are no test files, so it exits 0 on an
+empty suite. Read a pass as "not run" until the pricing-calc tests land — those are blocked
+on the pricing formula (PRD §2A).
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -166,6 +168,52 @@ npx impeccable detect src/          # exit 0 = clean, exit 2 = findings
 npx impeccable detect --json src/   # machine-readable, for CI
 ```
 
+## Documentation Audit — `/doc-audit`
+
+This repo is built against its docs: `CLAUDE.md` and `docs/` are loaded into Claude Code's context
+and drive what gets written. A stale line there isn't a typo — it's a wrong instruction that ends
+up in code. `/doc-audit` ([.claude/commands/doc-audit.md](.claude/commands/doc-audit.md)) reads the
+whole doc corpus once and checks it three ways.
+
+| Pass          | Question it answers                                                          | Run it as           |
+| ------------- | ---------------------------------------------------------------------------- | ------------------- |
+| **A. Align**  | Do terms, metrics, goals, and acceptance criteria cohere? What's missing?    | `/doc-audit align`  |
+| **B. Drift**  | Do the docs contradict each other, or contradict the code?                   | `/doc-audit drift`  |
+| **C. Absorb** | Is the same fact written twice? Which copy is better? Can a spec be deleted? | `/doc-audit absorb` |
+
+**The letters are the run order.** `/doc-audit` with no argument runs all three, A → B → C, in one
+report.
+
+Start with `align` because it builds the terminology register — once concept names are settled, the
+other two passes produce sharper findings. Run `drift` next, since it's the pass that catches
+instructions that would produce wrong code. Save `absorb` for last: it's the only pass that proposes
+deleting files, and it's the least useful while terms are still unsettled.
+
+**When to run it:** after landing a spec, after applying a migration, after any `docs/` edit, and
+before starting a feature that spans several docs. It's a read-heavy command — it's not a
+pre-commit check.
+
+Other arguments, combinable:
+
+```bash
+/doc-audit docs-only          # skip all code probes — fast, prose only
+/doc-audit fix                # apply the Safe fix tier (README, dead links, stale dates)
+/doc-audit align docs/PRD.md  # scope to one file
+```
+
+**What it will and won't change.** Fixes are split in two tiers:
+
+- **Safe** — `README.md` wording, broken relative links, stale date stamps. Applied only when you
+  pass `fix`. README owns no facts, so correcting it is transcription, not a decision.
+- **Approval** — anything touching `docs/`, `CLAUDE.md`, or `.claude/settings.json`, every
+  terminology rename, and **every Pass C finding**. These are shown as a diff and stop for your
+  approval, even under `fix`. Editing a source-of-truth doc is a deliberate decision
+  ([CLAUDE.md](CLAUDE.md), "Editing source-of-truth docs") — the audit proposes, you decide.
+
+**Reading the output.** Each finding carries two ratings, because they're different questions:
+`P0`–`P2` is correctness (would following this produce wrong code?) and `High`/`Medium`/`Low` is
+product impact (what does it cost a user or an engineer?). A finding can be `P2 · High`.
+
 ## Project Structure
 
 The UI is built end to end but **not yet wired to the database**: every screen reads from
@@ -202,4 +250,4 @@ Tracked in [DATABASE.md](docs/DATABASE.md) §6.
 
 ---
 
-> _Last updated:_ 2026-07-31 · _Owner:_ Viral Parikh
+> _Last updated:_ 2026-08-08 · _Owner:_ Viral Parikh

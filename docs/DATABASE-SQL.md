@@ -23,16 +23,17 @@ historical**. Where a migration file exists, **that file is authoritative and th
 is not** (ARCHITECTURE §5) — the blocks are kept only so the untranscribed remainder stays
 readable in context.
 
-| §1 block                 | Migration file                                       | Status                                      |
-| ------------------------ | ---------------------------------------------------- | ------------------------------------------- |
-| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql`  | ✅ transcribed verbatim                     |
-| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`     | ✅ transcribed + §4.2 guard, + profiles RLS |
-| `0003` settings tables   | `supabase/migrations/0003_settings.sql`              | ✅ transcribed + CHECKs, RLS, seed row      |
-| markup units fix         | `supabase/migrations/0004_settings_markup_units.sql` | ✅ renames `0003`'s two markup columns      |
-| `0003` categories onward | —                                                    | ⬜ not yet authored                         |
-| `0005` onward            | —                                                    | ⬜ not yet authored                         |
+| §1 block                 | Migration file                                             | Status                                                     |
+| ------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `0001` extensions/enums  | `supabase/migrations/0001_extensions_and_types.sql`        | ✅ transcribed verbatim                                    |
+| `0002` profiles + auth   | `supabase/migrations/0002_profiles_and_auth.sql`           | ✅ transcribed + §4.2 guard, + profiles RLS                |
+| `0003` settings tables   | `supabase/migrations/0003_settings.sql`                    | ✅ transcribed + CHECKs, RLS, seed row                     |
+| markup units fix         | `supabase/migrations/0004_settings_markup_units.sql`       | ✅ renames `0003`'s two markup columns                     |
+| settings_history read    | `supabase/migrations/0005_settings_history_admin_read.sql` | ✅ narrows `0003`'s flat SELECT to `is_admin()` (PRD-018B) |
+| `0003` categories onward | —                                                          | ⬜ not yet authored                                        |
+| `0006` onward            | —                                                          | ⬜ not yet authored — categories, products, quotes, RPCs   |
 
-**`0001`–`0004` are all applied to the linked project.** Never edit an applied file —
+**`0001`–`0005` are all applied to the linked project.** Never edit an applied file —
 `db push` compares recorded versions, not contents, so the edit is skipped silently while
 reading as though it landed. A new decision is a new file. `0004` exists precisely because
 `0003` had already shipped when the markup units were reversed.
@@ -89,7 +90,8 @@ _why_ each table looks like this; the SQL below is only _how_.
 >
 > **The authored files diverged from that split** — see the deviations above. `0004` is
 > taken by the markup-units fix, RLS ships with each table rather than in one trailing
-> file, and the seed row lives in `0003`. The remaining work is `0005` onward; the block
+> file, the seed row lives in `0003`, and `0005` is the settings_history read narrowing. The
+> remaining work is `0006` onward; the block
 > comments below still carry the original suggested numbers, so read them as section
 > labels, not filenames.
 
@@ -808,7 +810,9 @@ $$;
 
 Enforcement model, restated from PRD-019 / ARCHITECTURE §4 (Key Design Decisions):
 
-- **Reads are flat** — any authenticated REDYREF user (rep or admin) can read every table.
+- **Reads are flat** — any authenticated REDYREF user (rep or admin) can read every table,
+  **except `settings_history`, which is admin-only read** (PRD-018B). That is the single
+  exception in the model; do not generalize it, and do not copy the flat pattern onto it.
 - **Master data / settings / branding writes are admin-only.**
 - **Quote content writes are owner-or-admin.**
 - **Both exits from `Pending Approval` — forward to `Approved` and back to `Draft` — are
@@ -898,9 +902,17 @@ create policy "settings_update_admin"
 -- no INSERT/DELETE policy: the single row is seeded once by migration
 
 -- --------------------------------------------------------- settings_history
-create policy "settings_history_select_authenticated"
-  on settings_history for select to authenticated using (true);
+-- ADMIN-ONLY READ, and the one exception to "reads are flat" (PRD-018B, decided
+-- 2026-08-08). Markup, commission, and margin-floor history is compensation-adjacent;
+-- the flat default was never a decision, just the pattern copied from every other table.
+create policy "settings_history_select_admin"
+  on settings_history for select to authenticated using (is_admin());
 -- no INSERT/UPDATE/DELETE policy: written only by log_settings_change() (SECURITY DEFINER)
+--
+-- LIVE ON THE REMOTE as of 2026-08-08 via `0005_settings_history_admin_read.sql`.
+-- `0003` shipped this flat (`settings_history_select_authenticated ... using (true)`) and is
+-- immutable, so `0005` dropped that policy and created the one above. Verified after the push:
+-- one policy on the table, SELECT only, `USING is_admin()`, no write policy.
 
 -- ----------------------------------------------------------------- products
 create policy "products_select_authenticated"
@@ -1131,8 +1143,8 @@ Percent won on three counts:
   already means "no markup" (the multiplier reading would have needed `default 1`).
 
 **`quote_lines` needs no change** — `markup_percent numeric(5,2) not null default 0` as
-specified in §1 is correct as written, and the quotes migration (`0005` onward, since `0004`
-is now the markup-units fix) can be authored against it.
+specified in §1 is correct as written, and the quotes migration (`0006` onward, since `0004`
+is the markup-units fix and `0005` the settings_history read narrowing) can be authored against it.
 
 The pricing formula applies `cost * (1 + p/100)` in one place, whenever PRD §2A fixes the
 calculation order. That sign-off is still outstanding, but it no longer blocks the schema.

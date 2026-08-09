@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { DeactivatedBadge, FreshnessBadge } from "@/components/freshness-badge";
 import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import {
   Table,
   TableBody,
@@ -56,14 +56,19 @@ export default async function ComponentDetailPage({
             edit or delete affordance anywhere, is the design expressing that:
             there is no UI for changing history because there is no way to. */}
         <Card
-          className="flex flex-col gap-4 xl:w-96 xl:shrink-0"
+          // 30rem, not w-96 (24rem): the four-column history table needs 442px
+          // and w-96 gave it 348px, so it scrolled horizontally at xl and above
+          // while fitting fine below xl, where the grid stacks. The wider
+          // viewport produced the worse result. The 96px comes off the editor
+          // column, which still clears its two-column field grid at 660px.
+          className="flex flex-col gap-4 xl:w-[30rem] xl:shrink-0"
           padding="compact"
         >
           <div className="flex flex-col gap-1 px-2 pt-2">
             <h2 className="text-md font-semibold tracking-tight">
               Price History
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="max-w-[70ch] text-sm text-muted-foreground">
               Append-only. A cost change adds a row; it never rewrites one.
             </p>
           </div>
@@ -89,25 +94,15 @@ export default async function ComponentDetailPage({
                       <span className="flex items-center justify-end gap-2">
                         {formatMoney(row.cost)}
                         {index === 0 ? (
-                          <FreshnessBadge
-                            freshness={component.freshness}
-                            quotedDate={row.quoted_date}
-                          />
+                          <FreshnessBadge freshness={component.freshness} />
                         ) : null}
                       </span>
                     </TableCell>
                     <TableCell numeric className="text-muted-foreground">
                       {formatDate(row.quoted_date)}
                     </TableCell>
-                    {/* See ComponentTable: the dash is visual only, the word is
-                        what a screen reader reads. */}
                     <TableCell className="text-muted-foreground">
-                      {row.vendor ?? (
-                        <>
-                          <span aria-hidden="true">—</span>
-                          <span className="sr-only">No vendor</span>
-                        </>
-                      )}
+                      {row.vendor ?? <EmptyValue label="No vendor" />}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(row.created_at)}

@@ -101,11 +101,11 @@ pins impeccable's context directory to `docs/` (`IMPECCABLE_CONTEXT_DIR`) so it 
 [PRODUCT.md](docs/PRODUCT.md) from there. Claude Code reads it on open and prompts you to trust
 the workspace; accept, and the plugins install themselves.
 
-| Plugin                                    | Job                                                     |
-| ----------------------------------------- | ------------------------------------------------------- |
-| `frontend-design@claude-plugins-official` | Optional taste input on a new screen. Picks no values.  |
-| `impeccable@impeccable`                   | **Audit only:** anti-patterns, contrast, AI-slop tells. |
-| `superpowers@claude-plugins-official`     | Process guidance. Not a design tool.                    |
+| Plugin                                    | Job                                                    |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `frontend-design@claude-plugins-official` | Optional taste input on a new screen. Picks no values. |
+| `impeccable@impeccable`                   | **`shape` + audit only.** Never builds UI.             |
+| `superpowers@claude-plugins-official`     | Process guidance. Not a design tool.                   |
 
 Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official) and
 [superpowers](https://github.com/anthropics/claude-plugins-official) (Anthropic) ·
@@ -114,8 +114,15 @@ Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official
 **No plugin builds UI here — shadcn does.** This is a shadcn project ([components.json](components.json),
 `shadcn@4`), and the 15 primitives in `src/components/ui/` are shadcn components adapted to our
 tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on any UI change
-is **design system → shadcn → impeccable audit → `npm run lint` + `npm run typecheck`**;
-[CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
+is **`/impeccable shape` → design system → shadcn → impeccable audit → `npm run lint` +
+`npm run typecheck`**; [CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
+
+**Starting new UI-bearing work? `/impeccable shape` is required, not optional** — a new route,
+screen, or user-facing component begins with a shape brief you have explicitly confirmed.
+`/impeccable craft` is **banned**: it builds as well as plans, and nothing in impeccable writes
+UI here. Backend-only work (migration, Server Action, `src/lib/` module) is exempt. CLAUDE.md
+"Building UI" step 1 has the full rule, including how this orders against
+`superpowers:brainstorming`.
 
 Five things to know:
 

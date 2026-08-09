@@ -5,6 +5,7 @@ import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { DeactivatedBadge, FreshnessBadge } from "@/components/freshness-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyValue } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -221,7 +222,7 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 
@@ -239,14 +240,14 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 
                 {/* Calculated — no tint, no border (DESIGN-SYSTEM.md §7). */}
                 <TableCell numeric className="text-right">
                   {!line ? (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   ) : isEdited ? (
                     <PendingValue />
                   ) : (
@@ -272,7 +273,7 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 

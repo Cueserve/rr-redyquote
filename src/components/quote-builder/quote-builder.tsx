@@ -26,7 +26,7 @@ import type {
   QuoteStatusHistoryRow,
   Settings,
 } from "@/lib/mock";
-import { formatMoney } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 
 import { LifecycleBar } from "./lifecycle-bar";
 import { LineItems } from "./line-items";
@@ -347,16 +347,19 @@ export function QuoteBuilder({
                   ))}
                 </SelectContent>
               </Select>
+              {/* The quoted date is visible here, unlike the tables, because
+                  this is the one place a freshness badge has no dated column
+                  beside it — and "Aging" is not actionable without knowing
+                  aging since when. It used to hide inside the badge's `title`,
+                  which only a mouse could reach. */}
               {selectedTier ? (
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   Fab cost{" "}
                   <span className="font-mono tabular-nums">
                     {formatMoney(selectedTier.cost)}
                   </span>
-                  <FreshnessBadge
-                    freshness={selectedTier.freshness}
-                    quotedDate={selectedTier.quoted_date}
-                  />
+                  · quoted {formatDate(selectedTier.quoted_date)}
+                  <FreshnessBadge freshness={selectedTier.freshness} />
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
@@ -401,7 +404,11 @@ export function QuoteBuilder({
         <Card className="flex flex-col gap-4" padding="compact">
           <div className="flex flex-col gap-1 px-3 pt-2">
             <h2 className="text-md font-semibold tracking-tight">Line Items</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* 70ch, matching PageHeader's page-level description. Uncapped
+                this ran 660px = 118 characters per line at 1440, well past the
+                65-75ch measure. A Card constrains a section's width on some
+                screens and not others, so the cap has to be on the prose. */}
+            <p className="max-w-[70ch] text-sm text-muted-foreground">
               One line per category, plus any misc lines this job needs. Amber
               fields are typed; plain figures are computed on save.
             </p>

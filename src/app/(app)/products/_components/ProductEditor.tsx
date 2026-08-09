@@ -228,10 +228,7 @@ export function ProductEditor({
                     />
                   </TableCell>
                   <TableCell>
-                    <FreshnessBadge
-                      freshness={tier.freshness}
-                      quotedDate={tier.quoted_date}
-                    />
+                    <FreshnessBadge freshness={tier.freshness} />
                   </TableCell>
                   <TableCell>
                     <Button

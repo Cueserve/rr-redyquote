@@ -37,4 +37,26 @@ function EmptyState({
   );
 }
 
-export { EmptyState };
+/**
+ * The em-dash placeholder for a cell with no value.
+ *
+ * A bare "—" is silence: most screen readers announce nothing for it, so an
+ * intentionally-empty cell is indistinguishable from a broken one. The dash is
+ * therefore `aria-hidden` decoration and `label` is what actually gets read.
+ * Shared rather than inlined because the dash appears in five tables, and an
+ * inconsistent label is worse than no label -- impeccable's `em-dash-overuse`
+ * counted 40 of them on the quote builder alone.
+ *
+ * This is NOT for a value that is merely pending calculation -- see
+ * `PendingValue` in quote-builder/line-items.tsx, which says so in a tooltip.
+ */
+function EmptyValue({ label = "No value" }: { label?: string }) {
+  return (
+    <>
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{label}</span>
+    </>
+  );
+}
+
+export { EmptyState, EmptyValue };

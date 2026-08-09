@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/data-table";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import type { Category, LibraryComponent } from "@/lib/mock";
 import { formatDate, formatHours, formatMoney } from "@/lib/utils";
 
@@ -161,25 +161,13 @@ export function ComponentTable({
                       </span>
                     </div>
                   </TableCell>
-                  {/* A bare "—" is silence to a screen reader: most announce
-                      nothing for it, so an intentionally-empty cell is
-                      indistinguishable from a broken one. The dash stays as the
-                      visual convention; the word is what actually gets read. */}
                   <TableCell className="text-muted-foreground">
                     {categoryName.get(component.category_id) ?? (
-                      <>
-                        <span aria-hidden="true">—</span>
-                        <span className="sr-only">Uncategorised</span>
-                      </>
+                      <EmptyValue label="Uncategorised" />
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {component.vendor ?? (
-                      <>
-                        <span aria-hidden="true">—</span>
-                        <span className="sr-only">No vendor</span>
-                      </>
-                    )}
+                    {component.vendor ?? <EmptyValue label="No vendor" />}
                   </TableCell>
                   <TableCell>
                     <Badge variant={environment.variant}>
@@ -203,10 +191,7 @@ export function ComponentTable({
                     {formatDate(component.quoted_date)}
                   </TableCell>
                   <TableCell>
-                    <FreshnessBadge
-                      freshness={component.freshness}
-                      quotedDate={component.quoted_date}
-                    />
+                    <FreshnessBadge freshness={component.freshness} />
                   </TableCell>
                 </TableRow>
               );

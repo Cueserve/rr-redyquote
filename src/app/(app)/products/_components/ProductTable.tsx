@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/data-table";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import type { Product } from "@/lib/mock";
 import { formatDate, formatHours } from "@/lib/utils";
 
@@ -143,7 +143,7 @@ export function ProductTable({ products }: { products: Product[] }) {
                   {product.sku}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {product.vendor ?? "—"}
+                  {product.vendor ?? <EmptyValue label="No vendor" />}
                 </TableCell>
                 <TableCell numeric className="text-right">
                   {formatHours(product.est_labor_hours)}

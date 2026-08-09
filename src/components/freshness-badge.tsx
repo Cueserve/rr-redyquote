@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
 import type { Freshness } from "@/lib/mock";
 
 /**
@@ -26,30 +25,33 @@ const FRESHNESS: Record<
   requote: { label: "Re-quote", variant: "destructive" },
 };
 
-export function FreshnessBadge({
-  freshness,
-  quotedDate,
-}: {
-  freshness: Freshness;
-  /** Read out after the label so the badge is never the only carrier. */
-  quotedDate?: string;
-}) {
+// The badge renders its state and nothing else — no `quotedDate` prop, and in
+// particular no hidden copy of the date.
+//
+// It used to carry one as a `title`, which was reachable only by mouse hover:
+// not on keyboard focus (the badge is not focusable, and making it focusable
+// would add a tab stop per table row), not on touch, and inconsistently by
+// screen readers. Swapping that for an `sr-only` span inverted the problem
+// rather than solving it — the date became screen-reader-only, and sighted
+// users lost it.
+//
+// The real answer is that the date belongs beside the badge as ordinary visible
+// text, which is what every caller now does. That also drops the last reason
+// for a `position: absolute` element in here: `sr-only` is absolutely
+// positioned, and impeccable's `clipped-overflow-container` flags any such
+// child of the app shell's `overflow-hidden`. The finding is a false positive
+// on `sr-only` — clipping is the entire point of it — but the fix that removes
+// the hidden text also removes the finding, which beats suppressing a detector
+// that catches real popover clipping.
+//
+// WCAG 1.4.1 is satisfied without the date: the state is carried by the word
+// ("Current" / "Aging" / "Re-quote"), never by color alone.
+export function FreshnessBadge({ freshness }: { freshness: Freshness }) {
   const { label, variant } = FRESHNESS[freshness];
 
   return (
     <Badge variant={variant} dot>
       {label}
-      {/* `sr-only`, not `title`. A `title` tooltip is mouse-hover only: it never
-          appears on keyboard focus (this badge is not focusable, and making it
-          focusable would add one tab stop per table row), never on touch, and
-          screen readers treat it inconsistently -- so the date it carried was
-          reachable by exactly one input method. The repo's Tooltip primitive is
-          the wrong tool for the same reason it is right in line-items.tsx:
-          there it wraps a single warning icon, here it would repeat down a
-          21-row column. */}
-      {quotedDate ? (
-        <span className="sr-only">, quoted {formatDate(quotedDate)}</span>
-      ) : null}
     </Badge>
   );
 }

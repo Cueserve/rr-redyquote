@@ -32,7 +32,13 @@ export function AdminOnly({
  */
 export function ReadOnlyNotice({ what }: { what: string }) {
   return (
-    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+    // The measure cap lives here, not only in PageHeader's `notice` slot. That
+    // slot caps it to 65ch, but an editor that renders this directly (see
+    // ComponentEditor / ProductEditor) got no cap at all and ran 756px wide --
+    // 99 characters per line, measured. `ch` resolves against this element's
+    // own font-size, so declaring text-xs here is what makes 65ch mean 65ch;
+    // same reasoning as page-header.tsx's notice row.
+    <p className="flex max-w-[65ch] items-center gap-2 text-xs text-muted-foreground">
       <Lock aria-hidden="true" className="size-3.5" />
       {what} is maintained by an admin. You can read it here; edits are
       admin-only and enforced by the database.

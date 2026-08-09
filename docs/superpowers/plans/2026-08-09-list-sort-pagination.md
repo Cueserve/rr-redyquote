@@ -84,6 +84,9 @@ describe("applyListView", () => {
   });
 
   it("returns every row when they fit on one page", () => {
+    // The expected order is also the localeCompare order: codepoint order
+    // ("Alpha", "Charlie", "Delta", "bravo") puts every lowercase name last,
+    // so this fixture fails if `compareText` ever stops using localeCompare.
     const result = applyListView(rows, { compare: byName, page: 1, size: 50 });
     expect(ids(result)).toEqual(["a", "b", "c", "d"]);
     expect(result.total).toBe(4);
@@ -146,13 +149,6 @@ describe("applyListView", () => {
 });
 
 describe("byField", () => {
-  it("sorts text with localeCompare, not codepoint order", () => {
-    // "bravo" beats "Charlie" only under localeCompare; `<` puts every
-    // lowercase name after every uppercase one.
-    const result = applyListView(rows, { compare: byName, page: 1, size: 50 });
-    expect(ids(result)).toEqual(["a", "b", "c", "d"]);
-  });
-
   it("sorts nulls last ascending", () => {
     const compare = byField<Row, string>(
       (row) => row.vendor,

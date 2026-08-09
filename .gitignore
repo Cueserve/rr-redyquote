@@ -49,3 +49,12 @@ next-env.d.ts
 # db:types writes here first and renames on success, so a failed run leaves this
 # behind holding the CLI's JSON error blob instead of poisoning types.ts.
 *.ts.tmp
+
+# graphify (knowledge graph tool). graph.json/graph.html/GRAPH_REPORT.md are
+# versioned as living documentation of the codebase graph; everything else
+# (per-file extraction cache, machine-local interpreter/root paths, manifest,
+# cost log) is regenerable local state, not a deliverable.
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/graph.html
+!graphify-out/GRAPH_REPORT.md

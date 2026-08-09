@@ -331,7 +331,7 @@ export function compareNumber(a: number, b: number): number {
 
 /**
  * Ordered-enum compare for quote status and freshness. Status sorts
- * Draft → Pending approval → Approved → Sent, never alphabetically — the
+ * Draft → Review → Approved → Sent, never alphabetically — the
  * alphabetical order conveys nothing about where a quote sits.
  *
  * An unrecognised value ranks after every known one rather than throwing:
@@ -1876,7 +1876,7 @@ const SORTS: Record<
   tier: (dir) => byField((row: Quote) => row.qty_tier, compareNumber, dir),
   // Lifecycle order, reusing the same constant the tab row is built from, so
   // the two can never disagree. Alphabetical would give approved, draft,
-  // pending approval, sent — which conveys nothing about where a quote sits.
+  // review, sent — which conveys nothing about where a quote sits.
   status: (dir) =>
     byField((row: Quote) => row.status, compareRank(QUOTE_STATUS_ORDER), dir),
   price: (dir) =>
@@ -2096,7 +2096,7 @@ Expected: all clean; `/quotes` moves to `ƒ`.
 Then at `http://localhost:3000/quotes`, in addition to the nine checks from Task 6 Step 6:
 
 - The default view is Updated descending with **no** params in the URL, even though that is not `name`/`asc` — `sort` and `dir` are omitted because they equal _this screen's_ defaults.
-- Sorting by `Status` ascending gives Draft, Pending Approval, Approved, Sent.
+- Sorting by `Status` ascending gives Draft, Review, Approved, Sent.
 - Clicking a status tab gives `?status=pending_approval`; clicking `All` removes the param.
 - `?status=nonsense` shows every quote with the `All` tab selected, and does not error.
 - The below-margin-floor warning icon and its tooltip still work on a sorted, paged view.

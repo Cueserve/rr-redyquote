@@ -92,8 +92,8 @@ const SORTS: Record<
 Three rules that are easy to get wrong and are therefore part of the spec, not the
 implementer's discretion:
 
-- **Status sorts by lifecycle order, never alphabetically.** Draft → Pending approval →
-  Approved → Sent. Alphabetical yields _approved, draft, pending approval, sent_, which
+- **Status sorts by lifecycle order, never alphabetically.** Draft → Review →
+  Approved → Sent. Alphabetical yields _approved, draft, review, sent_, which
   conveys nothing about where a quote sits.
 - **Freshness sorts the same way:** Current → Aging → Re-quote.
 - **Nulls sort last in both directions.** `vendor` is nullable; a naive ascending sort

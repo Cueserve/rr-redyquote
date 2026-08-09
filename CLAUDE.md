@@ -144,7 +144,7 @@ fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 
 These are structural guarantees, not conventions — don't write code that breaks them:
 
-- **Database-enforced approval gate** — both exits from `Pending Approval` (→ `Approved`
+- **Database-enforced approval gate** — both exits from `Review` (→ `Approved`
   and → `Draft`) are restricted to `role = 'admin'` inside Postgres, never by a UI-only
   check. The mechanism is the `validate_quote_status_transition` trigger, **not** an RLS
   policy: `WITH CHECK` cannot see the old row, so it cannot express a transition. Don't
@@ -156,9 +156,9 @@ These are structural guarantees, not conventions — don't write code that break
 - **Server-side pricing trust boundary** — the Server Action recomputes the canonical cost
   breakdown from stored data at save time. Client-calculated numbers are for UX only and
   are never persisted as the trusted value.
-- **Quote lifecycle** — Draft → Pending Approval → Approved → Sent, **plus
-  Pending Approval → Draft** (request changes, PRD-010), and nothing else. Both transitions
-  out of Pending Approval are admin-only. Every status change writes an audit row.
+- **Quote lifecycle** — Draft → Review → Approved → Sent, **plus
+  Review → Draft** (request changes, PRD-010), and nothing else. Both transitions
+  out of Review are admin-only. Every status change writes an audit row.
 - **Append, never overwrite** — component cost changes append to `price_history`.
 
 ## Claude Code-specific config

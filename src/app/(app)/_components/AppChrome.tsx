@@ -7,7 +7,7 @@ import { Boxes, FileText, Package, SlidersHorizontal } from "lucide-react";
 import { RoleProvider } from "@/components/prototype/role-context";
 import { RoleToggle } from "@/components/prototype/role-toggle";
 import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
+import { Topbar, type Crumb } from "@/components/layout/topbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getComponent, getProduct, getQuote } from "@/lib/mock";
 
@@ -67,13 +67,24 @@ function leafLabel(section: string, id: string) {
   return id;
 }
 
-function crumbsFor(pathname: string): string[] {
+function crumbsFor(pathname: string): Crumb[] {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return ["Home"];
+  if (segments.length === 0) return [{ label: "Home" }];
 
   const [section, id] = segments;
-  const crumbs = ["Home", SECTION_LABEL[section] ?? section];
-  if (id) crumbs.push(leafLabel(section, id));
+  // "Home" points at `/`, which today only redirects to `/quotes` — see the
+  // comment in `app/page.tsx`. Deliberately not hardcoded to `/quotes`: that
+  // route becomes a real session router once auth lands, and a crumb wired
+  // straight past it would keep sending an admin to the rep landing page.
+  //
+  // Topbar drops the `href` on whichever crumb ends up last, so the section
+  // crumb is a link on `/quotes/<id>` and plain text on `/quotes` with no
+  // branching here.
+  const crumbs: Crumb[] = [
+    { label: "Home", href: "/" },
+    { label: SECTION_LABEL[section] ?? section, href: `/${section}` },
+  ];
+  if (id) crumbs.push({ label: leafLabel(section, id) });
   return crumbs;
 }
 

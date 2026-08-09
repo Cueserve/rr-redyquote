@@ -72,7 +72,8 @@ cp .env.example .env.local   # fill in the two values from Supabase → Project 
 npm run dev                  # http://localhost:3000
 ```
 
-Everyday checks — all four are what CI will run:
+Everyday checks — the first four are exactly what CI runs on every PR to `main`
+([.github/workflows/ci.yml](.github/workflows/ci.yml)):
 
 ```bash
 npm run lint
@@ -82,9 +83,10 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-One caveat before you trust a green run: **`npm run test` proves nothing yet.** It is
-`vitest run --passWithNoTests` and there are no tests, so it exits 0 on an empty suite. Read a
-pass as "not run" until the pricing-calc tests land ([TODO.md](docs/TODO.md) §A.2).
+One caveat before you trust a green run: **`npm run test` proves nothing yet.**
+`vitest.config.ts` sets `passWithNoTests` and there are no test files, so it exits 0 on an
+empty suite. Read a pass as "not run" until the pricing-calc tests land — those are blocked
+on the pricing formula (PRD §2A).
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no

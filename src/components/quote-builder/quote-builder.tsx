@@ -106,7 +106,7 @@ export function QuoteBuilder({
   const nextLineId = React.useRef(0);
   const makeLineId = () => `new-${(nextLineId.current += 1)}`;
 
-  // Only a draft is editable (PRD-010). Sent is terminal; Pending approval and
+  // Only a draft is editable (PRD-010). Sent is terminal; Review and
   // Approved are locked while they wait on someone.
   const readOnly = quote !== null && quote.status !== "draft";
 

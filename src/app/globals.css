@@ -274,11 +274,11 @@
   --success-muted: #eef4ee; /* ink on it: 4.59:1 */
   --success-border: #a2c4a1;
   /* Re-solved: the export's raw amber (#c77700) reads 3.46:1 on white --
-     Pending Approval text would fail AA outright. Darkened along the same
+     Review text would fail AA outright. Darkened along the same
      hue to #9c5400, matching the pattern the old muted palette already used
      for exactly this problem (stepping a failing export value, not inventing
      a new one). */
-  --warning: #9c5400; /* Pending Approval -- 5.70:1 on card */
+  --warning: #9c5400; /* Review -- 5.70:1 on card */
   --warning-foreground: #ffffff;
   --warning-muted: #fbebd6; /* ink on it: 4.88:1, export's value verbatim */
   --warning-border: #d5b196;

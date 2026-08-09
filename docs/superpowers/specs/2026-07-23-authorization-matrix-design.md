@@ -34,15 +34,15 @@ two roles — `rep` (default, PRD-002) and `admin`.
 
 ### 3.1 Quotes
 
-| Action                                    | rep      | admin    | Enforcement                                                                               |
-| ----------------------------------------- | -------- | -------- | ----------------------------------------------------------------------------------------- |
-| View any quote / dashboard                | ✅       | ✅       | RLS: any authenticated (flat read)                                                        |
-| Create quote                              | ✅       | ✅       | RLS insert; `owner` set to `auth.uid()`                                                   |
-| Edit/delete **own** Draft/Pending quote   | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'`                                               |
-| Edit/delete **another user's** quote      | ❌       | ✅       | RLS                                                                                       |
-| Submit `Draft → Pending Approval`         | ✅ (own) | ✅       | Transition validation + RLS                                                               |
-| **Approve** `Pending Approval → Approved` | ❌       | ✅       | **Trigger — `validate_quote_status_transition` (structural invariant, PRD-010, NFR-002)** |
-| Mark `Approved → Sent`                    | ✅ (own) | ✅       | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010**                          |
+| Action                                  | rep      | admin    | Enforcement                                                                               |
+| --------------------------------------- | -------- | -------- | ----------------------------------------------------------------------------------------- |
+| View any quote / dashboard              | ✅       | ✅       | RLS: any authenticated (flat read)                                                        |
+| Create quote                            | ✅       | ✅       | RLS insert; `owner` set to `auth.uid()`                                                   |
+| Edit/delete **own** Draft/Pending quote | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'`                                               |
+| Edit/delete **another user's** quote    | ❌       | ✅       | RLS                                                                                       |
+| Submit `Draft → Review`                 | ✅ (own) | ✅       | Transition validation + RLS                                                               |
+| **Approve** `Review → Approved`         | ❌       | ✅       | **Trigger — `validate_quote_status_transition` (structural invariant, PRD-010, NFR-002)** |
+| Mark `Approved → Sent`                  | ✅ (own) | ✅       | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010**                          |
 
 ### 3.2 Master data — admin owns
 
@@ -81,7 +81,7 @@ ARCHITECTURE's existing invariants, rather than a UI convention.
 **RLS policy surface (new/changed):**
 
 - `quotes` — insert (any auth); select (any auth); update/delete (`owner = auth.uid() OR
-admin`); the `Pending Approval → Approved` update additionally gated to `admin` by the
+admin`); the `Review → Approved` update additionally gated to `admin` by the
   `validate_quote_status_transition` trigger, **not by a policy** — `WITH CHECK` cannot see
   the old row, so RLS cannot express a transition at all (existing invariant).
 - `quote_lines` — writes allowed only when the parent quote is writable by the caller

@@ -211,22 +211,22 @@ Consequences worth stating outright:
 
 ## 3. What Lives Where
 
-| Concern                       | Location                                              | Why                                                                                                                                        |
-| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page/route reads              | `src/app/(app)/**/page.tsx` (Server Components)       | Read path; session-bound Supabase reads so RLS applies (ARCH §1)                                                                           |
-| Writes of any kind            | `src/server/actions/*.ts` (Server Actions)            | Sole mutation path — no direct browser→Postgres writes (ARCH §5)                                                                           |
-| Route-private UI              | `src/app/**/_components/`                             | Underscore keeps it out of the router; UI used by one route stays next to it                                                               |
-| Shared pricing calc           | `src/lib/pricing/`                                    | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5)                                           |
-| Input validation              | `src/lib/validation/` (Zod)                           | Single validation tool of record (ARCH §5, TECH-STACK §4)                                                                                  |
-| Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                          |
-| Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                                 |
-| Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                          |
-| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                                                          |
-| Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                                         |
-| The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                                       |
-| App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be                      |
-| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Pending Approval" (DESIGN-SYSTEM §13.4) |
-| Prototype scaffolding         | `src/lib/mock/`, `src/components/prototype/`          | Quarantined in named folders so the delete is one `rm -r` each, not a hunt. Nothing outside them may assume they exist                     |
+| Concern                       | Location                                              | Why                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Page/route reads              | `src/app/(app)/**/page.tsx` (Server Components)       | Read path; session-bound Supabase reads so RLS applies (ARCH §1)                                                                 |
+| Writes of any kind            | `src/server/actions/*.ts` (Server Actions)            | Sole mutation path — no direct browser→Postgres writes (ARCH §5)                                                                 |
+| Route-private UI              | `src/app/**/_components/`                             | Underscore keeps it out of the router; UI used by one route stays next to it                                                     |
+| Shared pricing calc           | `src/lib/pricing/`                                    | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5)                                 |
+| Input validation              | `src/lib/validation/` (Zod)                           | Single validation tool of record (ARCH §5, TECH-STACK §4)                                                                        |
+| Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                |
+| Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                       |
+| Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                |
+| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                                                |
+| Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                               |
+| The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                             |
+| App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be            |
+| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Review" (DESIGN-SYSTEM §13.4) |
+| Prototype scaffolding         | `src/lib/mock/`, `src/components/prototype/`          | Quarantined in named folders so the delete is one `rm -r` each, not a hunt. Nothing outside them may assume they exist           |
 
 ## 4. File Placement Rules
 
@@ -330,7 +330,7 @@ workflow) landed.
 
 **`e2e/` — the first spec is the approval gate, not a happy path.** ARCHITECTURE's
 database-enforced gate is the one invariant a UI-only test can pass while the real thing is
-broken: assert that a `rep` session cannot move a quote out of `Pending Approval` even when
+broken: assert that a `rep` session cannot move a quote out of `Review` even when
 the request is made directly, bypassing the UI. `@playwright/test` is already a devDependency;
 the config and specs are not. **Three files claim `test:e2e` does not exist and must be
 corrected in the same change** — `CLAUDE.md` § "Claude Code-specific config", this file's §1

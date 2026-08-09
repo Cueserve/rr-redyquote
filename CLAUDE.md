@@ -36,6 +36,13 @@ that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.m
   — future design for settings-branding logo/favicon upload and replacement using deployment-safe
   asset storage without immediate `settings` schema changes. Design-only in this phase; no code
   wiring and no DB migration are part of that spec.
+- [docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md](docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md)
+  — column sorting and pagination for the three list screens, plus moving their existing
+  filter state from `useState` into the URL. **Adds scope the PRD does not carry** — neither
+  sorting nor pagination appears in PRD.md — so this spec is the requirement, not a
+  restatement of one. Read it before touching `QuoteTable`, `ProductTable`, `ComponentTable`,
+  `data-table.tsx`, or `vitest.config.ts`. Its §9 records three rejected alternatives with
+  reasons; don't reopen them from memory. Design-only in this phase; nothing is implemented.
 - [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — the full DDL for
   [docs/DATABASE.md](docs/DATABASE.md)'s model: tables, enums, triggers, the atomic RPC
   functions, and every RLS policy. **Feeds `supabase/migrations/*.sql`; delete it once those
@@ -137,7 +144,7 @@ fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 
 These are structural guarantees, not conventions — don't write code that breaks them:
 
-- **Database-enforced approval gate** — both exits from `Pending Approval` (→ `Approved`
+- **Database-enforced approval gate** — both exits from `Review` (→ `Approved`
   and → `Draft`) are restricted to `role = 'admin'` inside Postgres, never by a UI-only
   check. The mechanism is the `validate_quote_status_transition` trigger, **not** an RLS
   policy: `WITH CHECK` cannot see the old row, so it cannot express a transition. Don't
@@ -149,9 +156,9 @@ These are structural guarantees, not conventions — don't write code that break
 - **Server-side pricing trust boundary** — the Server Action recomputes the canonical cost
   breakdown from stored data at save time. Client-calculated numbers are for UX only and
   are never persisted as the trusted value.
-- **Quote lifecycle** — Draft → Pending Approval → Approved → Sent, **plus
-  Pending Approval → Draft** (request changes, PRD-010), and nothing else. Both transitions
-  out of Pending Approval are admin-only. Every status change writes an audit row.
+- **Quote lifecycle** — Draft → Review → Approved → Sent, **plus
+  Review → Draft** (request changes, PRD-010), and nothing else. Both transitions
+  out of Review are admin-only. Every status change writes an audit row.
 - **Append, never overwrite** — component cost changes append to `price_history`.
 
 ## Claude Code-specific config

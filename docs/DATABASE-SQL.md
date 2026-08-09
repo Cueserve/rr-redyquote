@@ -459,8 +459,8 @@ create index idx_quote_status_history_actor on quote_status_history(actor);
 -- Validate the state machine BEFORE the row is written (PRD-010, NFR-002)
 --
 -- FOUR legal transitions, not three. PRD-010 defines the lifecycle as
--- Draft -> Pending Approval -> Approved -> Sent PLUS Pending Approval -> Draft
--- ("request changes"), and states that BOTH exits from Pending Approval --
+-- Draft -> Review -> Approved -> Sent PLUS Review -> Draft
+-- ("request changes"), and states that BOTH exits from Review --
 -- forward to Approved and back to Draft -- are admin-only. An earlier draft of
 -- this function carried only three and would have raised on request-changes,
 -- silently deleting a documented path (ARCHITECTURE §7, DATABASE.md §1).
@@ -483,7 +483,7 @@ begin
     new.approved_at := now();
   elsif old.status = 'pending_approval' and new.status = 'draft' then
     -- Request changes. Admin-only for the same reason approval is: PRD-010
-    -- puts both exits from Pending Approval in the admin's hands, so a rep
+    -- puts both exits from Review in the admin's hands, so a rep
     -- cannot pull their own quote back out of review.
     if not is_admin() then
       raise exception 'Only an admin may send a quote back to Draft (PRD-010)';
@@ -815,7 +815,7 @@ Enforcement model, restated from PRD-019 / ARCHITECTURE §4 (Key Design Decision
   exception in the model; do not generalize it, and do not copy the flat pattern onto it.
 - **Master data / settings / branding writes are admin-only.**
 - **Quote content writes are owner-or-admin.**
-- **Both exits from `Pending Approval` — forward to `Approved` and back to `Draft` — are
+- **Both exits from `Review` — forward to `Approved` and back to `Draft` — are
   admin-only**, enforced by the `validate_quote_status_transition` trigger (§1), which is a
   database guarantee and satisfies NFR-002 on its own.
 
@@ -973,7 +973,7 @@ create policy "quotes_update_owner_or_admin"
   on quotes for update to authenticated
   using (owner_id = auth.uid() or is_admin())
   with check (owner_id = auth.uid() or is_admin());
--- The specific rule "only an admin may move Pending Approval -> Approved"
+-- The specific rule "only an admin may move Review -> Approved"
 -- is enforced independently by the validate_quote_status_transition trigger
 -- (§1) — even a bypassed/tampered client that satisfies this owner-or-admin
 -- check still gets rejected by the trigger if it isn't an admin doing that

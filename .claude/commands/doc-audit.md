@@ -140,7 +140,7 @@ Three outcomes, and they are not interchangeable:
   `component library`, `quote builder`). Fall back to first use in `docs/PRODUCT.md`. If PRODUCT.md
   doesn't use it either, report as **unresolved** and name who decides. Never invent a canon.
 
-Same treatment for **status labels** (`Pending Approval` vs `pending_approval` vs `pending`) —
+Same treatment for **status labels** (`Review` vs `pending_approval` vs `pending`) —
 prose uses the display form, code uses the enum value, and a doc mixing them inside one sentence is
 a finding.
 
@@ -218,7 +218,7 @@ where this repo has actually drifted or is structurally likely to:
   _transition_ is describing a mechanism that cannot exist.
 - **Role model.** Which roles, and what may each write? The authorization-matrix spec is the
   amendment; anything still describing the pre-amendment model is superseded text.
-- **Quote lifecycle.** The state list and the transitions out of `Pending Approval`. Both exits
+- **Quote lifecycle.** The state list and the transitions out of `Review`. Both exits
   are admin-only; any file listing only one is incomplete, not merely terse.
 - **Approved stack and cuts.** Versions, and the v1 cut list (Resend, Sentry, PostHog, `pgmq`,
   `pg_cron`, Edge Functions). A tool mentioned as available anywhere but absent from TECH-STACK.md
@@ -330,7 +330,7 @@ exists to catch.
    config entries 2026-08-08. **Ruling:** README loses to both the config file (rung 1) and
    CLAUDE.md (rung 5).
 3. **[Drift] Approval-gate mechanism.** `README.md` "Key Concepts" labels it _RLS-enforced_ and
-   attributes the `Pending Approval → Approved` restriction to RLS. `CLAUDE.md` and
+   attributes the `Review → Approved` restriction to RLS. `CLAUDE.md` and
    `docs/DATABASE-SQL.md` §3 say the mechanism is the `validate_quote_status_transition` **trigger**,
    because `WITH CHECK` cannot see the old row and therefore cannot express a transition.
    **Ruling:** README is wrong about a non-negotiable invariant — the worst class of finding, since

@@ -442,7 +442,7 @@ so imported shadcn components work untouched; only the values changed.
 3. Use semantic tokens only. Lint will reject anything else.
 4. Anything in `src/components/ui/` must stay **app-agnostic** — it is the future shared
    RedyRef library, and the boundary is enforced in `eslint.config.mjs`. `badge.tsx` knows
-   about `success` / `warning` / `info`, not about "Pending Approval". App-specific mappings
+   about `success` / `warning` / `info`, not about "Review". App-specific mappings
    live in `src/components/`.
 5. If you add a color, compute its contrast in both modes before committing (§4).
 6. Three components from the original component inventory are folded into existing shadcn

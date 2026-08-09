@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, TriangleAlert } from "lucide-react";
 
 import { QuoteStatusBadge } from "@/components/quote-status-badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -15,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LinkPending } from "@/components/ui/link-pending";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -54,6 +56,15 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
     return matchesStatus && matchesQuery;
   });
 
+  // An empty result has two causes here, and the copy has to name the one in
+  // play — same reasoning as ProductTable. The status tabs are visible, but a
+  // rep who typed a quote number while sitting on the Draft tab gets nothing
+  // back and no statement of why, so both filters get named and both get a way
+  // out. Interpolated with a trailing space so the two sentence shapes below
+  // read correctly whether or not a status is selected.
+  const statusWord =
+    status === "all" ? "" : `${QUOTE_STATUS_LABEL[status].toLowerCase()} `;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -89,7 +100,37 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
       {rows.length === 0 ? (
         <div className="rounded-md border border-border">
           <EmptyState>
-            <p>No quotes match this filter.</p>
+            {quotes.length === 0 ? (
+              <p>No quotes yet.</p>
+            ) : (
+              <p>
+                {needle === ""
+                  ? `No ${statusWord}quotes.`
+                  : `No ${statusWord}quotes match “${query.trim()}”.`}
+              </p>
+            )}
+            {needle !== "" || status !== "all" ? (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                {needle !== "" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                ) : null}
+                {status !== "all" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setStatus("all")}
+                  >
+                    Show all statuses
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </EmptyState>
         </div>
       ) : (
@@ -110,9 +151,22 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
           <TableBody>
             {rows.map((quote) => (
               <TableRow key={quote.id}>
-                <TableCell numeric>
-                  <Link href={`/quotes/${quote.id}`} className="font-semibold">
+                {/* The row's name cell, so cell-by-cell navigation says which
+                    quote each value belongs to. Matches ProductTable and
+                    ComponentTable. */}
+                <TableCell header numeric>
+                  {/* `LinkPending` must live inside the Link — it reads that
+                      Link's navigation status. The detail route has no
+                      `loading.tsx` on purpose (it would turn a 404 into a
+                      200), so this is the only click feedback the row has. */}
+                  <Link
+                    href={`/quotes/${quote.id}`}
+                    className="inline-flex items-center gap-1.5 font-semibold"
+                  >
                     {quote.quote_number}
+                    <LinkPending
+                      label={`Opening quote ${quote.quote_number}`}
+                    />
                   </Link>
                 </TableCell>
                 <TableCell className="font-medium">
@@ -169,7 +223,12 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
         </Table>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      {/* `role="status"` (polite + atomic) is what makes the filters audible:
+          the status tabs and the search box rewrite the table with no page
+          navigation, so without a live region a screen-reader user gets no
+          confirmation the list changed, or that it went empty (WCAG 2.2 4.1.3).
+          Matches ProductTable and ComponentTable. */}
+      <p role="status" className="text-xs text-muted-foreground">
         Showing {rows.length} of {quotes.length} quotes.
       </p>
     </div>

@@ -8,21 +8,20 @@ import { Card } from "@/components/ui/card";
  * The not-found boundary for every authenticated route — what `notFound()` in
  * `products/[id]`, `library/[id]`, and `quotes/[id]` renders.
  *
- * KNOWN GAP, measured rather than assumed: `/quotes/<bad-id>` renders this page
- * but returns HTTP **200**, while `/products/<bad-id>` and `/library/<bad-id>`
- * correctly return 404. The cause is `quotes/loading.tsx`. It creates a Suspense
- * boundary over the whole `quotes/` subtree, so the response streams and its
- * status is committed before `notFound()` runs. Verified by removing that one
- * file: the same URL then returned 404, and 200 again once it was restored.
- * (An `error.tsx` at the segment was the first suspect and is not the cause —
- * `products/` has no error boundary and behaves the same way once a loading
- * boundary is added.)
+ * FIXED, and load-bearing: all three of `/quotes/<bad-id>`, `/products/<bad-id>`
+ * and `/library/<bad-id>` return HTTP **404**. Re-measured 2026-08-09.
  *
- * Not fixed here because the fix is structural: the list's loading UI and the
- * detail routes have to stop sharing a segment, which is a change to the layout
- * PROJECT-STRUCTURE.md §1 prescribes by name. Consequence is cosmetic for users
- * — the page renders correctly either way — but it does mislead crawlers and
- * uptime monitoring.
+ * They used to return 200, because a `loading.tsx` sitting at the bare route
+ * segment wrapped the whole subtree including `[id]`: the response streams, the
+ * status is committed, and `notFound()` then renders this page under a 200. The
+ * fix was the `(list)` route group, which keeps the list's loading UI off the
+ * detail routes — PROJECT-STRUCTURE.md §4, "List loading boundary rule".
+ *
+ * It stays fixed only as long as no `loading.tsx` appears at `<route>/` or at
+ * `<route>/[id]/`. Both reintroduce it; the `[id]` form was re-measured the same
+ * day and flipped `/quotes/bad-id` straight back to 200 with `/products/bad-id`
+ * unchanged as the control. That is why the detail routes have no loading UI and
+ * use `LinkPending` for navigation feedback instead.
  *
  * The copy stays vague on purpose. Any signed-in REDYREF user may read any quote
  * (ARCHITECTURE.md §7, flat reads), so "no such quote" is accurate today — but

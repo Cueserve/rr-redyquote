@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Send, TriangleAlert } from "lucide-react";
+import { Check, Send, TriangleAlert, Undo2 } from "lucide-react";
 
 import { QuoteStatusBadge } from "@/components/quote-status-badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,18 @@ import { formatPercent } from "@/lib/utils";
 /**
  * The lifecycle actions from PRD-010 / ARCHITECTURE.md §3:
  *
- *     Draft → Pending approval → Approved → Sent
+ *     Draft → Review → Approved → Sent
+ *              ↑           ↓
+ *              └─── Draft ──┘  (request changes)
+ *
+ * FOUR transitions, not three. The backward one — Review → Draft —
+ * is as much a part of the state machine as the other three: it is in PRD-010,
+ * in `validate_quote_status_transition` (docs/DATABASE-SQL.md §1, which clears
+ * `submitted_at` on the way), and in the lifecycle invariant CLAUDE.md lists as
+ * non-negotiable. It is the one an implementation keeps dropping, because
+ * "approve" reads like the only thing an approver does. Without it a quote that
+ * needs a correction has nowhere to go and the reviewer's only exit is to
+ * approve something they disagree with.
  *
  * WHAT THIS COMPONENT IS: the set of transitions a user is *offered*.
  * WHAT IT IS NOT: the set of transitions a user is *permitted*.
@@ -53,8 +64,16 @@ function offeredActions({
     // Quote content edits: owner or admin.
     canEdit: (isOwner || isAdmin) && status === "draft",
     canSubmit: (isOwner || isAdmin) && status === "draft",
-    // The one gated transition. Admin only, and enforced by RLS.
+    // The two gated transitions. BOTH exits from Review are
+    // admin-only, and both are enforced by the same `BEFORE UPDATE` trigger --
+    // not by RLS, which cannot see the old row and so cannot express a
+    // transition at all (docs/DATABASE-SQL.md §3).
+    //
+    // `canRequestChanges` deliberately does NOT include `isOwner`. The obvious
+    // reading -- "a rep can always pull their own quote back out of review" --
+    // is the wrong one under PRD-010, and the trigger raises on it.
     canApprove: isAdmin && status === "pending_approval",
+    canRequestChanges: isAdmin && status === "pending_approval",
     canMarkSent: (isOwner || isAdmin) && status === "approved",
   };
 }
@@ -72,7 +91,12 @@ export function LifecycleBar({
   isAdmin: boolean;
   isDirty: boolean;
 }) {
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  // One slot, not one boolean per dialog: the two confirmations are mutually
+  // exclusive by definition and a pair of booleans can represent a state that
+  // cannot happen.
+  const [dialog, setDialog] = React.useState<
+    "submit" | "request-changes" | null
+  >(null);
   const status: QuoteStatus = quote?.status ?? "draft";
   const actions = offeredActions({ status, isOwner, isAdmin });
 
@@ -91,7 +115,7 @@ export function LifecycleBar({
         </Button>
 
         {actions.canSubmit ? (
-          <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
+          <Button variant="secondary" onClick={() => setDialog("submit")}>
             Submit for approval
           </Button>
         ) : null}
@@ -100,6 +124,20 @@ export function LifecycleBar({
           <Button variant="secondary">
             <Check />
             Approve
+          </Button>
+        ) : null}
+
+        {/* Outline, not secondary: the two review exits are offered together,
+            and giving them the same weight makes the reviewer read both before
+            either. Approve is the moss-filled one because it is the path most
+            quotes take -- this is the correction, not the rejection. */}
+        {actions.canRequestChanges ? (
+          <Button
+            variant="outline"
+            onClick={() => setDialog("request-changes")}
+          >
+            <Undo2 />
+            Request changes
           </Button>
         ) : null}
 
@@ -113,8 +151,9 @@ export function LifecycleBar({
 
       {status === "pending_approval" && !isAdmin ? (
         <p className="text-xs text-muted-foreground">
-          Waiting on an admin. Only an admin can approve, and that rule is
-          enforced by the database — not by this screen.
+          Waiting on an admin. Only an admin can approve this quote or send it
+          back for changes — you cannot pull it out of review yourself. Both
+          rules are enforced by the database, not by this screen.
         </p>
       ) : null}
 
@@ -132,13 +171,16 @@ export function LifecycleBar({
 
       {/* PRD-016: the margin-floor flag must appear in the submit confirmation,
           not only on the page. */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <Dialog
+        open={dialog === "submit"}
+        onOpenChange={(open) => setDialog(open ? "submit" : null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Submit for approval</DialogTitle>
             <DialogDescription>
-              This moves the quote to Pending approval. An admin has to approve
-              it before it can be marked sent.
+              This moves the quote to Review. An admin has to approve it before
+              it can be marked sent.
             </DialogDescription>
           </DialogHeader>
 
@@ -169,6 +211,51 @@ export function LifecycleBar({
               <Button variant="outline">Cancel</Button>
             </DialogClose>
             <Button>Submit for approval</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmed rather than fired on click, because it is the only backward
+          step in the lifecycle and it is visible to someone else: the owner's
+          quote leaves review and lands back in their queue. */}
+      <Dialog
+        open={dialog === "request-changes"}
+        onOpenChange={(open) => setDialog(open ? "request-changes" : null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request changes</DialogTitle>
+            <DialogDescription>
+              This sends the quote back to Draft so{" "}
+              {quote?.owner_name ?? "its owner"} can edit it. They can resubmit
+              it for approval when it is ready.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              The quote stops counting as submitted — its submission timestamp
+              is cleared, so a later resubmission is dated from that second
+              submission rather than this one. The change is recorded in the
+              quote&rsquo;s history either way.
+            </p>
+            {/* No reason field, and that is a schema fact rather than a design
+                preference: `quote_status_history` records from_status,
+                to_status, actor and changed_at, and has no note column
+                (docs/DATABASE-SQL.md §1). A box here would collect a
+                reviewer's reasoning and then drop it. Adding the column is a
+                DATABASE.md decision, not something to fake in the UI. */}
+            <p className="text-sm text-muted-foreground">
+              Tell them what to change outside the app — there is nowhere to
+              record a reason on the quote yet.
+            </p>
+          </DialogBody>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button>Send back to Draft</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

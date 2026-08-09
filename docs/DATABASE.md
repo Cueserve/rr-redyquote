@@ -325,6 +325,12 @@ these two columns after `0003_settings.sql` had already shipped them as `*_multi
 Append-only (PRD-018A, NFR-005). One row per changed field, written by a trigger in the
 same transaction as the `settings` update — never insertable directly by a client (see [SQL spec §3](DATABASE-SQL.md#3-rls-policies)).
 
+**The only admin-only read in the schema** (PRD-018B). Every other table is flat-read for any
+authenticated user; this one is not, because markup, commission, and margin-floor history is
+compensation-adjacent. **Live on the remote** since 2026-08-08 — `0003` shipped the flat policy
+and is immutable, so `0005_settings_history_admin_read.sql` replaced it; see
+[§3](DATABASE-SQL.md#3-rls-policies).
+
 | Column          | Type          | Constraints                   |
 | --------------- | ------------- | ----------------------------- |
 | `id`            | `uuid`        | PK                            |

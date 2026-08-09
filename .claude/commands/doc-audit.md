@@ -3,6 +3,8 @@ description: Audit RedyQuote's docs and AI-instruction files across three lenses
 allowed-tools: Read, Glob, Grep, Bash, Edit
 ---
 
+# Doc Audit
+
 Read RedyQuote's documentation corpus **once** and run three independent lenses over it:
 
 - **A — Align** — where terminology, metrics, acceptance criteria, goals, and scope don't cohere,
@@ -49,7 +51,7 @@ wrong in every session.
 
 **Tier 2 — permanent source of truth.** `docs/PRODUCT.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`,
 `docs/TECH-STACK.md`, `docs/PROJECT-STRUCTURE.md`, `docs/ENVIRONMENTS.md`,
-`docs/DESIGN-SYSTEM.md`, `docs/DATABASE.md`, `docs/TODO.md`
+`docs/DESIGN-SYSTEM.md`, `docs/DATABASE.md`
 
 **Tier 3 — transient specs.** Same authority as Tier 2 for the slice they cover; each is deleted
 when absorbed. `docs/DATABASE-SQL.md`, `docs/superpowers/specs/*.md`
@@ -97,14 +99,14 @@ Three exceptions, all deliberate:
   CLAUDE.md.
 - **A doc that describes an _intent_ the code hasn't implemented yet is not wrong.** Distinguish
   "the doc lies about what exists" (finding) from "the doc specifies what should exist"
-  (backlog — belongs in `docs/TODO.md`, not in this report). When unsure, say which reading you took.
+  (backlog — belongs in a GitHub Issue, not in this report). When unsure, say which reading you took.
 - **The ladder ranks authority, not quality.** A lower-rung file can hold a _better_ explanation of
   a fact it doesn't own. That is not a drift finding — it is an `absorb` finding (step 5), and the
   fix runs upward, not downward. Never delete a superior explanation because of where it lives.
 
 ---
 
-# PASS A — Align
+## PASS A — Align
 
 _Skip entirely under `drift` or `absorb`. This pass judges coherence and completeness, not truth —
 a corpus can pass Pass B cleanly and still fail here._
@@ -202,7 +204,7 @@ Close Pass A with three lists, each specific enough to act on without re-reading
 
 ---
 
-# PASS B — Drift
+## PASS B — Drift
 
 _Skip entirely under `align` or `absorb`._
 
@@ -261,7 +263,7 @@ is a finding on its own — CLAUDE.md's own words are that a stale snapshot is w
 
 ---
 
-# PASS C — Absorb
+## PASS C — Absorb
 
 _Skip entirely under `align` or `drift`. This is the only pass that proposes deletions, and none of
 its output is ever auto-applied._
@@ -348,7 +350,7 @@ Two axes, both stated. They are not the same thing and a finding can be P2/High 
 
 Per finding, exactly this:
 
-```
+```text
 [B-P0 · High] <one-line claim in conflict>
   Says X:  path/to/file.md:LINE — "<quote>"
   Says Y:  path/to/other:LINE — "<quote>"
@@ -387,7 +389,9 @@ rewriting an owner doc with content merged from elsewhere. Present each as a dif
 - Edit a file under `supabase/migrations/` committed to `HEAD`. The `PreToolUse` hook blocks it,
   but the rule stands on its own: a wrong applied migration is fixed by a **new** migration.
 - Rewrite a doc to match the code when the doc is a **specification** of work not yet done. That
-  erases the requirement. Route it to `docs/TODO.md` instead.
+  erases the requirement. Route it to a GitHub Issue instead. Deferred **structural** work
+  (a directory that doesn't exist yet, a `[tmp]` folder awaiting deletion) belongs in
+  `docs/PROJECT-STRUCTURE.md` §6 instead, where its trigger is recorded alongside the tree.
 - Delete a Tier 3 spec on partial absorption, or without also removing its CLAUDE.md entry.
 - Discard the better explanation because it sits in the lower-authority file. Merge it upward.
 - Pick a canonical term with no schema anchor and no PRODUCT.md precedent. Report it unresolved.

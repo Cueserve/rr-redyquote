@@ -250,4 +250,4 @@ Tracked in [DATABASE.md](docs/DATABASE.md) §6.
 
 ---
 
-> _Last updated:_ 2026-07-31 · _Owner:_ Viral Parikh
+> _Last updated:_ 2026-08-08 · _Owner:_ Viral Parikh

@@ -75,12 +75,14 @@ section — it is a snapshot, and a stale one is worse than none.
 - **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
 - **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
   `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
-- **Migrations `0001`–`0004`, all applied to the linked project** — extensions and enums;
+- **Migrations `0001`–`0005`, all applied to the linked project** — extensions and enums;
   `profiles` + auth + `is_admin()` + the role-escalation guard; `settings` +
-  `settings_history` + seed row; and `0004`, which renames the two markup columns from
-  `*_multiplier` to `*_percent`. Each table ships with its own RLS, verified enabled on the
-  remote. `src/lib/supabase/types.ts` is generated against this schema and is current.
-  `0005` onward (categories, products, quotes, RPCs) is untranscribed — see
+  `settings_history` + seed row; `0004`, which renames the two markup columns from
+  `*_multiplier` to `*_percent`; and `0005`, which narrows `settings_history` SELECT from
+  flat to `is_admin()` (PRD-018B). Each table ships with its own RLS, verified enabled on the
+  remote 2026-08-08. `src/lib/supabase/types.ts` is generated against this schema and is
+  current — `0005` changed no columns, so it did not move.
+  `0006` onward (categories, products, quotes, RPCs) is untranscribed — see
   [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
   - **The hosted schema is real now. Treat every migration file as immutable** — `db push`
     compares recorded versions, not file contents, so editing an applied file is skipped
@@ -109,7 +111,7 @@ section — it is a snapshot, and a stale one is worse than none.
   semantic-token rules.
 
 **Not built.** No `src/server/actions/`, no `src/lib/pricing/`,
-no `e2e/`, no `vitest.config.ts`, no CI workflow. **Nothing in the app talks to the database
+no `e2e/`. **Nothing in the app talks to the database
 yet**, and no Server Action exists — so any feature work starts by creating that path, not by
 extending one. An applied schema does not change this: `profiles`, `settings`, and
 `settings_history` exist on the remote and hold nothing but the seeded `settings` row —
@@ -157,13 +159,15 @@ These are structural guarantees, not conventions — don't write code that break
 - **Commands** (script list verified 2026-08-01, the `db:*` lines re-verified 2026-08-08 —
   `package.json` is the authority; don't invent scripts):
   - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
-  - `npm run test` exits 0 but proves nothing — it is `vitest run --passWithNoTests` and there
-    are no tests. Treat a green `test` as "not run", not "passed" (docs/TODO.md §A.2).
-  - `npm run db:push` / `db:types` both run, and the project is linked. Migrations `0001`–`0004`
+  - `npm run test` exits 0 but proves nothing — `vitest.config.ts` sets `passWithNoTests` and
+    there are no test files. Treat a green `test` as "not run", not "passed". Drop that flag
+    from the config when the first real test lands (the pricing calc, blocked on PRD §2A).
+  - `npm run db:push` / `db:types` both run, and the project is linked. Migrations `0001`–`0005`
     are applied, so `db:push` has **nothing pending**; `db:types` regenerates against the real
     applied schema and `types.ts` is current (see "Built" above, which is the authority on
     schema state — don't duplicate the migration list here, it rots).
-  - **`test:e2e` does not exist.** No Playwright config, no `e2e/` (docs/TODO.md §C.2).
+  - **`test:e2e` does not exist.** No Playwright config, no `e2e/`
+    (docs/PROJECT-STRUCTURE.md §6, "Deferred structural work").
 - **Applying migrations: use `/db-migrate`, not a bare `db:push`.** The slash command
   ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the approved path —
   pre-flight, dry run, push, `db:types`, then verification that RLS is actually enabled on

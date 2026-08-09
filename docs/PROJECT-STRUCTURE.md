@@ -1,7 +1,7 @@
 # PROJECT-STRUCTURE.md — Directory Layout & File Placement
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-08
 **Source of truth for:** where each kind of file lives and the rules for placing new code —
 so features and components land in the right place and don't break the invariants in
 docs/ARCHITECTURE.md.
@@ -13,7 +13,7 @@ docs/ARCHITECTURE.md.
 
 > **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0004`; `0005` onward — categories, products, quotes, RPCs — is
+> now holds `0001`–`0005`; `0006` onward — categories, products, quotes, RPCs — is
 > untranscribed. **Which of those files have reached the remote is tracked in CLAUDE.md's
 > "Project state", not here.** This file describes layout; push state restated in a second
 > place has already drifted once.
@@ -82,7 +82,7 @@ redyquote/
 │  │  │  │  ├─ _components/         # route-private UI (ComponentTable, ComponentEditor)
 │  │  │  │  ├─ new/page.tsx         # new component    (admin-gated; no history panel)
 │  │  │  │  └─ [id]/page.tsx        # component detail (editor + append-only history)
-│  │  │  └─ settings/               # rates, markups, branding, audit    (admin-only edit)
+│  │  │  └─ settings/               # rates, markups, branding, change history (admin-only)
 │  │  ├─ layout.tsx                 # root layout — html/body shell, fonts
 │  │  ├─ page.tsx                   # entry (redirect to /quotes or /login)
 │  │  └─ globals.css                # Tailwind entry + the three-tier token layer
@@ -112,14 +112,14 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [~] # *.sql — 0001–0004; 0005+ categories/products/quotes/RPCs TBD
+│  ├─ migrations/               [~] # *.sql — 0001–0005; 0006+ categories/products/quotes/RPCs TBD
 │  └─ config.toml                   # local stack config
 ├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
 │  ├─ DATABASE.md                   #   the data model — permanent
 │  ├─ DATABASE-SQL.md          [tmp]#   its DDL — deleted once migrations are authored
 │  ├─ …                             #   PRODUCT, PRD, ARCHITECTURE, TECH-STACK, DESIGN-SYSTEM,
-│  │                                #   ENVIRONMENTS, TODO — all permanent
+│  │                                #   ENVIRONMENTS — all permanent
 │  └─ superpowers/                  # tool-owned path — the `superpowers` Claude Code plugin
 │     ├─ specs/                     #   writes design specs here (YYYY-MM-DD-<topic>-design.md)
 │     └─ plans/                 [ ] #   and implementation plans here, when first used
@@ -144,7 +144,7 @@ exists to contain that one file and nothing else, so **add both together or neit
 dead weight. `settings/` is a single page with no detail route, so neither applies to it.
 
 **`public/` holds the REDYREF brand imagery and nothing else.** The five `create-next-app`
-SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1); the folder then sat empty — and therefore
+SVGs were deleted on 2026-07-31; the folder then sat empty — and therefore
 absent from a fresh clone, since git does not track empty directories — until the logo landed
 on 2026-08-01. The favicon is _not_ here: it lives at `src/app/favicon.ico`, the Next App
 Router convention. Keep this folder to assets the browser fetches by URL; anything a component
@@ -225,7 +225,7 @@ Consequences worth stating outright:
 | Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                                         |
 | The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                                       |
 | App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be                      |
-| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Pending approval" (DESIGN-SYSTEM §13.4) |
+| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Pending Approval" (DESIGN-SYSTEM §13.4) |
 | Prototype scaffolding         | `src/lib/mock/`, `src/components/prototype/`          | Quarantined in named folders so the delete is one `rm -r` each, not a hunt. Nothing outside them may assume they exist                     |
 
 ## 4. File Placement Rules
@@ -313,6 +313,38 @@ and the two `[tmp]` directories are on a delete-when path. When you create real 
   same change** and note why — a stale structure doc is worse than none.
 - Editing this file is a deliberate decision, like any `docs/` change (CLAUDE.md): call it out,
   don't fold a structural change silently into unrelated feature work.
+
+### Deferred structural work — triggers, not a checklist
+
+These have a **trigger**, not a due date. Do each when its trigger fires, not before, and
+update [§1](#1-directory-tree) in the same change. Absorbed here on 2026-08-08 from
+`docs/TODO.md`, which was deleted once its two open tooling items (Vitest config, CI
+workflow) landed.
+
+| Item                                                       | Trigger                                                                     |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `e2e/`, `playwright.config.ts`, `test:e2e`, nightly CI job | The first E2E spec is written (a real quote flow exists)                    |
+| `src/hooks/`                                               | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
+| Delete `src/lib/mock/` + `src/components/prototype/`       | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
+| App #2 packaging decision                                  | A second RedyRef app is concrete                                            |
+
+**`e2e/` — the first spec is the approval gate, not a happy path.** ARCHITECTURE's
+database-enforced gate is the one invariant a UI-only test can pass while the real thing is
+broken: assert that a `rep` session cannot move a quote out of `Pending Approval` even when
+the request is made directly, bypassing the UI. `@playwright/test` is already a devDependency;
+the config and specs are not. **Three files claim `test:e2e` does not exist and must be
+corrected in the same change** — `CLAUDE.md` § "Claude Code-specific config", this file's §1
+(`e2e/ [ ]` marker), and `docs/ENVIRONMENTS.md` §4 step 7, which already instructs you to run
+`npm run test:e2e` at local-stack adoption, a command that does not yet exist.
+
+**Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
+affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).
+Both directories are quarantined so each is one `rm -r`.
+
+**App #2 packaging — do NOT decide now.** Template repo (zero overhead, fixes don't propagate)
+vs. private shadcn registry (shadcn-native, updates re-run `shadcn add`) vs. npm workspace
+monorepo (true single-version sharing, highest daily complexity). The `ui/` import-boundary
+rule in `eslint.config.mjs` keeps all three cheap, which is what buys the right to defer.
 
 **This file went stale once already**, and it is worth knowing how: the §1 banner still
 described a bare `create-next-app` scaffold after `src/components/`, `src/lib/`,

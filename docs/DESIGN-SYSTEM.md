@@ -316,9 +316,9 @@ one — shadcn components pasted in unchanged may need `rounded-md`.
 24px). No tokens added. Density rule: 8–12px inside table cells and toolbars, 24–32px around
 page-level sections.
 
-**Motion** — 120–160ms ease-out opacity/fade only, for toasts, tooltips and dialogs. **No scale
-or translate on press** — this is a data tool, and motion must never make a number feel
-imprecise. The press state darkens a step (`--primary-active`) instead.
+**Motion** — 120–160ms ease-out opacity/fade only, for toasts, tooltips, dialogs, and route
+transitions. **No scale or translate on press** — this is a data tool, and motion must never
+make a number feel imprecise. The press state darkens a step (`--primary-active`) instead.
 
 **Elevation** — increases with layering (modal > popover > card), never with hover.
 

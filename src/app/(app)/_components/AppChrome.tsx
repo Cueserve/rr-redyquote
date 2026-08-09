@@ -128,7 +128,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               tabIndex={-1}
               className="flex-1 overflow-y-auto outline-none"
             >
-              {children}
+              {/* Keyed on pathname so the fade replays on every navigation —
+                  DESIGN-SYSTEM.md §Motion: 150ms ease-out, opacity only. */}
+              <div key={pathname} className="animate-in fade-in-0 duration-150">
+                {children}
+              </div>
             </main>
           </div>
         </div>

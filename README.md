@@ -27,7 +27,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Key Concepts
 
-- **Quote** — the core object reps build: a product, quantity tier, and set of components,
+- **Quote** — the core object reps build: a product, fab tier, and set of components,
   moving through Draft → Pending Approval → Approved → Sent. No other lifecycle exists, and
   every status change writes an audit row.
 - **Fab tier** — the fabrication cost for a product at a given order quantity (cost, quoted

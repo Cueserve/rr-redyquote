@@ -1,7 +1,7 @@
 # PRODUCT.md — Product Concept
 
 **Owner:** Viral Parikh (Product Owner)
-**Last updated:** 2026-07-23
+**Last updated:** 2026-08-08
 **Source of truth for:** the problem RedyQuote solves, who it's for, and what "done" means
 for v1 — REDYREF's new sales quoting system.
 
@@ -42,9 +42,9 @@ the right person — with a full record of who did what, and when.
 
 ### Description
 
-RedyQuote is REDYREF's quoting system. Admins maintain a product catalog with quantity-tier fab pricing and a component library (with full price history); reps build a quote against a product, its quantity tier, and its components, one line per fixed category plus unlimited ad-hoc misc lines, with hard cost, labor cost, cushion, commission, margin, and totals recalculating live as they go. Every quote moves through
-Draft → Pending Approval → Approved → Sent — the approval step enforced by the database
-(RLS), not the UI — and every status change is written to an audit trail.
+RedyQuote is REDYREF's quoting system. Admins maintain a product catalog with a fab tier per quantity break and a component library (with full price history); reps build a quote against a product, one of its fab tiers, and its components, one line per fixed category plus unlimited ad-hoc misc lines, with hard cost, labor cost, cushion, commission, margin, and totals recalculating live as they go. Every quote moves through
+Draft → Pending Approval → Approved → Sent — the approval step enforced by the database,
+not the UI — and every status change is written to an audit trail.
 
 ## 2. Target Users
 
@@ -54,11 +54,11 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - **Admins** — everything a rep can do on any quote, plus approve quotes and own all
   master data (products, fab tiers, components, defaults), global settings, and branding.
   Reps may read master data but not write it. Two roles only; the approval gate and every
-  admin-only write are database-enforced (RLS), not UI conventions.
+  admin-only write are database-enforced, not UI conventions.
 
 ## 3. Features
 
-- **Product catalog** — products with quantity-tier fab pricing (cost, quoted date,
+- **Product catalog** — products with a fab tier per quantity break (cost, quoted date,
   vendor per tier) and a default component per category.
 - **Component library** — reusable components by category, name, vendor, and environment
   (Any/Indoor/Outdoor), with full price history on every cost change.
@@ -68,13 +68,13 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - **Quote line structure** — one line per fixed category, plus unlimited ad-hoc misc
   lines. Fixed categories and misc-line rules are defined in docs/PRD.md.
 - **Price freshness tracking** — component and fab-tier cost dates compared against
-  configurable warning/re-quote age thresholds, shown as Current/Aging/Re-Quote badges.
+  configurable warning/re-quote age thresholds, shown as Current/Aging/Re-quote badges.
 - **Approval lifecycle** — Draft → Pending Approval → Approved → Sent; the
   Pending Approval → Approved transition is admin-only and enforced by the database, not
   just the UI; every transition writes an audit row (who, when, from/to status).
 - **Estimating defaults** — a single global settings row for labor rate, fab/component
   markup, cushion %, sales commission %, margin floor %, and freshness thresholds.
-- **Branding** — an org-wide favicon, applied globally.
+- **Branding** — an org-wide logo and favicon, applied globally.
 
 ## 3A. Decision Placeholders
 
@@ -89,7 +89,7 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 
 ### In scope
 
-- Core quoting workflow: products, quantity-tier fab pricing, component library with price
+- Core quoting workflow: products, per-quantity-break fab tiers, component library with price
   history, quote builder with live cost/margin calculation, submit → approve → sent
   lifecycle, estimating defaults, branding.
 - Building in the five requirements above: real access control on approval, atomic
@@ -102,8 +102,9 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 
 - Multi-tenancy — RedyQuote is single-tenant for REDYREF; no `tenant_id` scaffolding.
 - PDF or email quote delivery — "Mark as Sent" is a manual status button only.
-- Granular role-based access control beyond the one approval gate — matches REDYREF's
-  actual sales process, not a new permissions system.
+- Granular role-based access control beyond the two-role rep/admin model (PRD-019) — no
+  third role, no per-field permissions. Matches REDYREF's actual sales process, not a new
+  permissions system.
 - Historical data import — v1 launches with an empty catalog and no historical quotes;
   importing past data is a later, optional pass if REDYREF wants it to carry over.
 
@@ -111,7 +112,7 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 
 - A rep can build, save, and submit a quote; an admin can approve it; either can mark it
   Sent — matching the current workflow.
-- An approval attempt by a non-admin is rejected by the database (RLS), not just hidden
+- An approval attempt by a non-admin is rejected by the database, not just hidden
   in the UI.
 - A failed save never leaves a quote with missing or duplicated line items.
 - Two simultaneous new quotes never receive the same quote number.
@@ -120,7 +121,8 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
   misc lines.
 - Price freshness badges and stale-price counts are derived from the same configured
   thresholds everywhere they appear.
-- Branding is applied consistently through a single org-wide favicon.
+- Branding is applied consistently from one org-wide source: a single logo and a single
+  favicon, both set once and used everywhere. No screen carries its own copy.
 - Pricing behavior is not implemented until the explicit PRD placeholder for the pricing
   formula is resolved. (The authorization-model placeholder is resolved — see PRD §2A.)
 
@@ -128,8 +130,8 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 
 - **Don't enforce access control in the UI only.** Hiding the Approve button for
   non-admins is not access control — every non-flat rule (the approval gate and all
-  admin-only writes) must be enforced by RLS and hold even against a bypassed or tampered
-  client.
+  admin-only writes) must be enforced inside Postgres and hold even against a bypassed or
+  tampered client.
 - **Don't delete-then-reinsert on multi-row saves.** Deleting all line items and
   re-inserting them is fragile — an insert failure after a successful delete silently
   loses data; saves must be atomic.

@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/data-table";
 import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
+import { LinkPending } from "@/components/ui/link-pending";
 import type { Category, LibraryComponent } from "@/lib/mock";
 import { formatDate, formatHours, formatMoney } from "@/lib/utils";
 
@@ -148,11 +149,17 @@ export function ComponentTable({
                   <TableCell header>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
+                        {/* `LinkPending` must live inside the Link — it reads
+                            that Link's navigation status. The detail route has
+                            no `loading.tsx` on purpose (it would turn a 404
+                            into a 200), so this is the row's only click
+                            feedback. */}
                         <Link
                           href={`/library/${component.id}`}
-                          className="font-semibold"
+                          className="inline-flex items-center gap-1.5 font-semibold"
                         >
                           {component.name}
+                          <LinkPending label={`Opening ${component.name}`} />
                         </Link>
                         {!component.active ? <DeactivatedBadge /> : null}
                       </div>

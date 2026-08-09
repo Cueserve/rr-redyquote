@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LinkPending } from "@/components/ui/link-pending";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -150,9 +151,22 @@ export function QuoteTable({ quotes }: { quotes: Quote[] }) {
           <TableBody>
             {rows.map((quote) => (
               <TableRow key={quote.id}>
-                <TableCell numeric>
-                  <Link href={`/quotes/${quote.id}`} className="font-semibold">
+                {/* The row's name cell, so cell-by-cell navigation says which
+                    quote each value belongs to. Matches ProductTable and
+                    ComponentTable. */}
+                <TableCell header numeric>
+                  {/* `LinkPending` must live inside the Link — it reads that
+                      Link's navigation status. The detail route has no
+                      `loading.tsx` on purpose (it would turn a 404 into a
+                      200), so this is the only click feedback the row has. */}
+                  <Link
+                    href={`/quotes/${quote.id}`}
+                    className="inline-flex items-center gap-1.5 font-semibold"
+                  >
                     {quote.quote_number}
+                    <LinkPending
+                      label={`Opening quote ${quote.quote_number}`}
+                    />
                   </Link>
                 </TableCell>
                 <TableCell className="font-medium">

@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/data-table";
 import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
+import { LinkPending } from "@/components/ui/link-pending";
 import type { Product } from "@/lib/mock";
 import { formatDate, formatHours } from "@/lib/utils";
 
@@ -130,11 +131,16 @@ export function ProductTable({ products }: { products: Product[] }) {
                     product each value belongs to. */}
                 <TableCell header>
                   <div className="flex items-center gap-2">
+                    {/* `LinkPending` must live inside the Link — it reads that
+                        Link's navigation status. The detail route has no
+                        `loading.tsx` on purpose (it would turn a 404 into a
+                        200), so this is the only click feedback the row has. */}
                     <Link
                       href={`/products/${product.id}`}
-                      className="font-semibold"
+                      className="inline-flex items-center gap-1.5 font-semibold"
                     >
                       {product.name}
+                      <LinkPending label={`Opening ${product.name}`} />
                     </Link>
                     {!product.active ? <DeactivatedBadge /> : null}
                   </div>

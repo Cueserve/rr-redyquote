@@ -76,12 +76,27 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
     [],
   );
 
+  // What the debounce last handed to the router. The effect below needs it to
+  // tell our own commit landing apart from an external navigation, and only a
+  // ref will do: this must not itself trigger a render, or it recreates the
+  // race that deleting the eager `setCommitted` just fixed.
+  const sent = React.useRef<string | null>(null);
+
   // A pending debounce outlives an external navigation otherwise: type a term,
   // press Back inside the 250 ms window, and the timer still fires and commits
-  // the term you just navigated away from. Keyed on `params.q` so it also runs
-  // after our own commit lands, where the timer has already fired and clearing
-  // it is a no-op.
+  // the term you just navigated away from.
+  //
+  // The `sent` check is what keeps this from eating live timers. `timer.current`
+  // is one slot shared by every keystroke, so when our own commit's transition
+  // resolves it may already hold a NEWER timer armed by something the user
+  // typed while that transition was in flight. Cancelling that one drops the
+  // keystroke permanently. If the incoming value is the one we sent, the
+  // navigation is ours and there is nothing to cancel.
   React.useEffect(() => {
+    if (sent.current === params.q) {
+      sent.current = null;
+      return;
+    }
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
@@ -102,7 +117,7 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
         // one paint. Once this commit's transition actually lands, `draft`
         // already equals the new `params.q`, so the guard's inner condition
         // is false and it resyncs `committed` without touching `draft`.
-        //
+        sent.current = next.trim();
         // A keystroke is not something anyone wants to undo with Back, and one
         // search term should not leave twelve history entries.
         commit({ q: next.trim() || null }, "replace");

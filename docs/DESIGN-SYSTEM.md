@@ -332,19 +332,34 @@ chrome: there is no phone drawer and no hamburger, and 768px is the narrowest wi
 below is designed against.
 
 **The rail collapses, it does not resize.** 220px at `xl` (≥1280px) and above; 64px icons-only
-below it. Two widths, no intermediate step. A fixed 220px is 29% of a 768px tablet, which cost
-the quotes table 297px of its 787px of columns — the collapse returns 152px of that. Below `xl`
-the wordmark chip is hidden rather than scaled (it is the only brand asset, and it is illegible
-at 40px), each item keeps its label as `sr-only` for its accessible name, and a right-side
-tooltip carries the label for sighted users.
+below it — `w-16 … xl:w-55` in `src/components/layout/sidebar.tsx`, so **the rail step is
+156px**. Two widths, no intermediate step. A fixed 220px would be 29% of a 768px tablet;
+collapsing to 64px returns 156px of that to the content area. Below `xl` the wordmark chip is
+hidden rather than scaled (it is the only brand asset, and it is illegible at 40px), each item
+keeps its label as `sr-only` for its accessible name, and a right-side tooltip carries the
+label for sighted users.
 
 **Why `xl` and not `lg`.** A two-width rail always makes the content area shrink at the moment
 it expands; the step cannot be removed, only placed. At `lg` it landed badly — 959px of content
-at 1023px, then 804px at 1024px, which clipped 41px off the quotes table exactly when the
-window got bigger. At `xl` the same 155px step falls at 1280px, where 1060px of content still
-clears the 787px table with room over. **The rule is not that content width grows monotonically;
-it is that the narrow side of the step still fits the widest table.** Check that measurement
-before moving this breakpoint, and re-check it if a table gains columns.
+at 1023px (1023 − 64), then 804px at 1024px (1024 − 220), so the content area **lost 155px
+going one pixel wider**. At `xl` the same step falls at 1280px, where 1060px of content
+(1280 − 220) still clears the quotes table with room over.
+
+> **155 vs 156 is not a typo.** 156px is the rail step (220 − 64). 155px is the _content-width
+> drop across the breakpoint_, which is the rail step minus the one pixel the viewport gained.
+> Quote whichever one you actually mean.
+
+**The rule is not that content width grows monotonically; it is that the narrow side of the
+step still fits the widest table.** Check that before moving this breakpoint, and re-check it
+if a table gains columns.
+
+**How to check it — the table width is measured, not derivable.** The quotes table
+(`src/app/(app)/quotes/_components/QuoteTable.tsx`) has nine auto-width columns and no fixed
+widths, so its rendered width depends on content. An earlier revision of this section quoted it
+as 787px; that figure came from a render of the **mock fixtures** in `src/lib/mock/` and will
+change when real quote data replaces them. Treat it as a measurement to retake, not a constant:
+run `npm run dev`, set the viewport to the narrow side of the step, and confirm the table is
+not clipped and the page itself does not scroll horizontally (NFR-008).
 
 **Surfaces** — flat color only: no gradients, no photographic imagery, no textures or patterns.
 
@@ -382,8 +397,10 @@ From the original brand-voice export, and it constrains copy in components:
 - **Buttons are short verb phrases** — "New quote", "Save quote", "Submit for approval".
 - **Numbers are the content, not the pitch.** Money, percentages, and counts are primary;
   copy labels a number, it doesn't sell it.
-- **Warnings are factual**, never alarmist: "Margin floor: 20.0% — below this routes for
-  approval." No exclamation points.
+- **Warnings are factual**, never alarmist: "Margin floor: 20.0% — this quote is 3.2 points
+  below it." No exclamation points. State the fact, never a consequence the system does not
+  enforce — the margin-floor flag is advisory and save/submit remain allowed (PRD-016), and
+  every quote routes for approval regardless of margin (PRD-010).
 - **Help text is one calm sentence under a control** — never a tooltip standing in for real
   labeling.
 - **No emoji in-product**, ever. Icons are Lucide (`lucide-react`), used sparingly — row

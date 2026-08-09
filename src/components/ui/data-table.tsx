@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -96,23 +97,92 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
+// Sort affordance, added for the list screens (design spec §5.2). Additive and
+// opt-in: a TableHead with no `sortKey` renders exactly the `<th>` it always
+// did, which is what every non-sortable column still wants -- `Fab pricing` and
+// `Environment` are badge summaries with no natural order, and a column whose
+// sort produces an arbitrary sequence is worse than one that plainly cannot be
+// sorted.
+//
+// This is a prop on an existing primitive, matching the `editable` variant
+// precedent in input.tsx. It is deliberately NOT a column-def abstraction: the
+// charter at the top of this file rules that out, and the three tables have
+// genuinely divergent cells.
+//
+// `aria-sort` goes on the `<th>` and the control is a real `<button>` inside
+// it. A `<th>` with a click handler is not focusable and not announced as
+// actionable; the button is both, for free.
+type SortState = "asc" | "desc" | null;
+
+const SORT_ICON = {
+  asc: ArrowUp,
+  desc: ArrowDown,
+} as const;
+
 function TableHead({
   className,
   density = "comfortable",
   scope = "col",
+  sortKey,
+  sortState = null,
+  onSort,
+  children,
   ...props
-}: React.ComponentProps<"th"> & VariantProps<typeof cellVariants>) {
+}: React.ComponentProps<"th"> &
+  VariantProps<typeof cellVariants> & {
+    sortKey?: string;
+    sortState?: SortState;
+    onSort?: (key: string) => void;
+  }) {
+  const classes = cn(
+    cellVariants({ density }),
+    "text-left text-xs font-semibold text-muted-foreground",
+    className,
+  );
+
+  if (!sortKey || !onSort) {
+    return (
+      <th data-slot="table-head" scope={scope} className={classes} {...props}>
+        {children}
+      </th>
+    );
+  }
+
+  // The inactive icon stays visible rather than appearing on hover: an
+  // affordance nobody can see is not an affordance, and hover reveals nothing
+  // to a keyboard or touch user.
+  const Icon = sortState ? SORT_ICON[sortState] : ArrowUpDown;
+
   return (
     <th
       data-slot="table-head"
       scope={scope}
-      className={cn(
-        cellVariants({ density }),
-        "text-left text-xs font-semibold text-muted-foreground",
-        className,
-      )}
+      aria-sort={
+        sortState === "asc"
+          ? "ascending"
+          : sortState === "desc"
+            ? "descending"
+            : undefined
+      }
+      className={classes}
       {...props}
-    />
+    >
+      {/* No `aria-label`: the visible column name IS the accessible name
+          (WCAG 2.5.3), and the state is carried by `aria-sort` on the `<th>`
+          rather than duplicated into the label. */}
+      <button
+        type="button"
+        data-slot="table-sort"
+        onClick={() => onSort(sortKey)}
+        className="-mx-1 inline-flex items-center gap-1.5 rounded-sm px-1 py-0.5 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
+      >
+        {children}
+        <Icon
+          aria-hidden="true"
+          className={cn("size-3.5 shrink-0", !sortState && "opacity-50")}
+        />
+      </button>
+    </th>
   );
 }
 

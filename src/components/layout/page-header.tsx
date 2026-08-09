@@ -38,11 +38,24 @@ function PageHeader({
       <div className="flex items-start justify-between gap-6">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-xl leading-tight">{title}</h1>
-          {/* Capped at 70ch, not on PageBody: the measure limit is a property of
-              prose, and the table below wants every pixel it can get. Left
-              unbounded it ran 91ch at 1280. */}
+          {/* Capped here, not on PageBody: the measure limit is a property of
+              prose, and the table below wants every pixel it can get.
+
+              THE MEASURE RULE FOR THIS REPO, since `ch` does not mean what it
+              looks like it means. `1ch` is the advance width of "0", and in
+              Archivo that glyph runs ~1.31x the average prose character -- so
+              an N-character measure needs a cap of roughly N x 0.76 ch, not
+              Nch. `max-w-[70ch]` here rendered 87 characters per line at 1280,
+              measured; the comment this replaces claimed the cap had solved
+              the problem it only shrank. 57ch lands at ~75, the top of the
+              65-75 band, which is the least disruptive point in it.
+
+              The factor is font-relative, so it holds at any type size: see
+              ReadOnlyNotice in prototype/admin-only.tsx, which drifted by the
+              same 1.31x at text-xs. Tailwind's `max-w-prose` is no escape --
+              it is 65ch, the same unit and the same error. */}
           {description ? (
-            <p className="max-w-[70ch] text-sm text-muted-foreground">
+            <p className="max-w-[57ch] text-sm text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -52,14 +65,14 @@ function PageHeader({
         ) : null}
       </div>
       {/* `text-xs` here is what makes the cap correct, not just a style: `ch`
-          resolves against the element's OWN font-size, so a bare
-          `max-w-[65ch]` on this div would compute against the inherited 15px
-          body size (~585px) rather than the 12px the notice actually renders
-          at -- measured at 93 chars per line, still over the ~85 ceiling.
-          Declaring the size here resolves `ch` at 12px: ~468px, ~78 chars.
-          This div owns the notice row's type size; children may override it,
-          but then they own their own measure too. */}
-      {notice ? <div className="max-w-[65ch] text-xs">{notice}</div> : null}
+          resolves against the element's OWN font-size, so a bare cap on this
+          div would compute against the inherited 15px body size rather than
+          the 12px the notice actually renders at. Declaring the size here
+          resolves `ch` at 12px. This div owns the notice row's type size;
+          children may override it, but then they own their own measure too.
+
+          57ch for the reason given above -- 65ch measured 85 characters. */}
+      {notice ? <div className="max-w-[57ch] text-xs">{notice}</div> : null}
     </div>
   );
 }

@@ -36,6 +36,13 @@ that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.m
   — future design for settings-branding logo/favicon upload and replacement using deployment-safe
   asset storage without immediate `settings` schema changes. Design-only in this phase; no code
   wiring and no DB migration are part of that spec.
+- [docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md](docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md)
+  — column sorting and pagination for the three list screens, plus moving their existing
+  filter state from `useState` into the URL. **Adds scope the PRD does not carry** — neither
+  sorting nor pagination appears in PRD.md — so this spec is the requirement, not a
+  restatement of one. Read it before touching `QuoteTable`, `ProductTable`, `ComponentTable`,
+  `data-table.tsx`, or `vitest.config.ts`. Its §9 records three rejected alternatives with
+  reasons; don't reopen them from memory. Design-only in this phase; nothing is implemented.
 - [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — the full DDL for
   [docs/DATABASE.md](docs/DATABASE.md)'s model: tables, enums, triggers, the atomic RPC
   functions, and every RLS policy. **Feeds `supabase/migrations/*.sql`; delete it once those

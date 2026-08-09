@@ -76,12 +76,33 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
     [],
   );
 
+  // A pending debounce outlives an external navigation otherwise: type a term,
+  // press Back inside the 250 ms window, and the timer still fires and commits
+  // the term you just navigated away from. Keyed on `params.q` so it also runs
+  // after our own commit lands, where the timer has already fired and clearing
+  // it is a no-op.
+  React.useEffect(() => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, [params.q]);
+
   const setQuery = React.useCallback(
     (next: string) => {
       setDraft(next);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
-        setCommitted(next.trim());
+        // No `setCommitted` here: that would be an ordinary state update
+        // landing in the same tick as `commit`, while `commit`'s router
+        // transition updates `params.q` later and asynchronously. The render
+        // in between would have `committed` advanced but `params.q` not yet
+        // caught up, and the render-phase guard above would misread that
+        // self-induced gap as an external URL change and revert `draft` for
+        // one paint. Once this commit's transition actually lands, `draft`
+        // already equals the new `params.q`, so the guard's inner condition
+        // is false and it resyncs `committed` without touching `draft`.
+        //
         // A keystroke is not something anyone wants to undo with Back, and one
         // search term should not leave twelve history entries.
         commit({ q: next.trim() || null }, "replace");
@@ -129,7 +150,9 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
       (name: string, value: string | null) => commit({ [name]: value }, "push"),
       [commit],
     ),
-    /** Clears search and every filter, keeping sort and size. */
+    // Clears search and every filter -- the things a user is trying to escape
+    // when they hit "reset". Sort and size are left alone: those are view
+    // preferences the user picked, not something a reset should discard.
     reset: React.useCallback(() => {
       const patch: Record<string, string | null> = { q: null };
       for (const name of Object.keys(config.filterDefaults)) {

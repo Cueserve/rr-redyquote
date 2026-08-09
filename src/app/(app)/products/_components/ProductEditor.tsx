@@ -173,7 +173,7 @@ export function ProductEditor({
             </p>
           </EmptyState>
         ) : (
-          <Table>
+          <Table caption="Fabrication pricing tiers for this product">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-32 text-right">Qty tier</TableHead>
@@ -228,10 +228,7 @@ export function ProductEditor({
                     />
                   </TableCell>
                   <TableCell>
-                    <FreshnessBadge
-                      freshness={tier.freshness}
-                      quotedDate={tier.quoted_date}
-                    />
+                    <FreshnessBadge freshness={tier.freshness} />
                   </TableCell>
                   <TableCell>
                     <Button

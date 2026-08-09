@@ -463,7 +463,13 @@
     @apply font-sans;
   }
   /* Archivo is the only text family -- headings differ by weight and tracking,
-     not by face. Sentence case everywhere; no ALL-CAPS, no Title Case. */
+     not by face.
+     Case follows DESIGN-SYSTEM.md §11 "Voice", which splits it: Title Case for
+     top-level labels (primary nav, page headers, tabs, section headers),
+     sentence case for supporting copy (buttons, table headers, form labels,
+     help text, status copy). No ALL-CAPS either way. This comment previously
+     said "sentence case everywhere, no Title Case", which contradicted §11 and
+     would have condemned every section heading in the app. */
   h1,
   h2,
   h3,
@@ -475,6 +481,16 @@
   }
   a:hover {
     @apply underline;
+  }
+  /* The focus ring belongs here, not on each link. Every ui/ primitive carries
+     `focus-visible:ring-3 focus-visible:ring-ring` in its own cva string, but a
+     plain anchor has no cva string to carry it -- so links fell through to the
+     browser's `outline: auto`, which is thinner, differently colored per
+     browser, and not the ring this file declares below. Sidebar links override
+     --ring with --sidebar-ring; a utility class beats @layer base, so that
+     override needs no !important. */
+  a:focus-visible {
+    @apply rounded-sm outline-none ring-3 ring-ring;
   }
   table {
     border-collapse: collapse;

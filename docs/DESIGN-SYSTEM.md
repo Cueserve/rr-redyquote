@@ -1,7 +1,7 @@
 # DESIGN-SYSTEM.md — Brand Tokens & UI Rules
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-08
 **Source of truth for:** RedyQuote's design tokens, the rules for using them, and the
 accessibility floor every color must clear.
 
@@ -11,7 +11,10 @@ accessibility floor every color must clear.
 > `docs/superpowers/specs/2026-07-31-redyref-admin-actual-brand-color-design.md` during design
 > work; it has since been folded into this file in full (§1 records what carried over verbatim
 > vs. what was re-solved), and that file has been deleted — no other file or external project
-> is a dependency of this one.
+> is a dependency of this one — with one exception, below.
+> Depends on: [PRD.md](PRD.md) **NFR-008** for the supported viewport range, which §9's rail
+> breakpoints are derived from and must not restate. That row is upstream of this file; the
+> palette and token rules remain self-contained.
 > Implemented in: `src/app/globals.css`, `src/app/layout.tsx`, `src/components/ui/`,
 > `eslint.config.mjs`
 
@@ -126,21 +129,40 @@ Two things kept **verbatim** on purpose, not oversights:
   carries the status meaning, the border is a soft edge rather than the thing identifying the
   control — so no floor applies.
 
+**Links are distinguished from surrounding text by weight, not by hue alone — a decision, not an
+omission.** `--primary-text` on the page canvas measures 7.03:1 and `--foreground` 16.67:1, so
+both clear AA against the surface. Against _each other_ they measure **2.37:1**, under the 3:1
+that WCAG technique G183 asks for when a link carries no underline. G183 is a _sufficient_
+technique for 1.4.1, not the only one: the non-color cue here is weight — links render
+`font-semibold` against `font-normal` neighbours — plus an underline on hover and a solid
+`--ring` on keyboard focus. Measured on `/products`, accepted 2026-08-08.
+
+Two consequences, stated so this doesn't get re-litigated per screen:
+
+- **Don't add a local underline to "fix" one table.** `a { no-underline }` in `globals.css` is
+  global; a per-surface underline rule makes links look unlike links on the screen beside it,
+  which costs more than the 2.37:1 does.
+- **The weight contrast is load-bearing, not decoration.** A link set at the same weight as the
+  text around it has no non-color cue left and _does_ fail 1.4.1. If a link has to live
+  somewhere that cannot carry `font-semibold`, that link needs an underline there.
+
 ### Measured, light
 
-| Pair                                                                     | Ratio                     | Floor |
-| ------------------------------------------------------------------------ | ------------------------- | ----- |
-| `--foreground` on page / card / muted                                    | 16.67 / 17.40 / 15.55     | 4.5   |
-| `--muted-foreground` on page / card / muted                              | 5.42 / 5.66 / 5.05        | 4.5   |
-| `--primary-text` (links) on page / card / muted                          | 6.54 / 7.33 / 6.55        | 4.5   |
-| `--primary-foreground` on the clay fill                                  | 7.33                      | 4.5   |
-| `--accent-secondary-foreground` on the moss fill                         | 6.10                      | 4.5   |
-| `--success` / `--warning` / `--destructive` / `--info` on their own tint | 4.59 / 4.88 / 6.45 / 6.95 | 4.5   |
-| same four as ink on a card                                               | 5.13 / 5.70 / 7.58 / 8.55 | 4.5   |
-| `--input` on page / card / muted                                         | 5.05 / 5.66 / 5.05        | 3.0   |
-| `--editable-border` on white / page / own fill                           | 5.70 / 5.09 / 4.88        | 3.0   |
-| `--ring` on page / card / muted                                          | 6.54 / 7.33 / 6.55        | 3.0   |
-| `--sidebar-foreground` on the rail / on hover                            | 8.03 / 6.00               | 4.5   |
+| Pair                                                                     | Ratio                     | Floor            |
+| ------------------------------------------------------------------------ | ------------------------- | ---------------- |
+| `--foreground` on page / card / muted                                    | 16.67 / 17.40 / 15.55     | 4.5              |
+| `--muted-foreground` on page / card / muted                              | 5.42 / 5.66 / 5.05        | 4.5              |
+| `--primary-text` (links) on page / card / muted                          | 6.54 / 7.33 / 6.55        | 4.5              |
+| `--primary-foreground` on the clay fill                                  | 7.33                      | 4.5              |
+| `--accent-secondary-foreground` on the moss fill                         | 6.10                      | 4.5              |
+| `--success` / `--warning` / `--destructive` / `--info` on their own tint | 4.59 / 4.88 / 6.45 / 6.95 | 4.5              |
+| same four as ink on a card                                               | 5.13 / 5.70 / 7.58 / 8.55 | 4.5              |
+| `--input` on page / card / muted                                         | 5.05 / 5.66 / 5.05        | 3.0              |
+| `--editable-border` on white / page / own fill                           | 5.70 / 5.09 / 4.88        | 3.0              |
+| `--ring` on page / card / muted                                          | 6.54 / 7.33 / 6.55        | 3.0              |
+| `--sidebar-ring` on the rail / on hover                                  | 5.63 / 4.21               | 3.0              |
+| `--sidebar-foreground` on the rail / on hover                            | 8.03 / 6.00               | 4.5              |
+| `--primary-text` vs `--foreground` (link vs adjacent text)               | 2.37                      | none — see above |
 
 `--muted-foreground` is now `--stone-600` — an actual ramp step, not a custom-solved hex like the
 prior palette needed. The new ink anchor's ramp happens to land a usable step here.
@@ -300,9 +322,29 @@ imprecise. The press state darkens a step (`--primary-active`) instead.
 
 **Elevation** — increases with layering (modal > popover > card), never with hover.
 
-**Layout** — fixed left sidebar (220px) + persistent top bar (breadcrumb-style, e.g.
-"Home / Quotes / New") + an independently-scrolling content area. Primary content pattern is
-either "toolbar + KPI strip + table" or "form + live-calculated summary panel."
+**Layout** — left sidebar, a persistent top bar (breadcrumb-style, e.g. "Home / Quotes / New"),
+and an independently-scrolling content area. Primary content pattern is either "toolbar + KPI
+strip + table" or "form + live-calculated summary panel."
+
+**Supported viewports are set by [PRD.md](PRD.md) NFR-008 — tablet and up (≥768px)**, and that
+row is the authority; don't restate the range here, it will drift. What follows from it for the
+chrome: there is no phone drawer and no hamburger, and 768px is the narrowest width any layout
+below is designed against.
+
+**The rail collapses, it does not resize.** 220px at `xl` (≥1280px) and above; 64px icons-only
+below it. Two widths, no intermediate step. A fixed 220px is 29% of a 768px tablet, which cost
+the quotes table 297px of its 787px of columns — the collapse returns 152px of that. Below `xl`
+the wordmark chip is hidden rather than scaled (it is the only brand asset, and it is illegible
+at 40px), each item keeps its label as `sr-only` for its accessible name, and a right-side
+tooltip carries the label for sighted users.
+
+**Why `xl` and not `lg`.** A two-width rail always makes the content area shrink at the moment
+it expands; the step cannot be removed, only placed. At `lg` it landed badly — 959px of content
+at 1023px, then 804px at 1024px, which clipped 41px off the quotes table exactly when the
+window got bigger. At `xl` the same 155px step falls at 1280px, where 1060px of content still
+clears the 787px table with room over. **The rule is not that content width grows monotonically;
+it is that the narrow side of the step still fits the widest table.** Check that measurement
+before moving this breakpoint, and re-check it if a table gains columns.
 
 **Surfaces** — flat color only: no gradients, no photographic imagery, no textures or patterns.
 

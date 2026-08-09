@@ -84,7 +84,16 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <RoleProvider initialRole="rep">
       <TooltipProvider delayDuration={200}>
-        <div className="flex h-dvh overflow-hidden">
+        <div className="relative flex h-dvh overflow-hidden">
+          {/* A plain fragment link, deliberately not `next/link`: it moves
+              focus within the page, it does not navigate. Five stops of rail
+              precede the content on every route (WCAG 2.4.1). */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:outline-none focus:ring-3 focus:ring-ring"
+          >
+            Skip to content
+          </a>
           <Sidebar
             className="shrink-0"
             items={NAV}
@@ -93,11 +102,20 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               // Use the current committed brand logo file. `priority` because
               // the rail is above the fold on every route -- lazy-loading it
               // just buys a first-paint flash.
+              //
+              // `sizes` is not optional here. width/height are the file's
+              // intrinsic dimensions, and without `sizes` Next emits a
+              // density-descriptor srcset off the *viewport* -- w=1920 at 1x,
+              // w=3840 at 2x -- for a slot that renders at 160px. That is
+              // 17.9 KB where 3.9 KB does the job, preloaded on every route.
+              // Declaring the real slot width makes Next emit width
+              // descriptors and the browser pick w=256.
               <Image
                 src="/redyref-logo.png"
                 alt="REDYREF"
                 width={1442}
                 height={817}
+                sizes="160px"
                 priority
                 className="h-auto w-40"
               />
@@ -105,7 +123,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar crumbs={crumbsFor(pathname)} right={<RoleToggle />} />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex-1 overflow-y-auto outline-none"
+            >
+              {children}
+            </main>
           </div>
         </div>
       </TooltipProvider>

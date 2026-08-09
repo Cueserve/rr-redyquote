@@ -196,9 +196,48 @@ These are structural guarantees, not conventions — don't write code that break
 
 ## Building UI
 
-Three steps, in order. Only one of them is a plugin decision.
+Four steps, in order. Only the last two are plugin decisions.
 
-**1. The design system decides how it looks — always.**
+**1. `/impeccable shape` first — required, not optional.**
+Every piece of **UI-bearing** work starts here: a new route, a new screen, or a new
+user-facing component. `shape` plans the UX, information architecture, and states _before_
+any code exists, and it **writes no code** — which is precisely why it is allowed when the
+rest of impeccable's generating commands are not (step 4). Backend-only work is **exempt**:
+a migration, a Server Action, or a `src/lib/` module follows the `docs/` +
+[docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) path instead, because `shape` has no
+useful output for something with no surface.
+
+- **It is an interview, not a one-shot.** `shape` opens with a discovery round and asks 2–3
+  questions at a time, then waits. Budget for the conversation; firing it off and walking away
+  gets you nothing. `docs/PRODUCT.md` and `docs/PRD.md` shorten it by answering questions in
+  advance, but they do not replace it — `shape` is task-specific and PRD-level scope is not a
+  design brief.
+- **The output is a design brief, and you must explicitly confirm it.** The skill's own gate
+  treats an unconfirmed brief as a failure — a brief the tool drafted and nobody agreed to is
+  not a plan. Put the confirmed brief in the PR or the issue: it is the design rationale a
+  reviewer needs, and writing the "why" down is already this repo's convention (see the
+  comment style in any `src/components/ui/` file).
+- **Order against `superpowers:brainstorming`, which also claims to go first.** Brainstorming
+  settles _what_ to build and _why_; `shape` settles _what it looks like and how it behaves_.
+  Requirement still open → brainstorming, then `shape`. Requirement already pinned by
+  [docs/PRD.md](docs/PRD.md) — the normal case here — → straight to `shape`.
+- **If `shape` ever routes you to `/impeccable teach`, stop.** That is the skill's documented
+  fallback when its context gate fails, and `teach` is forbidden here (step 4). The gate
+  passes because `docs/PRODUCT.md` exists and `.claude/settings.json` pins
+  `IMPECCABLE_CONTEXT_DIR=docs` — verified 2026-08-08. Being routed to `teach` means the
+  context broke; fix the context, never run the command.
+- **`shape` plans around an open decision, it cannot close one.** Two are still open and block
+  the work it would plan: the pricing formula (PRD §2A) and the fixed-category list
+  (PRD-007A). See docs/DATABASE.md §6.
+
+**`/impeccable craft` is banned — use `shape` instead.** `craft` is `shape` plus an end-to-end
+build, and the build half is exactly what step 4 prohibits: impeccable does not write UI in
+this repo. Run `shape`, then build it yourself through steps 2 and 3. The ban is about
+provenance, not output quality — a screen assembled from `src/components/ui/` and the token
+layer is reviewable against the design system line by line; one generated wholesale is not,
+and it is the fastest route to a hardcoded color or an off-scale type size landing unnoticed.
+
+**2. The design system decides how it looks — always.**
 [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) → the tokens in `src/app/globals.css` → the
 `no-restricted-syntax` rule in `eslint.config.mjs`. Every color, font, radius, and type size
 comes from there. Never a hex literal, never a raw Tailwind color class (`bg-slate-100`), never
@@ -207,7 +246,7 @@ layer (`bg-background`, `text-muted-foreground`, …). Adding a token is a DESIG
 change requiring approval, per "Editing source-of-truth docs" above. No plugin, skill, or CLI
 output authorizes one.
 
-**2. shadcn/ui builds it.** This is a shadcn project: [components.json](components.json) at the
+**3. shadcn/ui builds it.** This is a shadcn project: [components.json](components.json) at the
 root (style `radix-nova`, `cssVariables: true`), `shadcn@4` as a devDependency, and the 15
 primitives in `src/components/ui/` are shadcn components already adapted to our tokens.
 
@@ -224,12 +263,19 @@ primitives in `src/components/ui/` are shadcn components already adapted to our 
   screen: hierarchy, restraint, avoiding the AI-default look. It picks no values. Skip it when
   editing a screen that already exists, which is most of the work here.
 
-**3. `impeccable@impeccable` audits the result — it never writes it.** `/impeccable audit` and
+**4. `impeccable@impeccable` audits the result — it never writes it.** `/impeccable audit` and
 `/impeccable critique` are the sanctioned entry points; `npx impeccable detect src/` is the
 deterministic CLI check (exit `2` means findings, `--json` for tooling). Do not use
-`/impeccable polish` or any of its other generating commands to build UI, whatever its own
-description advertises.
+`/impeccable craft`, `/impeccable polish`, or any of its other generating commands to build
+UI, whatever its own description advertises. **`shape` (step 1) is the single exception, and
+only because it emits a plan rather than code.**
 
+- **Its context is pinned to `docs/`.** `.claude/settings.json` sets
+  `env.IMPECCABLE_CONTEXT_DIR=docs`, so impeccable's skill loader always reads
+  [docs/PRODUCT.md](docs/PRODUCT.md). Without the pin a `PRODUCT.md`, `DESIGN.md`, or
+  `.impeccable.md` landing at the repo root silently wins and `docs/PRODUCT.md` stops being
+  read, which fails impeccable's product gate and routes it to `/impeccable teach`. **Never run
+  `teach` or `document`** — both write context files, and `document` writes `DESIGN.md`.
 - **The baseline is clean — treat any new finding as real.** Verified 2026-08-05 against
   `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and exit 0. That is
   not luck. Most of its high-signal detectors (`ai-color-palette`, `gray-on-color`,
@@ -237,26 +283,60 @@ description advertises.
   those unwritable — ESLint gets there first, structurally. So there is no standing noise to
   triage and **no pre-seeded suppression list**. A finding means something got past lint.
   - Suppress only after establishing the finding contradicts
-    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: add the
-    rule id to `detector.ignoreRules` in `.impeccable/config.json` (committed, so the team
-    inherits the decision once) or an `impeccable-disable-next-line <rule>` comment for a
-    genuine one-off. `.impeccable/config.local.json` is per-developer and gitignored — never put
-    a team decision there. **Always report what you suppressed and why.**
+    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: run
+    `npx impeccable ignores add-rule <rule>`, which writes `detector.ignoreRules` into
+    `.impeccable/config.json` — or an `impeccable-disable-next-line <rule>` comment for a
+    genuine one-off. `.impeccable/config.json` **exists and is committed** as of 2026-08-08,
+    carrying exactly one entry — see the next bullet. The command's `--local` scope writes
+    `.impeccable/config.local.json`, which is per-developer and gitignored — never put a team
+    decision there. **Always report what you suppressed and why.**
+  - **`--reason` does not work on `add-rule`** — it is accepted silently and dropped (the CLI
+    stores reasons only for `add-value`). So the rationale goes in a `$comment` key at the top
+    of `config.json`, which the parser ignores harmlessly; this is verified, not assumed. Keep
+    writing it there: an unexplained suppression is indistinguishable from a mistake.
+  - **Three rules are suppressed, all verified false positives, all repo-wide.**
+    `ignoreRules` has no per-file scope (only `ignoreValues` does), so repo-wide is the
+    granularity the tool offers. Full rationale and the blind spot each one creates is in the
+    `$comment` of [.impeccable/config.json](.impeccable/config.json).
+    `npx impeccable detect <path-or-url> --no-config` bypasses the config and is the way to
+    audit what is being hidden. **Read the blind spots before adding a fourth — four
+    suppressions out of one detector set is a signal about tool fit, not a free action.**
+    - `cramped-padding` and `nested-cards` both fire on the **same** element: the DataTable's
+      scroll wrapper in `src/components/ui/data-table.tsx`. It carries no padding deliberately
+      (an inset peels the `bg-muted` header off its border, DESIGN-SYSTEM.md §7.11), and its
+      bordered, rounded, **transparent** shell reads to the detector as a card whenever a table
+      sits inside a `Card`. Verified false: `[data-slot=card] [data-slot=card]` is 0 on every
+      route. `nested-cards` is on impeccable's absolute-ban list, so this is the costliest of
+      the three — a real nested card would now pass unnoticed.
+    - `clipped-overflow-container` fires on any `position: absolute` child of the app shell's
+      `overflow-hidden` div, which is **every `sr-only` element** — and being clipped is the
+      whole point of `sr-only`. Confirmed twice by A/B test. Every workaround traded
+      screen-reader output for a quieter detector, which is the wrong trade.
+  - **`em-dash-overuse` on `/quotes/new` is known, deliberate noise — do not suppress it.**
+    It counts 42 em-dashes; 40 are the `—` placeholder glyphs in table cells and only 2 are
+    prose, so it is wrong about AI cadence. It is `advisory: true`, so the route still exits
+    **0** and the exit-code contract holds. Left in place because it is what surfaced the 40
+    dash cells that announced as silence to a screen reader (now fixed via `EmptyValue`).
 - **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
   and `gray-on-color` need two resolved colors. Our components use semantic tokens, which
   resolve at runtime from `src/app/globals.css`, so a `detect src/` pass sees no color pair and
   stays silent. It is not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the
   question.
   - To actually check contrast, audit the rendered page: `npm run dev`, then
-    `npx impeccable detect http://localhost:3000/<route>`. URL mode needs `puppeteer`, an
-    optional dependency — install it in the sandbox, not as a project dependency (it is not in
+    `npx impeccable detect http://localhost:3000/<route>`. **Nothing to install:** `puppeteer`
+    is an `optionalDependency` of `impeccable`, so `npx` already pulls it into its own cache
+    (verified 2026-08-08 — URL mode launches Chrome with no separate install). Should it ever
+    go missing, install it outside the project; never into `package.json`, which is what
+    impeccable's own `npm install puppeteer` error message would have you do (it is not in
     TECH-STACK.md).
-  - The four `design-system-*` rules are also inert: impeccable looks for a `DESIGN.md` with
-    YAML frontmatter at the repo root, `docs/`, or `.agents/context/`, and we have
-    `docs/DESIGN-SYSTEM.md` — different filename, no frontmatter. Leaving it inert is the
-    current, deliberate choice; a second machine-readable copy of the token values would drift
-    from DESIGN-SYSTEM.md, and ESLint already enforces the same constraint. Do not create
-    `DESIGN.md` without approval.
+  - The four `design-system-*` rules are also inert: impeccable builds its font/color/radius
+    allowlists from the **YAML frontmatter** of a `DESIGN.md` (repo root, then
+    `.agents/context/`, then `docs/`) and bails the moment that frontmatter is missing — the
+    markdown body is never read for this. We have `docs/DESIGN-SYSTEM.md`: different filename,
+    no frontmatter. Leaving it inert is the current, deliberate choice; a second
+    machine-readable copy of the token values would drift from DESIGN-SYSTEM.md, and ESLint
+    already enforces the same constraint. Do not create `DESIGN.md`, rename DESIGN-SYSTEM.md
+    to it, or add frontmatter, without approval.
 
 **Ship gate:** `npm run lint` and `npm run typecheck`. A suggestion that fails lint was never a
 valid suggestion.

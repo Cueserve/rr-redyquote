@@ -1,0 +1,12 @@
+{
+  "$comment": "Three rules suppressed repo-wide. `impeccable ignores add-rule` accepts --reason and silently drops it, so rationale lives here; `ignoreRules` has no per-file scope (only ignoreValues does), so repo-wide is the only granularity offered. Check what is being hidden with `npx impeccable detect <path-or-url> --no-config`. (1) cramped-padding, 2026-08-08: fires on the scroll container in src/components/ui/data-table.tsx, which carries no padding on purpose -- an inset would peel the bg-muted header row away from its border, contradicting DESIGN-SYSTEM.md 7.11. Blind spot: a genuinely cramped container anywhere in src/ now goes unreported. (2) nested-cards, 2026-08-08: same element. The detector reads the DataTable's bordered, rounded, TRANSPARENT scroll wrapper as a card whenever a table sits inside a Card -- verified false, the `[data-slot=card] [data-slot=card]` count is 0 on every route. Fires structurally on /library/[id] and /quotes/new, and would fire on every future table-in-card. This blind spot is the worst of the three: nested-cards is on impeccable's absolute-ban list, so a real nested card would now pass unnoticed. (3) clipped-overflow-container, 2026-08-08: fires on any `position: absolute` child of the app shell's `overflow-hidden` div, which includes every Tailwind `sr-only` element -- and being clipped is the entire point of sr-only. Confirmed twice by A/B test: removing the sr-only span cleared the finding both times. Suppressed rather than worked around, because every workaround degraded screen-reader output to satisfy a detector. Blind spot: a genuinely clipped popover or dropdown would now pass -- mitigated, not eliminated, by Radix portalling Select/Tooltip/Dialog content to document.body.",
+  "detector": {
+    "ignoreRules": [
+      "cramped-padding",
+      "clipped-overflow-container",
+      "nested-cards"
+    ],
+    "ignoreFiles": [],
+    "ignoreValues": []
+  }
+}

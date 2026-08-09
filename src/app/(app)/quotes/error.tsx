@@ -21,7 +21,7 @@ export default function QuotesError({
     <PageBody>
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-md font-semibold">Quotes Could Not Be Loaded.</h1>
+          <h1 className="text-md font-semibold">Quotes could not be loaded</h1>
           <p className="text-sm text-muted-foreground">
             Nothing was changed. Try again, and if it keeps happening give your
             admin the reference below.

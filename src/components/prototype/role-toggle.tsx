@@ -33,11 +33,9 @@ export function RoleToggle() {
   return (
     <div className="flex items-center gap-2">
       <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-            <FlaskConical className="size-3.5" aria-hidden="true" />
-            Prototype
-          </span>
+        <TooltipTrigger className="text-xs font-semibold text-muted-foreground">
+          <FlaskConical className="size-3.5" aria-hidden="true" />
+          Prototype
         </TooltipTrigger>
         <TooltipContent>
           Design prototype. Switching role changes which affordances are shown —

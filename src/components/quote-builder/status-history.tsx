@@ -24,7 +24,7 @@ export function StatusHistory({ rows }: { rows: QuoteStatusHistoryRow[] }) {
     <Card className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-md font-semibold tracking-tight">History</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-[70ch] text-sm text-muted-foreground">
           Every status change, with who made it and when.
         </p>
       </div>

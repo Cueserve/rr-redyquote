@@ -3,6 +3,7 @@
 import { Info, TriangleAlert } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { EmptyValue } from "@/components/ui/empty-state";
 import type { Quote, Settings } from "@/lib/mock";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 
@@ -74,7 +75,9 @@ export function SummaryPanel({
 }) {
   // Stored values are shown only while they still describe what is on screen.
   const stored = quote && !isDirty ? quote : null;
-  const dash = <span className="text-muted-foreground">—</span>;
+  // Not "pending calculation" -- these are genuinely absent until the quote is
+  // saved, which is a different statement from line-items' PendingValue.
+  const dash = <EmptyValue label="Not calculated until saved" />;
   const money = (value: number | undefined) =>
     value === undefined ? dash : formatMoney(value);
 
@@ -82,7 +85,7 @@ export function SummaryPanel({
     <Card className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-md font-semibold tracking-tight">Cost Breakdown</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-[70ch] text-sm text-muted-foreground">
           Recomputed server-side at save time from the saved line items and
           estimating defaults in effect then.
         </p>

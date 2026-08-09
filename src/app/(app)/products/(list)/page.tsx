@@ -19,10 +19,18 @@ export default function ProductsPage() {
         title="Products"
         description="Fabricated products, their quantity-tier fab pricing, and the default component for each category."
         actions={
-          <AdminOnly fallback={<ReadOnlyNotice what="The product catalog" />}>
+          <AdminOnly>
             <Button asChild>
               <Link href="/products/new">New product</Link>
             </Button>
+          </AdminOnly>
+        }
+        // Split from `actions` on purpose: the action slot is shrink-0 and
+        // cannot carry a sentence (see page-header.tsx). Admins get the button
+        // and no notice; reps get the notice and no button.
+        notice={
+          <AdminOnly fallback={<ReadOnlyNotice what="The product catalog" />}>
+            {null}
           </AdminOnly>
         }
       />

@@ -16,8 +16,10 @@ import {
  * (design spec §3). Everything it computes comes from `list-params.ts`, which
  * is pure and tested.
  *
- * Reading `useSearchParams` makes the three list routes dynamic (`ƒ`) where
- * they are currently static (`○`). That is expected and accepted (spec §4.3).
+ * Reading `useSearchParams` here bails the three list routes out to client
+ * rendering: each still reports `○`, but its server response is the
+ * `loading.tsx` shell rather than the page. Accepted deliberately -- the
+ * reasoning, and the two fixes that were tried and failed, are in spec §4.3.
  */
 
 /** Search debounces and replaces; every other control pushes (spec §4.1). */

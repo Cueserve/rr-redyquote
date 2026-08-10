@@ -154,8 +154,24 @@ user filters down to three results while sitting on page 4 and is shown a blank 
 
 ### 4.3 Route rendering
 
-Reading `searchParams` makes the three list routes **dynamic (`ƒ`)** where they are
-currently **static (`○`)**. This is expected and acceptable.
+Reading the URL from the client — `useSearchParams()` inside the table component —
+does **not** make these routes dynamic. It makes Next bail the whole page segment out
+to client rendering: the route still reports **`○`**, but the only thing prerendered is
+`loading.tsx`, so the server response carries no heading, no toolbar and no table. Only
+the app shell from `layout.tsx` survives.
+
+This was verified against `next start`, not inferred: `/products` returns
+`BAILOUT_TO_CLIENT_SIDE_RENDERING` and zero `<table>` elements, while the unwired
+`/quotes` and `/library` each return one. Two candidate fixes were tried and **both
+failed** — `export const dynamic = "force-dynamic"` (route becomes `ƒ`, content still
+bails) and deleting `(list)/loading.tsx` (still bails).
+
+**Accepted, with the reasoning stated so it is not rediscovered.** RedyQuote is an
+internal tool behind auth, ≥768px only (NFR-008), a handful of concurrent users
+(NFR-001), and has no SEO surface. The cost is a loading shell before first paint on
+three screens. The fix — moving the read into each `page.tsx` — is §9's rejected
+alternative and §10's migration target, and it stays deferred to when Supabase reads
+land, because it has to happen then anyway.
 
 It does **not** interact with the `(list)` route groups or the 404-under-200 rule
 documented in [PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §4 — that rule is about

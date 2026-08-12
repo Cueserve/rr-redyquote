@@ -19,8 +19,8 @@ save, no colliding quote numbers, one consistent pricing formula, a full audit t
 rather than relying on convention. See [PRODUCT.md](docs/PRODUCT.md) for the full problem
 statement, scope, and success criteria.
 
-Under the hood, RedyQuote is a single-tenant Next.js modular monolith on Supabase
-(Postgres, Auth). Because every request is an authenticated REDYREF user, there's no
+Under the hood, RedyQuote is a single-tenant Next.js modular monolith app backed by Supabase
+(Postgres, Auth, and Edge Functions). Because every request is an authenticated REDYREF user, there's no
 public capture surface to isolate — one runtime role handles both reads (Server
 Components) and writes (Server Actions), with atomic Postgres RPC transactions guaranteeing
 a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -50,26 +50,48 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 ## Prerequisites
 
 - Node.js 24 LTS (Active LTS) — pinned in `.nvmrc`; `nvm use` picks it up
-- npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm
-  or yarn
-- Supabase CLI (latest, via `npx supabase`) — for migrations and type generation
+- npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm or yarn
+- Supabase CLI (latest) — links this clone to the hosted project, applies migrations, deploys
+  Edge Functions, and runs the local test stack
 - **No Docker required.** Development runs against a hosted Supabase project, not the local
   stack — see [ENVIRONMENTS.md](docs/ENVIRONMENTS.md)
 - Git
-- A Supabase account and project (Postgres 17) — no `pgmq`, `pg_cron`, or Edge Functions
-  needed; RedyQuote has no unauthenticated capture pipeline to isolate
+- A Supabase account and project (Postgres 17, with the `pgmq` and `pg_cron` extensions enabled)
+  — this is your **development** database, not just a deploy target
 - A Vercel account (hosts the Next.js app)
+- Optional accounts, only if the corresponding feature is enabled: Resend (quote-email
+  delivery), Sentry (error tracking), PostHog (product analytics)
 
-No optional accounts. Resend, Sentry, and PostHog are all deliberately cut for v1
-(TECH-STACK.md §5) — there's no email/PDF delivery, and no error-tracking or
-product-analytics need for a single internal tool.
+## Environment Setup
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill each value. Secrets MUST NOT be committed. Server-only secrets MUST NOT carry
+the `NEXT_PUBLIC_` prefix (that prefix inlines a value into the client bundle) — only the
+Supabase URL and anon key may be public.
+
+| Variable                        | Required | Description                                                                                                                                                            | Where to obtain                                                                           |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL; safe to expose to the browser.                                                                                                                   | Supabase dashboard → Project Settings → API                                               |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Supabase anonymous (public) key for user-scoped, RLS-enforced client access.                                                                                           | Supabase dashboard → Project Settings → API                                               |
+| `SUPABASE_SERVICE_ROLE_KEY`     | yes      | Server-only key for the three system paths (Intake Receiver, Ingestion Worker, provisioning). Bypasses RLS — never expose to the browser, never prefix `NEXT_PUBLIC_`. | Supabase dashboard → Project Settings → API (shared via the Cuevik team, never committed) |
+| `SUPABASE_DB_URL`               | yes      | Direct Postgres connection for Supabase CLI migrations. MUST use Supavisor transaction mode (port 6543) with `prepare: false`.                                         | Supabase dashboard → Project Settings → Database (Connection pooling)                     |
+| `INTAKE_KEY_SECRET`             | yes      | Server-side secret backing per-tenant intake-key resolution at the public Intake Receiver.                                                                             | Cuevik team (shared secret)                                                               |
+| `RESEND_API_KEY`                | no       | Resend API key for optional outbound quote-document email. Omit to disable email delivery.                                                                             | Resend dashboard → API Keys                                                               |
+| `SENTRY_DSN`                    | no       | Sentry Data Source Name for server-side error tracking.                                                                                                                | Sentry dashboard → Project Settings → Client Keys (DSN)                                   |
+| `NEXT_PUBLIC_SENTRY_DSN`        | no       | Sentry DSN for the browser client.                                                                                                                                     | Sentry dashboard → Project Settings → Client Keys (DSN)                                   |
+| `NEXT_PUBLIC_POSTHOG_KEY`       | no       | PostHog project API key for product analytics (onboarding funnel, session replay).                                                                                     | PostHog dashboard → Project Settings                                                      |
+| `NEXT_PUBLIC_POSTHOG_HOST`      | no       | PostHog ingestion host.                                                                                                                                                | PostHog dashboard → Project Settings                                                      |
 
 ## Install & Run
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in the two values from Supabase → Project Settings → API
-npm run dev                  # http://localhost:3000
+npx supabase link              # link this clone to the hosted project (once)
+npx supabase db push --linked  # apply migrations from supabase/migrations/
+npm run dev                    # start the Next.js app locally
 ```
 
 Everyday checks — the first four are exactly what CI runs on every PR to `main`
@@ -224,8 +246,10 @@ deletion.
 
 ## Further Reading
 
-- [PRODUCT.md](docs/PRODUCT.md) — problem statement, scope, success criteria
-- [PRD.md](docs/PRD.md) — requirements and feature scope
+The complete document set, listed in the order each derives from the one above it:
+
+- [PRODUCT.md](docs/PRODUCT.md) — what we are building and why, problem statement, scope, success criteria
+- [PRD.md](docs/PRD.md) — testable requirements and feature scope
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, columns, and why each table
   is shaped that way. The SQL that implements it is a

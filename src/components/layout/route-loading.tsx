@@ -11,12 +11,12 @@ import { EmptyState } from "@/components/ui/empty-state";
  * to 120–160ms opacity fades on toasts, tooltips and dialogs (§9).
  *
  * WHERE IT MAY NOT BE USED: any segment whose page calls `notFound()` — which
- * today means `quotes/[id]`, `products/[id]`, and `library/[id]`. A
+ * means any `<route>/[id]`. A
  * `loading.tsx` there wraps the page in a Suspense boundary, the response
  * starts streaming, the status is committed, and `notFound()` then renders the
  * 404 UI with **HTTP 200**. Measured 2026-08-09: adding
- * `quotes/[id]/loading.tsx` turned `/quotes/bad-id` from 404 into 200 while
- * `/products/bad-id` stayed 404 as the control. That is the same trap
+ * a `[id]/loading.tsx` turned `/<route>/bad-id` from 404 into 200 while
+ * a sibling route stayed 404 as the control. That is the same trap
  * PROJECT-STRUCTURE.md §4's "list loading boundary rule" describes, and the
  * `(list)` route groups exist to dodge; it applies to detail segments too.
  *

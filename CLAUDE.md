@@ -91,12 +91,14 @@ section — it is a snapshot, and a stale one is worse than none.
   current — `0005` changed no columns, so it did not move.
   `0006` onward (categories, products, quotes, RPCs) is untranscribed — see
   [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
-  - **The hosted schema is real now. Treat every migration file as immutable** — `db push`
+  - **The hosted schema is real. Treat every merged migration as immutable** — `db push`
     compares recorded versions, not file contents, so editing an applied file is skipped
     silently while reading as though it landed. `0004` exists because that happened once.
-    A `PreToolUse` hook blocks this for committed migrations — see the machine-enforced
-    bullet under "Claude Code-specific config". The rule is still yours to keep: the hook
-    only knows what is _committed_, so a migration pushed but not yet committed is unguarded.
+    Migrations are applied **after** a change merges to `main`, never before: author on a
+    branch, open the PR, merge, then run `/db-migrate` from an up-to-date `main`. A
+    `PreToolUse` hook enforces this — see the machine-enforced bullet under "Claude
+    Code-specific config". Run `git fetch` before editing a migration; the guard reads
+    `origin/main`, and a stale clone is its one false-allow.
   - **`npm run db:types` works, and a failed run is now safe.** It calls `npx supabase`, not a
     bare `supabase`, generates to `types.ts.tmp` and renames only on exit 0, then pipes through
     Prettier with `--end-of-line crlf` — so no manual follow-up is needed. A failure (no
@@ -202,9 +204,11 @@ These are structural guarantees, not conventions — don't write code that break
   [.claude/hooks/block-applied-migration.mjs](.claude/hooks/block-applied-migration.mjs).
   Verified live 2026-08-08. This is a floor under the rules, not a replacement for reading them.
   - **Applied migrations are unwritable.** The hook denies `Write`/`Edit` on any
-    `supabase/migrations/*.sql` committed to `HEAD` — the proxy for "applied", since this repo
-    pushes then commits. A new migration stays editable until it is committed. It fails open
-    when git is unavailable, so it hardens the immutability rule above without replacing it.
+    `supabase/migrations/*.sql` present in `origin/main` or local `main` — the proxy for
+    "applied", since this repo merges then pushes. A migration still on a feature branch
+    stays editable even after it is committed, which is the normal case while it is under
+    review. It fails open when git is unavailable, so it hardens the immutability rule above
+    without replacing it. Its one gap is a stale `origin/main`: fetch before editing.
   - **`.env` and `.env*.local` are denied for read _and_ write**; `.env.example` is
     deliberately still readable. Consequence: Claude also cannot delete or rotate
     `.env.local` — lift the rule in `permissions.deny` first, or do it by hand.

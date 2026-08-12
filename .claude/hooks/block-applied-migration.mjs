@@ -1,17 +1,28 @@
 #!/usr/bin/env node
 /**
- * PreToolUse guard: refuse edits to Supabase migration files that are already
- * committed to HEAD.
+ * PreToolUse guard: refuse edits to Supabase migration files that have already been
+ * merged to `main`.
  *
- * Why: `supabase db push` compares recorded *versions*, not file contents, so
- * editing an applied migration is skipped silently while reading as though it
- * landed (see CLAUDE.md — migration 0004 exists because that happened once).
+ * Why: `supabase db push` compares recorded *versions*, not file contents. Editing a
+ * migration that the linked project has already applied is skipped silently on the next
+ * push while reading as though it landed — the repo and the hosted schema diverge with
+ * no error. RedyQuote develops against a hosted Supabase project, so there is no
+ * `db reset` to recover with (docs/ENVIRONMENTS.md §1).
  *
- * "Applied" proxy: present in `git HEAD`. This repo's workflow is push-then-commit,
- * so a committed migration is an applied one, and a newly authored migration stays
- * editable until it is committed. Not exact — the authority is
- * `supabase_migrations.schema_migrations` on the remote — but it needs no network,
- * no credentials, and no hardcoded version list to go stale.
+ * "Applied" proxy: present in `origin/main` (or local `main`). This repo's workflow is
+ * merge-then-push — a migration lands via PR, and is applied to the hosted project from
+ * an up-to-date `main`. So merged ⇒ applied, while a migration still on a feature branch
+ * stays editable even after it is committed. Checking `HEAD` instead would deny edits to
+ * migrations still under review, which is the normal case during development.
+ *
+ * The union of `origin/main` and `main` is deliberate: whichever ref is ahead wins, so a
+ * missing fetch or a not-yet-pushed local merge both still trip the guard.
+ *
+ * NOT exact — the authority is `supabase_migrations.schema_migrations` on the linked
+ * project. The known gap is a stale `origin/main`: if someone else merged a migration and
+ * this clone has not fetched, the guard allows an edit it should deny. Run `git fetch`
+ * before editing migrations. Chosen anyway over the exact check because it needs no
+ * network, no credentials, and no hardcoded version list to go stale.
  *
  * Fails open (allows the edit) if stdin is unparseable or git is unavailable:
  * a broken guard must not make migration authoring impossible.
@@ -45,24 +56,33 @@ if (!match) process.exit(0);
 
 const relPath = match[1];
 
-let committed = false;
-try {
-  execFileSync("git", ["cat-file", "-e", `HEAD:${relPath}`], {
-    stdio: "ignore",
-  });
-  committed = true;
-} catch {
-  committed = false; // untracked/new migration, or no git — allow
+// Whichever ref is ahead wins — see the union note in the header.
+const APPLIED_REFS = ["origin/main", "main"];
+
+let mergedIn = null;
+for (const ref of APPLIED_REFS) {
+  try {
+    execFileSync("git", ["cat-file", "-e", `${ref}:${relPath}`], {
+      stdio: "ignore",
+    });
+    mergedIn = ref;
+    break;
+  } catch {
+    // ref missing, or file absent from it — keep looking
+  }
 }
 
-if (!committed) process.exit(0);
+if (!mergedIn) process.exit(0); // feature-branch or brand-new migration — allow
 
 const reason =
-  `${relPath} is committed to HEAD, so it is an applied migration and is immutable. ` +
-  `\`supabase db push\` tracks recorded versions, not file contents — an edit here is ` +
+  `${relPath} is present in \`${mergedIn}\`, which this repo treats as "already applied to ` +
+  `the linked Supabase project" — and applied migrations are immutable. ` +
+  `\`supabase db push\` tracks recorded versions, not file contents, so an edit here is ` +
   `silently skipped on push while appearing to have landed. ` +
   `Author a NEW migration file (next sequential number) with the change instead, ` +
-  `then apply it with /db-migrate.`;
+  `then apply it with /db-migrate. ` +
+  `If this migration is merged but genuinely NOT yet applied to the linked project, ` +
+  `say so and the user can approve the edit directly.`;
 
 process.stdout.write(
   JSON.stringify({

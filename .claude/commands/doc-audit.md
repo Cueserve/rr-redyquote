@@ -242,7 +242,7 @@ Each probe turns a prose claim into a command. Run the probe; the output wins.
 | A named `npm run X` exists                 | read `scripts` in `package.json` — do not trust CLAUDE.md's script list                                                                                           |
 | Node version                               | `.nvmrc` and `engines.node` agree with every doc that names a version                                                                                             |
 | Migration set and numbering                | `Get-ChildItem supabase/migrations` — compare filenames and count to every doc that enumerates them                                                               |
-| "Applied to the linked project"            | `git log --oneline -- supabase/migrations/` plus `supabase/.temp/project-ref` exists. This repo pushes then commits, so committed ⇒ applied                       |
+| "Applied to the linked project"            | `git log --oneline -- supabase/migrations/` plus `supabase/.temp/project-ref` exists. This repo merges then pushes, so merged into `main` ⇒ applied               |
 | `types.ts` is current                      | its table/column names cover every table the migrations create                                                                                                    |
 | impeccable suppression list                | `.impeccable/config.json` `detector.ignoreRules` — compare the **count and the exact rule names** to every doc that describes them                                |
 | impeccable context is pinned               | `env.IMPECCABLE_CONTEXT_DIR` in `.claude/settings.json`                                                                                                           |
@@ -386,7 +386,7 @@ rewriting an owner doc with content merged from elsewhere. Present each as a dif
 ## Never
 
 - Read, print, or quote `.env` or `.env*.local`. `.env.example` only.
-- Edit a file under `supabase/migrations/` committed to `HEAD`. The `PreToolUse` hook blocks it,
+- Edit a file under `supabase/migrations/` present in `origin/main` or `main`. The `PreToolUse` hook blocks it,
   but the rule stands on its own: a wrong applied migration is fixed by a **new** migration.
 - Rewrite a doc to match the code when the doc is a **specification** of work not yet done. That
   erases the requirement. Route it to a GitHub Issue instead. Deferred **structural** work

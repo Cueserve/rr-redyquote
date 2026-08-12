@@ -24,11 +24,6 @@
 .DS_Store
 *.pem
 
-# Impeccable (the design auditor) writes two configs. config.json holds team-wide
-# rule suppressions and IS committed; config.local.json is per-developer machine
-# state. Only the local one is ignored.
-.impeccable/config.local.json
-
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -49,6 +44,15 @@ next-env.d.ts
 # db:types writes here first and renames on success, so a failed run leaves this
 # behind holding the CLI's JSON error blob instead of poisoning types.ts.
 *.ts.tmp
+
+# claude code — per-developer overrides (plugins, marketplaces); shared config is
+# .claude/settings.json
+.claude/settings.local.json
+
+# Impeccable (the design auditor) writes two configs. config.json holds team-wide
+# rule suppressions and IS committed; config.local.json is per-developer machine
+# state. Only the local one is ignored.
+.impeccable/config.local.json
 
 # superpowers' subagent-driven-development scratch: one directory per plan,
 # holding that run's ledger, task briefs, subagent reports, and review-package

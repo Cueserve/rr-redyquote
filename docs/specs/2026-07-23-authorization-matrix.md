@@ -3,7 +3,7 @@
 **Owner:** Viral Parikh
 **Date:** 2026-07-23
 **Status:** Approved (design); source-of-truth doc edits pending (see §7)
-**Resolves:** PRD §2A "Real Authorization Model", PRD-012, PRD-013
+**Resolves:** PRD §7A "Real Authorization Model", PRD-012, PRD-013
 **Amends:** PRD-010 (Mark Sent), ARCHITECTURE §7 security posture, ARCHITECTURE §2 data design
 
 ---
@@ -12,7 +12,7 @@
 
 RedyQuote v1 had exactly one confirmed non-flat authorization rule — the admin-only
 approval gate (PRD-010) — with every other write left as an unresolved "flat model" (PRD
-§2A, PRD-012, PRD-013). This spec finalizes the complete authorization model so the RLS
+§7A, PRD-012, PRD-013). This spec finalizes the complete authorization model so the RLS
 policies, Server Action guards, and quote-builder UI can be implemented without further
 product decisions.
 
@@ -93,7 +93,7 @@ admin`); the `Review → Approved` update additionally gated to `admin` by the
 - `price_history`, `quote_status_history`, `settings_history` — insert only, via the RPC
   transactions that write them (append-only; no direct client writes, no updates/deletes).
 
-## 5. Deactivation behavior (PRD §2A open item)
+## 5. Deactivation behavior (PRD §7A open item)
 
 Deactivating a product or component is a soft state, not a delete:
 
@@ -107,7 +107,7 @@ Deactivating a product or component is a soft state, not a delete:
 This preserves historical quote pricing integrity while stopping stale items from spreading
 onto new work.
 
-## 6. Audit expansion (PRD §2A open item — confirmed yes)
+## 6. Audit expansion (PRD §7A open item — confirmed yes)
 
 Beyond the existing `price_history` (cost changes) and `quote_status_history` (status
 changes), **settings and branding changes are now audited.**
@@ -131,8 +131,8 @@ separately:
    to "The quote's owner or an admin can mark an Approved quote Sent."
 2. **PRD-012 / PRD-013** — replace "pending product decision" with: settings and branding
    edits are **admin-only**.
-3. **PRD §2A "Real Authorization Model"** — mark resolved; reference this spec.
-4. **PRD §2A audit bullet** — settings/branding changes audited via `settings_history`.
+3. **PRD §7A "Real Authorization Model"** — mark resolved; reference this spec.
+4. **PRD §7A audit bullet** — settings/branding changes audited via `settings_history`.
 5. **PRD §3 / PRODUCT §4** — note the deactivation-behavior rule (§5 above).
 6. **ARCHITECTURE §2** — add the `settings_history` table to the data-design table.
 7. **ARCHITECTURE §4 / §5 / §7** — update the "flat model" language and the approval-gate

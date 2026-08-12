@@ -21,7 +21,7 @@ import { SettingsHistoryTab } from "./SettingsHistoryTab";
  *
  * Every field here is an INPUT to the pricing formula, not an output of it — a
  * rate, a markup, a percentage, a threshold. That is why this screen can be
- * built in full while the quote builder's summary panel cannot: PRD §2A leaves
+ * built in full while the quote builder's summary panel cannot: PRD §7A leaves
  * open how these combine, not what they are.
  *
  * The audit tab is a first-class tab rather than a buried link. `settings_history`
@@ -105,7 +105,7 @@ export function SettingsTabs({
       return;
     }
 
-    // The Server Action goes here, and nothing stands in for it: PRD §2A is
+    // The Server Action goes here, and nothing stands in for it: PRD §7A is
     // unsigned and DATABASE-SQL.md §4 blocks wiring the save RPC until it is.
     // `result.values` is the parsed row it will take. A fake success toast
     // would make an unwired screen read as a working one — the login form

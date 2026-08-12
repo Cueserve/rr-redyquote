@@ -14,7 +14,7 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:push": "npx supabase db push",
+    "db:push": "npx supabase db push --linked",
     "db:types": "npx supabase gen types typescript --linked > src/lib/supabase/types.ts.tmp && node -e \"require('fs').renameSync('src/lib/supabase/types.ts.tmp','src/lib/supabase/types.ts')\" && npx prettier --write --end-of-line crlf src/lib/supabase/types.ts",
     "prepare": "husky"
   },
@@ -42,12 +42,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.13.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "husky": "^9.1.7",

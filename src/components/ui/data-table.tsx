@@ -32,7 +32,7 @@ const cellVariants = cva("px-3 py-2.5", {
 // clips content is unreachable by keyboard unless it is focusable itself: only
 // the row-name cell holds a link, every column after it is inert, so tabbing
 // through a table scrolls it vertically and never horizontally. Measured on
-// /library at 768px -- PRD NFR-008's narrowest supported width -- the table
+// the widest list route at 768px -- the narrowest supported width -- the table
 // wants 710px and gets 646px, so the Freshness badge is what falls off the
 // right edge, unreachable without a mouse. `role="region"` named by the caption
 // is what keeps the new stop from announcing itself as an anonymous group.

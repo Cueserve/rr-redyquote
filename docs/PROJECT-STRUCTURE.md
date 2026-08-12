@@ -95,7 +95,7 @@ redyquote/
 │  │  ├─ quote-status-badge.tsx     # lifecycle → Badge; app-specific, so not in ui/
 │  │  └─ freshness-badge.tsx        # PRD-009 Current/Aging/Re-quote + Deactivated
 │  ├─ lib/                          # framework-agnostic logic; no JSX, no React imports
-│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §2A
+│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §7A
 │  │  ├─ validation/            [ ] # Zod schemas for Server Action inputs (ARCH §5)
 │  │  ├─ mock/                 [tmp]# fixtures standing in for the read path
 │  │  ├─ supabase/
@@ -114,7 +114,6 @@ redyquote/
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
 │  ├─ migrations/               [~] # *.sql — 0001–0005; 0006+ categories/products/quotes/RPCs TBD
 │  └─ config.toml                   # local stack config
-├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
 │  ├─ DATABASE.md                   #   the data model — permanent
 │  ├─ DATABASE-SQL.md          [tmp]#   its DDL — deleted once migrations are authored
@@ -184,8 +183,8 @@ type-check globs one unambiguous anchor for "code we wrote." Next 16 supports `s
 `@/server/actions/quotes`, `@/components/ui/button`.
 
 Unit tests (Vitest) are **co-located** as `*.test.ts` next to the module under test — the
-`src/lib/pricing/` calc function especially gets exhaustive coverage there. Playwright E2E
-specs live in `e2e/`, separate from unit tests.
+`src/lib/pricing/` calc function especially gets exhaustive coverage there. There is no E2E
+suite (docs/TECH-STACK.md §5).
 
 ## 2. The Four Placement Questions
 
@@ -221,7 +220,7 @@ Consequences worth stating outright:
 | Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                |
 | Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                       |
 | Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                |
-| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                                                |
+| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §7)                                                |
 | Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                               |
 | The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                             |
 | App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be            |
@@ -245,7 +244,7 @@ Read these before creating any new feature, route, action, or component.
    atomic RPC transactions — never sequential client-driven writes (ARCH §3, §5).
 5. **Schema, RLS, the quote-number sequence, and RPC functions are SQL migration files only.**
    Add a new `supabase/migrations/*.sql`; regenerate `src/lib/supabase/types.ts` after. Never
-   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §6).
+   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §7).
 6. **Default to a Server Component.** Add `"use client"` only where genuine interactivity needs
    it — realistically just `src/components/quote-builder/`. A new client component is a
    decision to justify, not a default (ARCH §1).
@@ -278,7 +277,9 @@ Read these before creating any new feature, route, action, or component.
 - **Middleware** — the entry file is `src/proxy.ts`, Next 16's name for it. Next 16.2 still
   accepts `middleware.ts`; use `proxy.ts` so the repo has one name for one thing, and keep the
   reusable session logic in `src/lib/supabase/update-session.ts`.
-- **Tests** — `*.test.ts` co-located for Vitest units; `*.spec.ts` under `e2e/` for Playwright.
+- **Tests** — `*.test.ts` co-located for Vitest units. There is no E2E suite; if one is ever
+  adopted, its specs are `*.spec.ts` under `e2e/` so the Vitest include glob never picks
+  them up.
 - **Docs** — top-level `docs/*.md`, named by content in SCREAMING-KEBAB
   (`ARCHITECTURE.md`, `TECH-STACK.md`). Two things about this folder are worth stating
   precisely, because they are easy to conflate:
@@ -293,15 +294,18 @@ Read these before creating any new feature, route, action, or component.
   block. Don't add one without doing both; don't assume a `docs/*.md` is permanent without
   checking that list.
 
-  **`docs/superpowers/**` is named after the tool, not the content** — the `superpowers`
-  Claude Code plugin hardcodes that path (`specs/` from its brainstorming skill, `plans/`
-  from writing-plans). Deliberately left alone: renaming it would just make the plugin
-  recreate the folder and split specs across two places. That is a reason to leave **plugin
-  output** there, and not a reason to put hand-authored files there — the futility argument
-  only applies to files something else would recreate. So
-  `2026-07-23-authorization-matrix-design.md` stays (the plugin wrote it) while
-  `DATABASE-SQL.md` sits beside the `DATABASE.md` it implements. Neither placement affects
-  authority; CLAUDE.md's list does.
+  | Kind                     | Path                  | Filename                          | Lifetime                                               |
+  | ------------------------ | --------------------- | --------------------------------- | ------------------------------------------------------ |
+  | Source-of-truth document | `docs/`               | `SCREAMING-KEBAB.md`              | permanent                                              |
+  | Design spec              | `docs/specs/`         | `YYYY-MM-DD-<slug>.md`            | transient — listed in CLAUDE.md, deleted when absorbed |
+  | Advisory review          | `docs/reviews/`       | `YYYY-MM-DD-<subject>-review.md`  | permanent                                              |
+  | Pre-decision exploration | `docs/brainstorming/` | `<topic>.md`, `**Status:** Draft` | permanent, never authoritative                         |
+
+  Date-first in `specs/` and `reviews/` so a directory listing sorts chronologically, which is
+  how both are read. `docs/superpowers/` is **gitignored**: the `superpowers` plugin hardcodes
+  that path and will recreate it, but what it leaves there is scratch — the same class as
+  `.superpowers/`, which was already ignored. An approved spec moves to `docs/specs/` and is
+  listed in CLAUDE.md; that list, not the folder, is what confers authority.
 
 ## 6. Keeping This File Honest
 
@@ -321,21 +325,19 @@ update [§1](#1-directory-tree) in the same change. Absorbed here on 2026-08-08 
 `docs/TODO.md`, which was deleted once its two open tooling items (Vitest config, CI
 workflow) landed.
 
-| Item                                                       | Trigger                                                                     |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `e2e/`, `playwright.config.ts`, `test:e2e`, nightly CI job | The first E2E spec is written (a real quote flow exists)                    |
-| `src/hooks/`                                               | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
-| Delete `src/lib/mock/` + `src/components/prototype/`       | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
-| App #2 packaging decision                                  | A second RedyRef app is concrete                                            |
+| Item                                                 | Trigger                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/hooks/`                                         | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
+| Delete `src/lib/mock/` + `src/components/prototype/` | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
+| App #2 packaging decision                            | A second RedyRef app is concrete                                            |
 
-**`e2e/` — the first spec is the approval gate, not a happy path.** ARCHITECTURE's
-database-enforced gate is the one invariant a UI-only test can pass while the real thing is
-broken: assert that a `rep` session cannot move a quote out of `Review` even when
-the request is made directly, bypassing the UI. `@playwright/test` is already a devDependency;
-the config and specs are not. **Three files claim `test:e2e` does not exist and must be
-corrected in the same change** — `CLAUDE.md` § "Claude Code-specific config", this file's §1
-(`e2e/ [ ]` marker), and `docs/ENVIRONMENTS.md` §4 step 7, which already instructs you to run
-`npm run test:e2e` at local-stack adoption, a command that does not yet exist.
+**No E2E suite, and the gap is specific.** ARCHITECTURE's database-enforced approval gate is
+the one invariant a UI-only test can pass while the real thing is broken: a `rep` session must
+not be able to move a quote out of `Review` even when the request bypasses the UI. Nothing
+automated asserts that today. `@playwright/test` used to sit in devDependencies with no
+config and no specs, which implied coverage that did not exist; it was removed
+(docs/TECH-STACK.md §5). If E2E is adopted, that assertion is the first spec — not a happy
+path — and the config, specs, script and CI job land in one change, mirrored in CuevikSync.
 
 **Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
 affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).

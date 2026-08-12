@@ -6,9 +6,19 @@ on:
   push:
     branches: [main]
 
+# One in-flight run per ref. A second push to a PR cancels the first rather than
+# queueing a second full install.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,11 +29,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
-      # Currently proves nothing: `vitest.config.ts` sets `passWithNoTests` and
-      # no test file exists. Kept in the blocking job so the first real test is
-      # gated from the moment it lands, rather than needing a CI change too.
       - run: npm run test
-# The advisory/nightly Playwright job is deliberately absent: no `e2e/`, no
-# `playwright.config.ts`, and no `test:e2e` script exist yet. Add it in the same
-# change as the first E2E spec — which should be the approval gate, not a happy
-# path, since a UI-only test can pass while the database gate is broken.
+# No Playwright / E2E job. There is no `e2e/`, no `playwright.config.ts`, and no
+# `test:e2e` script in either repo, by decision (docs/TECH-STACK.md §5). If E2E
+# is ever adopted, add the job here and in the sibling repo in the same change.

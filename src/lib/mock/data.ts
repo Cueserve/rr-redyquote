@@ -9,7 +9,7 @@
  * Two things are deliberately absent, both because they are unresolved product
  * decisions rather than unwritten code:
  *
- *  1. PRICING (PRD §2A, PRODUCT.md §3A). Every cost, margin, and total below is
+ *  1. PRICING (PRD §7A, PRODUCT.md §3A). Every cost, margin, and total below is
  *     a hand-written literal. Nothing recomputes and there is no calculation
  *     order implied by their values — PRODUCT.md §3A forbids inferring one.
  *     `src/lib/pricing/` does not exist yet, on purpose.

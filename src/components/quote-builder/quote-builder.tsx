@@ -42,7 +42,7 @@ import { SummaryPanel } from "./summary-panel";
  * In the finished app this is where live recalculation happens on every
  * keystroke, using the same `src/lib/pricing/` module the Server Action calls,
  * so the preview and the persisted value agree. Neither the module nor the
- * action exists yet (PRD §2A), so this pass builds the structure that will hold
+ * action exists yet (PRD §7A), so this pass builds the structure that will hold
  * them: the state shape, the editable-vs-calculated split, the fixed-category
  * layout, and the lifecycle affordances.
  *

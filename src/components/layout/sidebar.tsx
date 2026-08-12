@@ -9,8 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 
 // The design system's Sidebar (§7.17): 220px dark rail (--sidebar, stone-900),
-// white logo chip (the REDYREF logo isn't transparent-safe on dark), active
-// item filled --sidebar-primary (brand red), inactive items --sidebar-
+// white logo chip (a brand mark is rarely transparent-safe on dark), active
+// item filled --sidebar-primary (brand), inactive items --sidebar-
 // foreground. Not `ui/` -- chrome, not a shared atom, and allowed to be
 // app-aware (current route) in a way ui/ components structurally can't be
 // (see eslint.config.mjs's ui/ boundary rule).

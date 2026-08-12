@@ -20,6 +20,22 @@ accessibility floor every color must clear.
 
 ---
 
+## Contents
+
+- [1. Where the brand values came from](#1-where-the-brand-values-came-from)
+- [2. The three tiers](#2-the-three-tiers)
+- [3. The one rule: semantic tokens only](#3-the-one-rule-semantic-tokens-only)
+- [4. Accessibility floor](#4-accessibility-floor)
+- [5. Dark mode is derived, not designed](#5-dark-mode-is-derived-not-designed)
+- [6. Decisions worth not re-litigating](#6-decisions-worth-not-re-litigating)
+- [7. The editable-vs-calculated convention](#7-the-editable-vs-calculated-convention)
+- [8. Typography](#8-typography)
+- [9. Scales](#9-scales)
+- [10. Chart series](#10-chart-series)
+- [11. Voice](#11-voice)
+- [12. Token map — design system → RedyQuote](#12-token-map-design-system-redyquote)
+- [13. Adding a component](#13-adding-a-component)
+
 ## 1. Where the brand values came from
 
 **The whole palette, both type families, and the radius/type/shadow scales come from Claude

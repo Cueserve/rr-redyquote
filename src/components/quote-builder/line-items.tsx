@@ -51,7 +51,7 @@ import { cn, formatHours, formatMoney } from "@/lib/utils";
  *   - Calculated — labor cost. No tint, no border, plain text.
  * A calculated cell on an edited row renders as an em dash rather than a stale
  * figure, because the trusted value is the one the server recomputes at save
- * (NFR-007) and this prototype has no formula to preview with (PRD §2A).
+ * (NFR-007) and this prototype has no formula to preview with (PRD §7A).
  */
 
 const ENVIRONMENT_LABEL: Record<string, string> = {

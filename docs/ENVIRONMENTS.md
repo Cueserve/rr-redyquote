@@ -10,7 +10,15 @@ rules that follow from that, and the plan for adopting the local Docker stack la
 
 ---
 
-## 1. Current State — Hosted Only, No Docker
+## Contents
+
+- [1. Current State — Hosted Only, No Docker](#1-current-state-hosted-only-no-docker)
+- [2. Plans & Cost](#2-plans-cost)
+- [3. Working Rules While Hosted-Only](#3-working-rules-while-hosted-only)
+- [4. Plan: Adopting the Local Docker Stack](#4-plan-adopting-the-local-docker-stack)
+- [5. Keeping This File Honest](#5-keeping-this-file-honest)
+
+## 1. Current State
 
 Development runs against a **hosted Supabase project**. The local Docker-based stack
 (`supabase start`) is **deliberately deferred** — see [§4](#4-plan-adopting-the-local-docker-stack).
@@ -30,7 +38,7 @@ real remote database instead of a disposable container.
 ## 2. Plans & Cost
 
 **Decision (2026-07-26): Free tier only for now. PITR is not adopted for v1.** NFR-006 was
-amended to a phased requirement — see PRD.md NFR-006 and TECH-STACK.md §6.
+amended to a phased requirement — see PRD.md NFR-006 and TECH-STACK.md §7.
 
 | Plan        | Price                         | Decision                                                                                                                                                                     |
 | ----------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,7 +61,7 @@ quotes exist, the exposure changes from "re-run the seed script" to "un-recreata
 data with no recovery path" — which is what NFR-006b's Pro trigger exists to prevent. Do not
 let that trigger pass silently.
 
-## 3. Working Rules While Hosted-Only
+## 3. Working Rules
 
 These matter more without a local stack, because there is no disposable database to catch
 mistakes:
@@ -79,7 +87,7 @@ present in LOCAL but blank in REMOTE has not been applied.
    dev project _is_ your sandbox.
 2. **Schema changes are still migrations only.** `supabase/migrations/*.sql`, applied with
    `supabase db push`. Hand-editing schema or RLS in the dashboard stays prohibited
-   (TECH-STACK §6) — and now it's worse, because there's no `db reset` to reconcile drift.
+   (TECH-STACK §7) — and now it's worse, because there's no `db reset` to reconcile drift.
 3. **Regenerate types after every push:** `npm run db:types`. It pipes
    `npx supabase gen types typescript --linked` into `src/lib/supabase/types.ts`, then runs
    `prettier --write --end-of-line crlf` over it. Both details are load-bearing: `npx` because
@@ -120,8 +128,8 @@ present in LOCAL but blank in REMOTE has not been applied.
 | 4   | **Replay every migration from empty**                                              | `npx supabase db reset` — this is the payoff: it proves the migration chain builds a correct schema from scratch, which `db push` against a long-lived remote never verifies |
 | 5   | Regenerate types from local                                                        | `npx supabase gen types typescript --local > src/lib/supabase/types.ts`                                                                                                      |
 | 6   | Verify the app end to end                                                          | `npm run dev`, sign in, create → submit → approve a quote                                                                                                                    |
-| 7   | Verify the gate under test                                                         | `npm run test:e2e` (Playwright, including the RLS approval gate)                                                                                                             |
-| 8   | Update the docs in the same change                                                 | This file's §1, README Prerequisites + Install & Run, and TECH-STACK §6 if the workflow changes                                                                              |
+| 7   | Verify the gate by hand                                                            | Sign in as a `rep` and confirm a quote cannot leave `Review`. There is no automated E2E suite (docs/TECH-STACK.md §5), so this step is manual until one exists.              |
+| 8   | Update the docs in the same change                                                 | This file's §1, README Prerequisites + Install & Run, and TECH-STACK §7 if the workflow changes                                                                              |
 
 **Expected friction at step 4.** If `db reset` fails while the remote works, the migration
 chain is not replayable — usually a migration that assumed state created by hand, or ordering

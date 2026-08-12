@@ -38,7 +38,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **RLS-enforced authorization** — writes are enforced at the database, not the UI. The
   `Review → Approved` transition and all master-data / settings / branding writes
   are restricted to `role = 'admin'`; quote content edits are owner-or-admin; reads are flat.
-  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §2A)
+  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §7A)
 - **Atomic multi-row save** — saving a quote (header + line items) or a product (fab tiers +
   defaults + price history) goes through a single Postgres RPC transaction, so a failure
   partway through never leaves a row half-written.
@@ -64,6 +64,26 @@ No optional accounts. Resend, Sentry, and PostHog are all deliberately cut for v
 (TECH-STACK.md §5) — there's no email/PDF delivery, and no error-tracking or
 product-analytics need for a single internal tool.
 
+## Environment Setup
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill both values. Secrets MUST NOT be committed. Both variables are public by design —
+they are inlined into the browser bundle, and access control is enforced by Postgres RLS, not
+by hiding them ([ARCHITECTURE.md](docs/ARCHITECTURE.md) §1). A server-only secret MUST NOT
+carry the `NEXT_PUBLIC_` prefix.
+
+| Variable                        | Required | Description                                          | Where to obtain                             |
+| ------------------------------- | -------- | ---------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL; safe to expose to the browser. | Supabase dashboard → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Anonymous key for user-scoped, RLS-enforced access.  | Supabase dashboard → Project Settings → API |
+
+There is deliberately **no service-role key**. RedyQuote uses none anywhere
+([TECH-STACK.md](docs/TECH-STACK.md) §7) — every database access runs under a real user's
+session. Adding one is a TECH-STACK change first.
+
 ## Install & Run
 
 ```bash
@@ -72,7 +92,9 @@ cp .env.example .env.local   # fill in the two values from Supabase → Project 
 npm run dev                  # http://localhost:3000
 ```
 
-Everyday checks — the first four are exactly what CI runs on every PR to `main`
+## Everyday Checks
+
+These five are exactly what CI runs on every PR to `main` and every push to `main`
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
 
 ```bash
@@ -83,10 +105,9 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-One caveat before you trust a green run: **`npm run test` proves nothing yet.**
-`vitest.config.ts` sets `passWithNoTests` and there are no test files, so it exits 0 on an
-empty suite. Read a pass as "not run" until the pricing-calc tests land — those are blocked
-on the pricing formula (PRD §2A).
+`npm run test` runs the unit suites under `src/lib/`. `vitest.config.ts` sets no
+`passWithNoTests`, so an empty suite fails rather than passing silently — a green run means the
+tests actually ran.
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -114,7 +135,7 @@ Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official
 [impeccable](https://github.com/pbakaus/impeccable) (Apache 2.0)
 
 **No plugin builds UI here — shadcn does.** This is a shadcn project ([components.json](components.json),
-`shadcn@4`), and the 15 primitives in `src/components/ui/` are shadcn components adapted to our
+`shadcn@4`), and the primitives in `src/components/ui/` are shadcn components adapted to our
 tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on any UI change
 is **`/impeccable shape` → design system → shadcn → impeccable audit → `npm run lint` +
 `npm run typecheck`**; [CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
@@ -236,11 +257,11 @@ deletion.
 - [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, the WCAG AA floor
 - [ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
 
-## Open decisions blocking implementation
+## Open Decisions
 
 Two product decisions gate real work, and neither is a coding task:
 
-- **Pricing formula and rounding rules** (PRD §2A) — until signed off, nothing may infer a
+- **Pricing formula and rounding rules** (PRD §7A) — until signed off, nothing may infer a
   calculation order or which fields are canonical. The quote builder's cost panel is
   deliberately inert as a result.
 - **The fixed quote-line category list** (PRD-007A) — the `categories` table ships empty and

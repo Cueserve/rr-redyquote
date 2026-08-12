@@ -14,12 +14,13 @@ that satisfy docs/PRD.md.
 
 1. [System Architecture](#1-system-architecture)
 2. [Data Design](#2-data-design)
-3. [Data Flow](#3-data-flow)
+3. [Data Flow & Interactions](#3-data-flow--interactions)
 4. [Key Design Decisions](#4-key-design-decisions)
 5. [Implementation Conventions](#5-implementation-conventions)
 6. [Integration Points](#6-integration-points)
-7. [Security Posture](#7-security-posture)
+7. [Security Posture & Data Classification](#7-security-posture--data-classification)
 8. [Non-Functional Approach](#8-non-functional-approach)
+9. [Observability & Operations](#9-observability--operations)
 
 ---
 
@@ -88,7 +89,7 @@ paths to run under an elevated role.
 | `quote_status_history` | **New (PRD-017).** Append-only: quote_id, from_status, to_status, actor, changed_at                                                                                           | Belongs to a Quote                                    |
 | `settings_history`     | **New (PRD-018A).** Append-only: changed_field, old_value, new_value, actor, changed_at                                                                                       | Global audit of settings/branding edits               |
 
-## 3. Data Flow
+## 3. Data Flow & Interactions
 
 **Quote status lifecycle** (PRD-010, PRD-017) — the only state machine in the app:
 
@@ -125,7 +126,7 @@ price-history rows for any tier whose cost changed — all in one transaction.
 | Mutation path          | Server Actions only, no separate JSON API layer                                                                                                                                                                                                                                      | Simpler than an SPA+REST split for an app this size; `revalidatePath` after a mutation covers cache invalidation without a client-state library                                                                                                                             |
 | Atomicity              | Multi-row writes (quote+lines, product+tiers+defaults+history) go through Postgres RPC functions in one transaction                                                                                                                                                                  | Prevents partial saves from leaving quotes, tiers, defaults, or history in an inconsistent state                                                                                                                                                                            |
 | Quote numbering        | Server-generated from a Postgres sequence at first save                                                                                                                                                                                                                              | Removes the client-side counting race that could collide two reps' quote numbers                                                                                                                                                                                            |
-| Authorization          | Postgres enforces admin-only review transitions (`Review → Approved`, `Review → Draft`) via a `BEFORE UPDATE` trigger; RLS policies enforce the rest — master-data / settings / branding writes require `role = 'admin'`, quote content edits require owner-or-admin, reads are flat | Admin-owns-master-data model (resolved — PRD §2A / PRD-019); enforced at the database so it is a structural guarantee, not a UI convention. A transition is a trigger, not a policy: `WITH CHECK` cannot see the old row, so RLS cannot express "was Pending, now Approved" |
+| Authorization          | Postgres enforces admin-only review transitions (`Review → Approved`, `Review → Draft`) via a `BEFORE UPDATE` trigger; RLS policies enforce the rest — master-data / settings / branding writes require `role = 'admin'`, quote content edits require owner-or-admin, reads are flat | Admin-owns-master-data model (resolved — PRD §7A / PRD-019); enforced at the database so it is a structural guarantee, not a UI convention. A transition is a trigger, not a policy: `WITH CHECK` cannot see the old row, so RLS cannot express "was Pending, now Approved" |
 | Pricing trust boundary | Server recomputes the canonical cost breakdown from line items + settings at save time; client-side recalc is live-preview UX only                                                                                                                                                   | Prevents a tampered client from persisting a fabricated margin and keeps implementation tied to a single canonical formula once defined                                                                                                                                     |
 | State machine          | Status transitions validated centrally against the diagram in §3; invalid transitions rejected                                                                                                                                                                                       | Prevents illegal states (e.g. skipping Approved)                                                                                                                                                                                                                            |
 | Audit                  | `quote_status_history`, `price_history`, and `settings_history`, written in the same transaction as the change                                                                                                                                                                       | Preserves traceability for quote status, cost, and settings/branding changes                                                                                                                                                                                                |
@@ -171,7 +172,7 @@ Sent" is a manual in-app status change with no email or document delivery (PRODU
 If a future release adds PDF or email quote delivery, it slots in behind the same Server
 Action pattern without touching the access/audit model above.
 
-## 7. Security Posture
+## 7. Security Posture & Data Classification
 
 **Data classification:**
 
@@ -215,3 +216,25 @@ without a reviewed sanitization strategy.
 | NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2       |
 | NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                                 |
 | NFR-008 supported viewports    | Tablet-and-up layouts only; the navigation rail collapses 220px → 64px at `xl` rather than resizing, and a dense table scrolls inside its own container — DESIGN-SYSTEM.md §9 |
+
+## 9. Observability & Operations
+
+No error-tracking or analytics vendor is wired. Sentry and PostHog are deliberately cut for v1
+([docs/TECH-STACK.md](TECH-STACK.md) §5) — a single internal tool with a known user set has no
+onboarding funnel to measure and no anonymous error volume to triage.
+
+What exists instead:
+
+- **Crash surface** — `src/app/global-error.tsx` renders `error.digest` and nothing else. A raw
+  message at the root can carry whatever the app was holding when it died (§7), so the digest is
+  the only detail shown; it is also the correlation handle between a user's report and the
+  platform log.
+- **Route-scoped boundaries** — an `error.tsx` per route group, so a failure in one screen does
+  not blank the shell.
+- **Platform logs** — Vercel function logs and Supabase logs are the only telemetry. Neither is
+  aggregated, searched, nor retained beyond the platform default.
+
+**Gap, stated rather than papered over:** there is no alerting. A failed write, a broken RLS
+policy, or a 500 on the approval path surfaces only when a user reports it. The approval gate is
+the path where silent failure costs most, and it is exactly the path with no monitor. Revisit at
+production cutover, alongside the Supabase Pro move in [docs/TECH-STACK.md](TECH-STACK.md) §7.

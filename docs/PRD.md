@@ -1,4 +1,4 @@
-# PRD.md — Testable Requirements
+# PRD.md — Product Requirements Document
 
 **Owner:** Viral Parikh
 **Last updated:** 2026-08-08
@@ -10,7 +10,45 @@ RedyQuote v1.
 
 ---
 
-## 1. Functional Requirements
+## Contents
+
+1. [Overview](#1-overview)
+2. [Target Users](#2-target-users)
+3. [Problem Statements](#3-problem-statements)
+4. [Features / Capabilities](#4-features--capabilities)
+5. [User Stories](#5-user-stories)
+6. [Functional Requirements](#6-functional-requirements)
+7. [Non-Functional Requirements](#7-non-functional-requirements)
+   7A. [Placeholder Specifications](#7a-placeholder-specifications)
+8. [Acceptance Criteria](#8-acceptance-criteria)
+9. [Out of Scope](#9-out-of-scope)
+10. [Dependencies & Assumptions](#10-dependencies--assumptions)
+11. [Constraints (Non-Architectural)](#11-constraints-non-architectural)
+12. [Risks & Edge Cases](#12-risks--edge-cases)
+
+---
+
+## 1. Overview
+
+_Not yet authored._ See [docs/PRODUCT.md](PRODUCT.md) §1, which carries the problem statement and scope this document turns into testable requirements.
+
+## 2. Target Users
+
+_Not yet authored._ See [docs/PRODUCT.md](PRODUCT.md) §2 — two roles, `rep` and `admin`.
+
+## 3. Problem Statements
+
+_Not yet authored._ See [docs/PRODUCT.md](PRODUCT.md) §1.
+
+## 4. Features / Capabilities
+
+_Not yet authored._ See [docs/PRODUCT.md](PRODUCT.md) §3.
+
+## 5. User Stories
+
+_Not yet authored._ Never authored. Requirements here are stated directly as PRD-NNN rows in §6 rather than as stories; that is a deliberate choice for a single-team internal tool, not an omission to fill in later.
+
+## 6. Functional Requirements
 
 | #        | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -39,7 +77,7 @@ RedyQuote v1.
 | PRD-019  | Authorization model — admin owns master data. Reps create/manage their own quotes, submit for approval, and mark their own approved quotes Sent; they may read but not write master data. Admins do all of that on any quote, plus the approval gate and all master-data / settings / branding writes. Two roles only (rep, admin). Every write is enforced by Postgres RLS at the database, not only in Server Actions. Reads are flat, with one exception: `settings_history` (PRD-018B).                                                   |
 | PRD-020  | A write rejected by the database — the approval gate (PRD-010), an invalid status transition, an admin-only write (PRD-019), the fixed-category invariant (PRD-007A), or a row the caller may not touch — surfaces a specific, factual message naming what was refused and why. Never a raw Postgres exception string, and never a generic "something went wrong": the database is the authorization boundary, so its refusals are information the user needs, not noise to swallow. Copy follows DESIGN-SYSTEM §11.                          |
 
-## 2. Non-Functional Requirements
+## 7. Non-Functional Requirements
 
 | #       | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -52,7 +90,7 @@ RedyQuote v1.
 | NFR-007 | Server-side is the source of truth for both **access** and **computed pricing values** — a client-submitted cost breakdown is never trusted verbatim; the canonical GP%/total-cost figures are recomputed server-side from stored line items and settings before being persisted or used for the margin-floor flag.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | NFR-008 | **Supported viewports are tablet and up (≥768px CSS width).** Every screen MUST be usable at 768px and above with no horizontal scrolling of the page itself; a dense table MAY scroll horizontally inside its own container, which is the designed behaviour and not a defect. Phone widths are out of scope (§3): nothing below 768px is designed or tested, and the app is not expected to degrade gracefully there. The navigation rail's two-width collapse, and the measurement rule that fixes its breakpoint, are specified in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) §9.                                                                                                                                                                                                                                                                                                                |
 
-## 2A. Placeholder Specifications
+## 7A. Placeholder Specifications
 
 ### Pricing Formula and Rounding Rules
 
@@ -92,7 +130,13 @@ Status: **Resolved 2026-07-23.** See
 - Deactivated master data — stays on existing quotes with a "Deactivated" badge, not
   selectable for new lines; admin-only to edit/reactivate (PRD-018).
 
-## 3. Explicit Non-Requirements (see PRODUCT.md §4)
+## 8. Acceptance Criteria
+
+_Not yet authored._ Acceptance is currently expressed inline: each PRD-NNN row in §6 states its
+own testable condition. A separate criteria table would duplicate them and drift. If one is ever
+added, it replaces the inline statements rather than sitting alongside them.
+
+## 9. Out of Scope
 
 Multi-tenancy, PDF/email quote delivery, RBAC beyond the two-role rep/admin model
 (PRD-019), and legacy data migration are out of scope for v1.
@@ -101,3 +145,15 @@ Multi-tenancy, PDF/email quote delivery, RBAC beyond the two-role rep/admin mode
 and the screens are dense tables and multi-column forms that a 390px viewport cannot carry
 without a separate design. Nothing below 768px is designed or tested. This is a scope
 decision, not a deferred defect — treat a phone-width bug report as a request to widen scope.
+
+## 10. Dependencies & Assumptions
+
+_Not yet authored._ No external integrations exist in v1 (docs/ARCHITECTURE.md §6). The only standing dependency is the Supabase platform.
+
+## 11. Constraints (Non-Architectural)
+
+_Not yet authored._
+
+## 12. Risks & Edge Cases
+
+_Not yet authored._

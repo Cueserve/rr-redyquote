@@ -1492,9 +1492,9 @@ The pager renders only when there are rows: "Page 1 of 1" above an empty state i
 - [ ] **Step 5: Verify the route still builds**
 
 Run: `npm run lint && npm run typecheck && npm run build`
-Expected: all clean. `/products` is expected to move from `○` to `ƒ` in the build output; that is spec §4.3 and is not a regression.
+Expected: all clean. `/products` stays `○` in the build output, but its server response becomes the `loading.tsx` shell — `useSearchParams()` in the table bails the whole segment to client rendering. That is the accepted outcome, recorded in spec §4.3; it is a regression in server rendering and it is not a build failure.
 
-If the build fails with a message about `useSearchParams()` needing a Suspense boundary, add `export const dynamic = "force-dynamic";` at the top of `src/app/(app)/products/(list)/page.tsx` and re-run. Do not wrap the table in a `<Suspense>` in the page — the `(list)/loading.tsx` beside it is already the boundary for that segment.
+Do **not** reach for `export const dynamic = "force-dynamic"` or for deleting `(list)/loading.tsx`. Both were tried against a real `next start` and neither restores server rendering.
 
 - [ ] **Step 6: Manual verification**
 
@@ -1803,7 +1803,7 @@ Replace the closing `role="status"` paragraph with:
 - [ ] **Step 6: Verify**
 
 Run: `npm run lint && npm run typecheck && npm run build`
-Expected: all clean; `/library` moves to `ƒ`.
+Expected: all clean. `/library` stays `○` and its content moves to client rendering, same as `/products` — see spec §4.3.
 
 Then at `http://localhost:3000/library`, in addition to the nine checks from Task 6 Step 6:
 
@@ -2091,7 +2091,7 @@ Replace the closing `role="status"` paragraph with:
 - [ ] **Step 6: Verify**
 
 Run: `npm run lint && npm run typecheck && npm run build`
-Expected: all clean; `/quotes` moves to `ƒ`.
+Expected: all clean. `/quotes` stays `○` and its content moves to client rendering, same as `/products` — see spec §4.3.
 
 Then at `http://localhost:3000/quotes`, in addition to the nine checks from Task 6 Step 6:
 

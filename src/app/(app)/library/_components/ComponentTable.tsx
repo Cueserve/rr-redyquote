@@ -27,6 +27,16 @@ import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import { LinkPending } from "@/components/ui/link-pending";
 import type { Category, LibraryComponent } from "@/lib/mock";
 import { formatDate, formatHours, formatMoney } from "@/lib/utils";
+import {
+  applyListView,
+  byField,
+  compareNumber,
+  compareRank,
+  compareText,
+} from "@/lib/list/apply-list-view";
+import type { ListParamsConfig } from "@/lib/list/list-params";
+import { useListParams } from "@/lib/list/use-list-params";
+import { Pagination } from "@/components/ui/pagination";
 
 // Environment is a Badge rather than plain text so the Indoor/Outdoor split
 // scans down the column — it is the field a rep gets wrong, and PRD-008 makes a
@@ -41,6 +51,78 @@ const ENVIRONMENT: Record<
   outdoor: { label: "Outdoor", variant: "warning" },
 };
 
+// `Environment` is absent from the sortable keys on purpose: Any/Indoor/Outdoor
+// is a classification, not a scale, so any order it produces is arbitrary
+// (design spec §3.3).
+type ComponentSortKey =
+  | "name"
+  | "category"
+  | "vendor"
+  | "cost"
+  | "labor_hours"
+  | "quoted"
+  | "freshness";
+
+/** PRD-009's three states, in severity order — never alphabetical. */
+const FRESHNESS_ORDER = ["current", "aging", "requote"] as const;
+
+// Category sorts by display name, which needs the id→name map the component
+// already builds. Passing it in keeps every comparator a pure function of its
+// row rather than closing over component state.
+function sortsFor(
+  categoryName: Map<string, string>,
+): Record<
+  ComponentSortKey,
+  (dir: "asc" | "desc") => (a: LibraryComponent, b: LibraryComponent) => number
+> {
+  return {
+    name: (dir) =>
+      byField((row: LibraryComponent) => row.name, compareText, dir),
+    category: (dir) =>
+      byField(
+        (row: LibraryComponent) => categoryName.get(row.category_id),
+        compareText,
+        dir,
+      ),
+    vendor: (dir) =>
+      byField((row: LibraryComponent) => row.vendor, compareText, dir),
+    cost: (dir) =>
+      byField((row: LibraryComponent) => row.cost, compareNumber, dir),
+    labor_hours: (dir) =>
+      byField(
+        (row: LibraryComponent) => row.default_labor_hours,
+        compareNumber,
+        dir,
+      ),
+    // `quoted_date` is an ISO date string, so lexical order is chronological.
+    quoted: (dir) =>
+      byField((row: LibraryComponent) => row.quoted_date, compareText, dir),
+    freshness: (dir) =>
+      byField(
+        (row: LibraryComponent) => row.freshness,
+        compareRank(FRESHNESS_ORDER),
+        dir,
+      ),
+  };
+}
+
+const SORT_KEYS: ComponentSortKey[] = [
+  "name",
+  "category",
+  "vendor",
+  "cost",
+  "labor_hours",
+  "quoted",
+  "freshness",
+];
+
+const LIST_CONFIG: ListParamsConfig<ComponentSortKey> = {
+  sortKeys: SORT_KEYS,
+  defaultSort: "name",
+  defaultDir: "asc",
+  filterDefaults: { category: "all", deactivated: "0" },
+};
+
 export function ComponentTable({
   components,
   categories,
@@ -48,27 +130,43 @@ export function ComponentTable({
   components: LibraryComponent[];
   categories: Category[];
 }) {
-  const [query, setQuery] = React.useState("");
-  const [categoryId, setCategoryId] = React.useState("all");
-  const [showDeactivated, setShowDeactivated] = React.useState(false);
+  const list = useListParams(LIST_CONFIG);
+  const { params } = list;
+  const categoryId = list.filter("category", "all");
+  const showDeactivated = list.filter("deactivated", "0") === "1";
 
   const categoryName = React.useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
 
-  const needle = query.trim().toLowerCase();
-  const rows = components.filter((component) => {
-    const matchesCategory =
-      categoryId === "all" || component.category_id === categoryId;
-    const matchesActive = showDeactivated || component.active;
-    const matchesQuery =
-      needle === "" ||
-      component.name.toLowerCase().includes(needle) ||
-      component.sku.toLowerCase().includes(needle) ||
-      (component.vendor ?? "").toLowerCase().includes(needle);
-    return matchesCategory && matchesActive && matchesQuery;
+  const compare = React.useMemo(
+    () => sortsFor(categoryName)[params.sort](params.dir),
+    [categoryName, params.dir, params.sort],
+  );
+
+  const needle = params.q.toLowerCase();
+  const view = applyListView(components, {
+    filter: (component) => {
+      const matchesCategory =
+        categoryId === "all" || component.category_id === categoryId;
+      const matchesActive = showDeactivated || component.active;
+      const matchesQuery =
+        needle === "" ||
+        component.name.toLowerCase().includes(needle) ||
+        component.sku.toLowerCase().includes(needle) ||
+        (component.vendor ?? "").toLowerCase().includes(needle);
+      return matchesCategory && matchesActive && matchesQuery;
+    },
+    compare,
+    page: params.page,
+    size: params.size,
   });
+
+  const rows = view.rows;
+  const firstRow =
+    params.size === "all" ? 1 : (view.page - 1) * params.size + 1;
+  const lastRow = firstRow + rows.length - 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,15 +185,20 @@ export function ComponentTable({
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             />
             <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={list.query}
+              onChange={(event) => list.setQuery(event.target.value)}
               placeholder="Search name, SKU, or vendor"
               aria-label="Search components"
               className="pl-9"
             />
           </div>
 
-          <Select value={categoryId} onValueChange={setCategoryId}>
+          <Select
+            value={categoryId}
+            onValueChange={(next) =>
+              list.setFilter("category", next === "all" ? null : next)
+            }
+          >
             <SelectTrigger aria-label="Filter by category">
               <SelectValue />
             </SelectTrigger>
@@ -113,7 +216,9 @@ export function ComponentTable({
         <label className="flex items-center gap-2 text-sm">
           <Switch
             checked={showDeactivated}
-            onCheckedChange={setShowDeactivated}
+            onCheckedChange={(checked) =>
+              list.setFilter("deactivated", checked ? "1" : null)
+            }
           />
           Show deactivated
         </label>
@@ -129,14 +234,58 @@ export function ComponentTable({
         <Table caption="Component library">
           <TableHeader>
             <TableRow>
-              <TableHead>Component</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Vendor</TableHead>
+              <TableHead
+                sortKey="name"
+                sortState={list.sortStateFor("name")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Component
+              </TableHead>
+              <TableHead
+                sortKey="category"
+                sortState={list.sortStateFor("category")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Category
+              </TableHead>
+              <TableHead
+                sortKey="vendor"
+                sortState={list.sortStateFor("vendor")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Vendor
+              </TableHead>
               <TableHead>Environment</TableHead>
-              <TableHead className="text-right">Cost</TableHead>
-              <TableHead className="text-right">Labor hrs</TableHead>
-              <TableHead>Quoted</TableHead>
-              <TableHead>Freshness</TableHead>
+              <TableHead
+                className="text-right"
+                sortKey="cost"
+                sortState={list.sortStateFor("cost")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Cost
+              </TableHead>
+              <TableHead
+                className="text-right"
+                sortKey="labor_hours"
+                sortState={list.sortStateFor("labor_hours")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Labor hrs
+              </TableHead>
+              <TableHead
+                sortKey="quoted"
+                sortState={list.sortStateFor("quoted")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Quoted
+              </TableHead>
+              <TableHead
+                sortKey="freshness"
+                sortState={list.sortStateFor("freshness")}
+                onSort={(key) => list.toggleSort(key as ComponentSortKey)}
+              >
+                Freshness
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -207,13 +356,25 @@ export function ComponentTable({
         </Table>
       )}
 
+      {view.total > 0 ? (
+        <Pagination
+          page={view.page}
+          pageCount={view.pageCount}
+          size={params.size}
+          onPageChange={list.setPage}
+          onSizeChange={list.setSize}
+        />
+      ) : null}
+
       {/* `role="status"` (polite + atomic) is what makes the filters audible:
-          search, the category select and the toggle rewrite the table with no
-          page navigation, so without a live region a screen-reader user gets no
-          confirmation the list changed, or that it went empty (WCAG 2.2 4.1.3).
-          Matches ProductTable. */}
+          search, the category select, the toggle, a sort click and a page turn
+          all rewrite the table with no page navigation, so without a live
+          region a screen-reader user gets no confirmation the list changed, or
+          that it went empty (WCAG 2.2 4.1.3). Matches ProductTable. */}
       <p role="status" className="text-xs text-muted-foreground">
-        Showing {rows.length} of {components.length} components.
+        {view.total === 0
+          ? `Showing 0 of ${components.length} components.`
+          : `Showing ${firstRow} to ${lastRow} of ${view.total} components.`}
       </p>
     </div>
   );

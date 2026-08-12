@@ -97,11 +97,16 @@ export function buildListSearch<K extends string>(
     "page",
   ];
 
-  return order
-    .filter((key) => {
-      const val = merged.get(key);
-      return val !== undefined && val !== defaults[key];
-    })
-    .map((key) => `${key}=${merged.get(key)}`)
-    .join("&");
+  // Built through URLSearchParams rather than joined by hand: `q` is free text,
+  // and hand-concatenation emits its value raw. A search for "Smith & Sons"
+  // then produces `q=Smith & Sons`, which parses back as q="Smith " plus a
+  // bogus empty param -- the term is silently truncated at the ampersand. `#`
+  // is worse: it starts the URL fragment, so everything after it leaves the
+  // query string entirely. `toString()` percent-encodes both.
+  const out = new URLSearchParams();
+  for (const key of order) {
+    const val = merged.get(key);
+    if (val !== undefined && val !== defaults[key]) out.set(key, val);
+  }
+  return out.toString();
 }

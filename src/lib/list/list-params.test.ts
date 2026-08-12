@@ -151,4 +151,23 @@ describe("buildListSearch", () => {
       "q=a&sort=cost&dir=desc&size=25",
     );
   });
+
+  // `q` is free text off a search box, so it is the one param a user can put
+  // anything into. Asserting the emitted string is not enough -- the failure
+  // this guards against is that the string PARSES BACK as something else.
+  //
+  // The round trip goes through a real `URL`, not straight into
+  // `URLSearchParams`, because that is the only way `#` is tested honestly: a
+  // fragment marker is cut by the URL parser before the query string is ever
+  // read, so a `URLSearchParams`-only round trip would pass on a raw `#` and
+  // claim to have covered it.
+  it.each([
+    ["an ampersand", "Smith & Sons"],
+    ["a fragment marker", "rev#2"],
+    ["a plus sign", "a+b"],
+  ])("round-trips a search term containing %s", (_label, term) => {
+    const query = build("", { q: term });
+    const url = new URL(`https://x/products?${query}`);
+    expect(readListParams(url.searchParams, config).q).toBe(term);
+  });
 });

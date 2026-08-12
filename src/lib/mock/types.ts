@@ -139,7 +139,7 @@ export interface PriceHistoryRow {
 /**
  * docs/DATABASE.md §4.11. The nine pricing columns are storage for
  * server-recomputed OUTPUTS (NFR-007) — the formula that produces them is
- * PRD §2A's open placeholder, so every figure below is a fixture literal and
+ * PRD §7A's open placeholder, so every figure below is a fixture literal and
  * nothing in this prototype recomputes one.
  */
 export interface Quote {

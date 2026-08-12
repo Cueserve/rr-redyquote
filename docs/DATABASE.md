@@ -56,7 +56,7 @@ Three structural guarantees drove this design, matching PRD's stated anti-patter
    half-written.
 3. **A single canonical cost breakdown** (NFR-007) — the schema stores the
    _server-recomputed_ pricing outputs on `quotes`/`quote_lines`; it does not encode a
-   pricing formula. **The formula itself is an open PRD §2A placeholder** — see §5.1.
+   pricing formula. **The formula itself is an open PRD §7A placeholder** — see §5.1.
 
 Everything else follows standard 3NF normalization, `uuid` primary keys, and audit trails
 that are append-only at the database level (not just by application convention).
@@ -309,7 +309,7 @@ of a plausible estimate, nothing more.
 
 Two consequences worth stating, because a placeholder that looks like data is worse than a
 blank: no quote priced against these figures means anything, and the real values arrive with
-PRD §2A sign-off — as a **settings edit by an admin**, not a migration, since the row is
+PRD §7A sign-off — as a **settings edit by an admin**, not a migration, since the row is
 already there. Do not treat a change to them as a schema change.
 
 **Every rate on this row is a percent** — the two markups are stored as `50.00` / `20.00`,
@@ -467,7 +467,7 @@ formula, agreeing every time" requirement.
 | `created_at` / `updated_at` | `timestamptz`       | NOT NULL                                                 |
 
 > **The nine pricing columns above are storage for server-recomputed _outputs_, not an
-> implementation of the formula.** The formula that produces them is PRD §2A's open
+> implementation of the formula.** The formula that produces them is PRD §7A's open
 > placeholder — see §5.1.
 
 ### 4.12 `quote_lines`
@@ -515,7 +515,7 @@ is what stops it being re-litigated from scratch, or quietly reversed.
 
 ### 5.1 Pricing columns are storage, not a formula
 
-PRD §2A states the pricing formula and rounding rules are "pending product/pricing sign-off"
+PRD §7A states the pricing formula and rounding rules are "pending product/pricing sign-off"
 and that "no implementation may invent or infer calculation order, rounding points, or
 persisted pricing fields" ahead of that.
 
@@ -526,7 +526,7 @@ columns with **no formula, trigger, or generated-column logic behind them**. The
 recomputes those values and writes them (NFR-007); the database only holds them.
 
 Consequence, carried in [§6](#6-open-items): the save RPC must not be wired into a real
-Server Action until PRD §2A is signed off.
+Server Action until PRD §7A is signed off.
 
 ### 5.2 Two tables exist beyond ARCHITECTURE.md's data-design table
 
@@ -580,7 +580,7 @@ alone.
 
 | Item                                 | Blocks                                                     | Owner decision needed                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Pricing formula** (PRD §2A)        | Wiring the save RPC into a real Server Action              | **Decider: Viral Parikh (Product Owner), with REDYREF sales and estimating.** Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not.                                                                                                                                                   |
+| **Pricing formula** (PRD §7A)        | Wiring the save RPC into a real Server Action              | **Decider: Viral Parikh (Product Owner), with REDYREF sales and estimating.** Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not.                                                                                                                                                   |
 | **Fixed-category list** (PRD-007A)   | Populating `categories`; the quote builder's row structure | **Decider: Viral Parikh (Product Owner), with REDYREF estimating.** REDYREF's actual category names, ordered. The table ships empty — nothing in this repo invents them.                                                                                                                                                                                                                                                 |
 | **Editing a quote after submission** | Whether `quote_lines` freezes outside `Draft`              | Neither PRD.md nor ARCHITECTURE.md says whether a rep may still edit line items once a quote leaves `Draft` — only that _status transitions_ follow the fixed state machine. This model allows content edits at any status by owner-or-admin. If the real process expects a submitted quote's lines to be frozen, that is a trigger, and it should be a deliberate decision rather than an assumption baked in silently. |
 

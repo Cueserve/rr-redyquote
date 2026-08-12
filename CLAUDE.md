@@ -1,4 +1,4 @@
-# CLAUDE.md — Claude Code adapter for RedyQuote
+# CLAUDE.md — RedyQuote
 
 Claude Code reads this file automatically from the repo root.
 
@@ -22,21 +22,19 @@ decisions from memory.**
   the spec listed below.
 
 **Approved design specs** — same authority as the docs above, for the slice they cover, but
-**transient**: each one is deleted when its content lands in whatever it feeds. A spec's
-_path says nothing about its status_ — the two below sit in different folders for reasons
-that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.md §5, "Docs").
+**transient**: each one is deleted when its content lands in whatever it feeds. They all live
+in `docs/specs/`, dated-filename-first (see PROJECT-STRUCTURE.md §5, "Docs").
 
-- [docs/superpowers/specs/2026-07-23-authorization-matrix-design.md](docs/superpowers/specs/2026-07-23-authorization-matrix-design.md)
+- [docs/specs/2026-07-23-authorization-matrix.md](docs/specs/2026-07-23-authorization-matrix.md)
   — the complete two-role (`rep` / `admin`) authorization model. **Amends** PRD-010 and
-  ARCHITECTURE §2/§7, and resolves PRD §2A, PRD-012, PRD-013. Read it before writing any RLS
+  ARCHITECTURE §2/§7, and resolves PRD §7A, PRD-012, PRD-013. Read it before writing any RLS
   policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
-  is superseded, not authoritative. Lives under the tool-owned path because the `superpowers`
-  plugin wrote it there and would recreate the folder if moved.
-- [docs/superpowers/specs/2026-08-01-branding-assets-upload-design.md](docs/superpowers/specs/2026-08-01-branding-assets-upload-design.md)
+  is superseded, not authoritative.
+- [docs/specs/2026-08-01-branding-assets-upload.md](docs/specs/2026-08-01-branding-assets-upload.md)
   — future design for settings-branding logo/favicon upload and replacement using deployment-safe
   asset storage without immediate `settings` schema changes. Design-only in this phase; no code
   wiring and no DB migration are part of that spec.
-- [docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md](docs/superpowers/specs/2026-08-09-list-sort-pagination-design.md)
+- [docs/specs/2026-08-09-list-sort-pagination.md](docs/specs/2026-08-09-list-sort-pagination.md)
   — column sorting and pagination for the three list screens, plus moving their existing
   filter state from `useState` into the URL. **Adds scope the PRD does not carry** — neither
   sorting nor pagination appears in PRD.md — so this spec is the requirement, not a
@@ -49,8 +47,7 @@ that have nothing to do with how authoritative they are (see PROJECT-STRUCTURE.m
   migrations are authored**, because ARCHITECTURE §5 makes the migrations the authoritative
   schema and two copies of the same SQL would drift. Carries two go-live blockers in its §4 —
   a `profiles` role self-escalation hole, and the rule not to wire the save RPC before
-  PRD §2A is signed off. Hand-authored, so it sits beside the model doc it implements rather
-  than in the plugin's folder.
+  PRD §7A is signed off.
 
 When a new spec lands, add it to this list in the same change, wherever it lives. A spec's
 content moves into what it feeds once fully incorporated (see docs/DESIGN-SYSTEM.md's
@@ -68,6 +65,28 @@ file in the same change (see its §6).
 This file is the single home for Claude Code's working rules on RedyQuote. Keep AI-behavior rules
 here and product/architecture facts in `docs/`.
 
+## Engineering rules
+
+@docs/ENGINEERING-RULES.md
+
+The line above **imports** the project's coding conventions, banned patterns, and testing rules
+into every session. They are not restated here. If one changes, edit
+`docs/ENGINEERING-RULES.md`; never add a competing copy to this file.
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is the governance authority - branching, commit convention,
+review flow, the self-review gate, the documentation-change process, and the command policy.
+
+## Authority order
+
+When two sources disagree, the higher one wins:
+
+1. The filesystem and `git` - a document claiming a file exists loses to `ls`.
+2. `CONTRIBUTING.md` for anything about process, governance, or commands.
+3. `docs/` by lineage: PRODUCT -> PRD -> ARCHITECTURE -> TECH-STACK -> ENGINEERING-RULES. Each
+   document's header names its own `Derived from:` / `Downstream:` files.
+4. This file, for the Claude Code behavior rules below that it owns.
+5. `README.md` and `docs/BACKLOG.md` - they restate, they own nothing.
+
 ## Project state
 
 **Last verified: 2026-08-08.** Confirm a file or script still exists before relying on this
@@ -77,7 +96,7 @@ section — it is a snapshot, and a stale one is worse than none.
 
 - **UI, end to end but unwired.** All routes under `src/app/(app)/` (quotes list, quote
   builder, products, component library, settings) plus `src/app/(auth)/login/`, the app shell,
-  and 15 primitives in `src/components/ui/`. Every screen reads from **`src/lib/mock/`**, not
+  and the primitives in `src/components/ui/`. Every screen reads from **`src/lib/mock/`**, not
   from Supabase.
 - **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
 - **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
@@ -110,7 +129,7 @@ section — it is a snapshot, and a stale one is worse than none.
   module adds no new tool. Read it before writing one — it is the shape to copy, and two of its
   choices are load-bearing rather than incidental: the edit buffer stays a **string** until
   submit (parsing per keystroke eats a half-typed `2.`, which puts the 2.5 cushion out of
-  reach), and there are **no upper bounds**, because PRD §2A has not fixed the sane ranges and a
+  reach), and there are **no upper bounds**, because PRD §7A has not fixed the sane ranges and a
   wrong ceiling is worse than none.
   - **It validates a form, not a write.** No Server Action consumes it, because none exists.
     The database is still the enforcement boundary; this only tells an admin which field is
@@ -130,10 +149,10 @@ zero users, zero history. Every screen still reads `src/lib/mock/`.
 `src/components/prototype/` (a client-side role switch that is _not_ authorization). Don't
 build on either; replace them.
 
-**Two open product decisions block real work** — the pricing formula (PRD §2A) and the
+**Two open product decisions block real work** — the pricing formula (PRD §7A) and the
 fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 
-## Approved stack (TECH-STACK.md — do not deviate)
+## Approved stack
 
 - **Next.js 16** (App Router) · **React 19** · **TypeScript 5** · **Node.js 24 LTS** (Active
   LTS; `.nvmrc` + `engines.node`)
@@ -142,7 +161,7 @@ fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 - **Cut for v1:** Resend, Sentry, PostHog, `pgmq`, `pg_cron`, Edge Functions. Do not
   introduce a tool that isn't in TECH-STACK.md.
 
-## Non-negotiable invariants (ARCHITECTURE.md)
+## Non-negotiable invariants
 
 These are structural guarantees, not conventions — don't write code that breaks them:
 
@@ -163,14 +182,91 @@ These are structural guarantees, not conventions — don't write code that break
   out of Review are admin-only. Every status change writes an audit row.
 - **Append, never overwrite** — component cost changes append to `price_history`.
 
+## Scope boundaries
+
+**In bounds** without asking: implementing PRD-traced features inside an existing route group,
+writing Vitest tests, adding Zod schemas, wiring Server Actions behind the existing
+authorization path, and building screens from `src/components/ui/` + the token layer.
+
+**Out of bounds** without explicit human instruction - stop and get approval. This covers
+everything under **Off-limits** below, plus these design-level contracts that are not file paths:
+
+- Any change to how the `Review` exits are gated. The mechanism is the
+  `validate_quote_status_transition` trigger, not an RLS policy, and weakening it on the
+  assumption RLS is a second layer is the single most costly mistake available here.
+- The atomic-RPC contract for quote and product saves.
+- The server-side pricing trust boundary.
+
+When a task appears to need an out-of-bounds change, flag it and propose it - never make it
+silently.
+
+## Decision escalation
+
+Stop and get explicit human approval before any of the following. State the change and its
+reason first. **Touching anything under Off-limits always requires this**; the triggers here are
+the ones that are not file-scoped or are broader than a single path:
+
+- **Adding or removing a package** - name the package, the reason, and the alternative
+  rejected; wait for approval. Updates [`docs/TECH-STACK.md`](docs/TECH-STACK.md) first.
+- **Any schema or migration change** - new, edited, or dropped tables, indexes, RLS policies,
+  triggers, RPC functions, or history tables.
+- **Breaking changes to a database schema or shared contract** - sign-off before commit.
+- **Any change to the two-role authorization model** (`rep` / `admin`).
+- **Adopting an end-to-end test framework** - it must land in CuevikSync in the same change, or
+  the two repos fork (docs/TECH-STACK.md §5).
+
+## Off-limits
+
+Never touch the following without explicit human instruction:
+
+- **Secrets and env files** - `.env`, `.env.*`, and anything holding a Supabase key.
+  `.claude/settings.json` denies these reads outright; that is the mechanical backstop, not a
+  substitute for the rule. `.env.example` is deliberately still readable.
+- **Lock files** - `package-lock.json` is a side-effect of `npm`, not a direct edit.
+- **Database migrations** - never create, modify, or delete files under `supabase/migrations/`
+  autonomously. A migration present in `main` is applied and immutable.
+- **CI/CD config** - `.github/workflows/` and Vercel settings require human review. The
+  workflow is byte-identical to CuevikSync's; a change here is a change to both.
+- **Auth-related code** - RLS policies, the transition trigger, JWT/role-claim handling,
+  Supabase Auth wiring, session cookies (`@supabase/ssr`), and `src/proxy.ts`.
+- **Dependency changes** - do not add or remove packages; state the package and reason and get
+  approval first.
+
+## Agent behavior
+
+- **Plan before execute** - for any non-trivial task, show a plan and wait for approval before
+  writing code or editing files.
+- **Ask, do not assume** - if the task is ambiguous, ask before proceeding rather than guessing.
+  Keep clarifying questions minimal and batched, not a drip of one-at-a-time round trips.
+- **Scope discipline** - touch only what was explicitly asked. Flag out-of-scope issues without
+  acting on them.
+- **Stop and report** - if blocked or on a wrong path, say so immediately. Do not burn cycles on
+  a dead end.
+- **One change at a time** - when modifying existing files, propose one change, explain why, and
+  wait for approval. No silent batch edits.
+- **No invented scope** - do not add features, refactors, error handling, or abstractions
+  beyond what was requested.
+- **Uncertainty is explicit** - if unsure, say so. Never present a guess as a fact.
+
+## Workflow
+
+`CONTRIBUTING.md` owns branch naming, commit convention, the review flow, and the self-review
+gate. Those rules are **not restated here** - read them there. These are the constraints
+specific to working as an agent:
+
+- **Branch creation is a human action** - never create a branch autonomously.
+- **PRs** - never open, close, or comment on a Pull Request without explicit instruction.
+- **Pushing to remote** - never push to any remote branch without explicit human approval. This
+  includes the branch you are currently working on, not just `main`.
+
 ## Claude Code-specific config
 
 - **Commands** (script list verified 2026-08-01, the `db:*` lines re-verified 2026-08-08 —
   `package.json` is the authority; don't invent scripts):
   - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
-  - `npm run test` exits 0 but proves nothing — `vitest.config.ts` sets `passWithNoTests` and
-    there are no test files. Treat a green `test` as "not run", not "passed". Drop that flag
-    from the config when the first real test lands (the pricing calc, blocked on PRD §2A).
+  - `npm run test` runs the unit suites under `src/lib/list/`. `vitest.config.ts` sets no
+    `passWithNoTests`, so an empty suite would fail rather than pass silently — a green `test`
+    means the tests actually ran.
   - `npm run db:push` / `db:types` both run, and the project is linked. Migrations `0001`–`0005`
     are applied, so `db:push` has **nothing pending**; `db:types` regenerates against the real
     applied schema and `types.ts` is current (see "Built" above, which is the authority on
@@ -256,7 +352,7 @@ useful output for something with no surface.
   `IMPECCABLE_CONTEXT_DIR=docs` — verified 2026-08-08. Being routed to `teach` means the
   context broke; fix the context, never run the command.
 - **`shape` plans around an open decision, it cannot close one.** Two are still open and block
-  the work it would plan: the pricing formula (PRD §2A) and the fixed-category list
+  the work it would plan: the pricing formula (PRD §7A) and the fixed-category list
   (PRD-007A). See docs/DATABASE.md §6.
 
 **`/impeccable craft` is banned — use `shape` instead.** `craft` is `shape` plus an end-to-end
@@ -372,3 +468,8 @@ valid suggestion.
 
 `superpowers@claude-plugins-official` is the third plugin on the roster — process guidance, not
 a design layer.
+
+## When blocked
+
+Stop and say so. Do not guess, do not proceed on an assumption, and do not silently narrow the
+task. Name what is ambiguous, state the options, and wait.

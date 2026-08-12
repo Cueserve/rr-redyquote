@@ -12,7 +12,7 @@
 Add column sorting and pagination to the three list screens, and move the filter state
 those screens already carry out of component state and into the URL.
 
-Neither sorting nor pagination appears in [PRD.md](../../PRD.md). This is net-new scope,
+Neither sorting nor pagination appears in [PRD.md](../PRD.md). This is net-new scope,
 which is why it went through brainstorming before design.
 
 ### What is wrong today
@@ -24,7 +24,7 @@ box and every filter — a live annoyance, not a hypothetical one.
 
 ### The scale this is designed against
 
-[PRD.md](../../PRD.md) NFR-001 fixes REDYREF's real size at "a handful of concurrent users,
+[PRD.md](../PRD.md) NFR-001 fixes REDYREF's real size at "a handful of concurrent users,
 low hundreds of products/components/quotes." That number was pressure-tested against
 pagination twice during brainstorming and the decision was still to page every list
 uniformly. The reasoning is recorded in §9 so it is not relitigated from memory.
@@ -174,7 +174,7 @@ alternative and §10's migration target, and it stays deferred to when Supabase 
 land, because it has to happen then anyway.
 
 It does **not** interact with the `(list)` route groups or the 404-under-200 rule
-documented in [PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §4 — that rule is about
+documented in [PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) §4 — that rule is about
 detail (`[id]`) routes calling `notFound()`, and no detail route is touched here.
 
 ## 5. Components
@@ -184,7 +184,7 @@ detail (`[id]`) routes calling `notFound()`, and no detail route is touched here
 Presentational only. It receives `page`, `pageCount`, `total`, `size`, `onPageChange` and
 `onSizeChange`, and **never reads the URL**. [data-table.tsx](../../../src/components/ui/data-table.tsx)
 is presentational by charter and `ui/` must stay app-agnostic
-([PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §3); the routing stays in the app layer.
+([PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) §3); the routing stays in the app layer.
 
 **First / Prev / Next / Last, with no page-number list.** At 2000 quotes and size 25 that
 is 80 pages: Prev/Next alone means 79 clicks to reach the end, and a numbered list needs

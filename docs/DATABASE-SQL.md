@@ -551,7 +551,7 @@ TypeScript (`src/lib/pricing/`), then call **one** of these functions to persist
 everything atomically. These functions are `SECURITY INVOKER` (the default) — they run
 under the calling user's own session, so the RLS policies in §3 still apply row-by-row
 inside them. That's intentional: it's how the app satisfies "no service-role key anywhere"
-(TECH-STACK §6) while still getting transactional atomicity — the function body itself is
+(TECH-STACK §7) while still getting transactional atomicity — the function body itself is
 one transaction, and every row it touches is still subject to RLS as that user.
 
 **One exception to `SECURITY INVOKER`, and it is load-bearing.** `quote_number_sequences`
@@ -1039,12 +1039,12 @@ Things to do, or to decide, while authoring the migrations. The model-level rati
 the schema itself lives in `docs/DATABASE.md` §5; this section is only what affects getting
 the SQL above into the database safely.
 
-### 4.1 Do not wire the save RPC until PRD §2A is signed off
+### 4.1 Do not wire the save RPC until PRD §7A is signed off
 
 `fn_save_quote` persists the nine pricing columns on `quotes` exactly as the caller supplies
 them. That is correct — the server recomputes them (NFR-007) and the database is only
 storage (`docs/DATABASE.md` §5.1). But **do not call it from a real Server Action until the
-pricing formula and rounding rules in PRD §2A are signed off**: until then there is no
+pricing formula and rounding rules in PRD §7A are signed off**: until then there is no
 defined value for it to store. At sign-off, confirm the column list still matches that
 section's finalized "persisted vs. preview-only" fields and add a reconciling migration if
 it does not.
@@ -1146,5 +1146,5 @@ Percent won on three counts:
 specified in §1 is correct as written, and the quotes migration (`0006` onward, since `0004`
 is the markup-units fix and `0005` the settings_history read narrowing) can be authored against it.
 
-The pricing formula applies `cost * (1 + p/100)` in one place, whenever PRD §2A fixes the
+The pricing formula applies `cost * (1 + p/100)` in one place, whenever PRD §7A fixes the
 calculation order. That sign-off is still outstanding, but it no longer blocks the schema.

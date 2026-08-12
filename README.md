@@ -19,8 +19,8 @@ save, no colliding quote numbers, one consistent pricing formula, a full audit t
 rather than relying on convention. See [PRODUCT.md](docs/PRODUCT.md) for the full problem
 statement, scope, and success criteria.
 
-Under the hood, RedyQuote is a single-tenant Next.js modular monolith app backed by Supabase
-(Postgres, Auth, and Edge Functions). Because every request is an authenticated REDYREF user, there's no
+Under the hood, RedyQuote is a single-tenant Next.js modular monolith on Supabase
+(Postgres, Auth). Because every request is an authenticated REDYREF user, there's no
 public capture surface to isolate — one runtime role handles both reads (Server
 Components) and writes (Server Actions), with atomic Postgres RPC transactions guaranteeing
 a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -38,7 +38,7 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **RLS-enforced authorization** — writes are enforced at the database, not the UI. The
   `Review → Approved` transition and all master-data / settings / branding writes
   are restricted to `role = 'admin'`; quote content edits are owner-or-admin; reads are flat.
-  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §2A)
+  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §7A)
 - **Atomic multi-row save** — saving a quote (header + line items) or a product (fab tiers +
   defaults + price history) goes through a single Postgres RPC transaction, so a failure
   partway through never leaves a row half-written.
@@ -50,17 +50,19 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 ## Prerequisites
 
 - Node.js 24 LTS (Active LTS) — pinned in `.nvmrc`; `nvm use` picks it up
-- npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm or yarn
-- Supabase CLI (latest) — links this clone to the hosted project, applies migrations, deploys
-  Edge Functions, and runs the local test stack
+- npm (bundled with Node.js 24 LTS) — the only approved package manager; do not use pnpm
+  or yarn
+- Supabase CLI (latest, via `npx supabase`) — for migrations and type generation
 - **No Docker required.** Development runs against a hosted Supabase project, not the local
   stack — see [ENVIRONMENTS.md](docs/ENVIRONMENTS.md)
 - Git
-- A Supabase account and project (Postgres 17, with the `pgmq` and `pg_cron` extensions enabled)
-  — this is your **development** database, not just a deploy target
+- A Supabase account and project (Postgres 17) — no `pgmq`, `pg_cron`, or Edge Functions
+  needed; RedyQuote has no unauthenticated capture pipeline to isolate
 - A Vercel account (hosts the Next.js app)
-- Optional accounts, only if the corresponding feature is enabled: Resend (quote-email
-  delivery), Sentry (error tracking), PostHog (product analytics)
+
+No optional accounts. Resend, Sentry, and PostHog are all deliberately cut for v1
+(TECH-STACK.md §5) — there's no email/PDF delivery, and no error-tracking or
+product-analytics need for a single internal tool.
 
 ## Environment Setup
 
@@ -68,33 +70,31 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 cp .env.example .env.local
 ```
 
-Then fill each value. Secrets MUST NOT be committed. Server-only secrets MUST NOT carry
-the `NEXT_PUBLIC_` prefix (that prefix inlines a value into the client bundle) — only the
-Supabase URL and anon key may be public.
+Then fill both values. Secrets MUST NOT be committed. Both variables are public by design —
+they are inlined into the browser bundle, and access control is enforced by Postgres RLS, not
+by hiding them ([ARCHITECTURE.md](docs/ARCHITECTURE.md) §1). A server-only secret MUST NOT
+carry the `NEXT_PUBLIC_` prefix.
 
-| Variable                        | Required | Description                                                                                                                                                            | Where to obtain                                                                           |
-| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL; safe to expose to the browser.                                                                                                                   | Supabase dashboard → Project Settings → API                                               |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Supabase anonymous (public) key for user-scoped, RLS-enforced client access.                                                                                           | Supabase dashboard → Project Settings → API                                               |
-| `SUPABASE_SERVICE_ROLE_KEY`     | yes      | Server-only key for the three system paths (Intake Receiver, Ingestion Worker, provisioning). Bypasses RLS — never expose to the browser, never prefix `NEXT_PUBLIC_`. | Supabase dashboard → Project Settings → API (shared via the Cuevik team, never committed) |
-| `SUPABASE_DB_URL`               | yes      | Direct Postgres connection for Supabase CLI migrations. MUST use Supavisor transaction mode (port 6543) with `prepare: false`.                                         | Supabase dashboard → Project Settings → Database (Connection pooling)                     |
-| `INTAKE_KEY_SECRET`             | yes      | Server-side secret backing per-tenant intake-key resolution at the public Intake Receiver.                                                                             | Cuevik team (shared secret)                                                               |
-| `RESEND_API_KEY`                | no       | Resend API key for optional outbound quote-document email. Omit to disable email delivery.                                                                             | Resend dashboard → API Keys                                                               |
-| `SENTRY_DSN`                    | no       | Sentry Data Source Name for server-side error tracking.                                                                                                                | Sentry dashboard → Project Settings → Client Keys (DSN)                                   |
-| `NEXT_PUBLIC_SENTRY_DSN`        | no       | Sentry DSN for the browser client.                                                                                                                                     | Sentry dashboard → Project Settings → Client Keys (DSN)                                   |
-| `NEXT_PUBLIC_POSTHOG_KEY`       | no       | PostHog project API key for product analytics (onboarding funnel, session replay).                                                                                     | PostHog dashboard → Project Settings                                                      |
-| `NEXT_PUBLIC_POSTHOG_HOST`      | no       | PostHog ingestion host.                                                                                                                                                | PostHog dashboard → Project Settings                                                      |
+| Variable                        | Required | Description                                          | Where to obtain                             |
+| ------------------------------- | -------- | ---------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL; safe to expose to the browser. | Supabase dashboard → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Anonymous key for user-scoped, RLS-enforced access.  | Supabase dashboard → Project Settings → API |
+
+There is deliberately **no service-role key**. RedyQuote uses none anywhere
+([TECH-STACK.md](docs/TECH-STACK.md) §7) — every database access runs under a real user's
+session. Adding one is a TECH-STACK change first.
 
 ## Install & Run
 
 ```bash
 npm install
-npx supabase link              # link this clone to the hosted project (once)
-npx supabase db push --linked  # apply migrations from supabase/migrations/
-npm run dev                    # start the Next.js app locally
+cp .env.example .env.local   # fill in the two values from Supabase → Project Settings → API
+npm run dev                  # http://localhost:3000
 ```
 
-Everyday checks — the first four are exactly what CI runs on every PR to `main`
+## Everyday Checks
+
+These five are exactly what CI runs on every PR to `main` and every push to `main`
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
 
 ```bash
@@ -105,10 +105,9 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-One caveat before you trust a green run: **`npm run test` proves nothing yet.**
-`vitest.config.ts` sets `passWithNoTests` and there are no test files, so it exits 0 on an
-empty suite. Read a pass as "not run" until the pricing-calc tests land — those are blocked
-on the pricing formula (PRD §2A).
+`npm run test` runs the unit suites under `src/lib/`. `vitest.config.ts` sets no
+`passWithNoTests`, so an empty suite fails rather than passing silently — a green run means the
+tests actually ran.
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -136,7 +135,7 @@ Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official
 [impeccable](https://github.com/pbakaus/impeccable) (Apache 2.0)
 
 **No plugin builds UI here — shadcn does.** This is a shadcn project ([components.json](components.json),
-`shadcn@4`), and the 15 primitives in `src/components/ui/` are shadcn components adapted to our
+`shadcn@4`), and the primitives in `src/components/ui/` are shadcn components adapted to our
 tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on any UI change
 is **`/impeccable shape` → design system → shadcn → impeccable audit → `npm run lint` +
 `npm run typecheck`**; [CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
@@ -246,10 +245,8 @@ deletion.
 
 ## Further Reading
 
-The complete document set, listed in the order each derives from the one above it:
-
-- [PRODUCT.md](docs/PRODUCT.md) — what we are building and why, problem statement, scope, success criteria
-- [PRD.md](docs/PRD.md) — testable requirements and feature scope
+- [PRODUCT.md](docs/PRODUCT.md) — problem statement, scope, success criteria
+- [PRD.md](docs/PRD.md) — requirements and feature scope
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, columns, and why each table
   is shaped that way. The SQL that implements it is a
@@ -260,11 +257,11 @@ The complete document set, listed in the order each derives from the one above i
 - [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, the WCAG AA floor
 - [ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
 
-## Open decisions blocking implementation
+## Open Decisions
 
 Two product decisions gate real work, and neither is a coding task:
 
-- **Pricing formula and rounding rules** (PRD §2A) — until signed off, nothing may infer a
+- **Pricing formula and rounding rules** (PRD §7A) — until signed off, nothing may infer a
   calculation order or which fields are canonical. The quote builder's cost panel is
   deliberately inert as a result.
 - **The fixed quote-line category list** (PRD-007A) — the `categories` table ships empty and

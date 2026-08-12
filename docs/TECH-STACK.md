@@ -10,6 +10,16 @@ each may be used.
 
 ---
 
+## Contents
+
+- [1. Languages & Frameworks](#1-languages-frameworks)
+- [2. Datastores](#2-datastores)
+- [3. Cloud & Infrastructure Services](#3-cloud-infrastructure-services)
+- [4. Key Libraries / Tools](#4-key-libraries-tools)
+- [5. Deliberately Not Used](#5-deliberately-not-used)
+- [6. Selection Trade-offs](#6-selection-trade-offs)
+- [7. Versions & Constraints](#7-versions-constraints)
+
 ## 1. Languages & Frameworks
 
 | Technology           | Version            | Reason                                                                                                                                                                                  |
@@ -50,11 +60,11 @@ no external integrations in v1).
 | `@supabase/ssr`                 | 0.x                      | Supabase Auth session handling via httpOnly cookies in Server Components/Actions                                                       |
 | Supabase CLI                    | latest                   | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |
 | `supabase gen types typescript` | (Supabase CLI)           | Generates TypeScript types from the schema; regenerated after each migration. No ORM.                                                  |
-| Vitest                          | 3.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
+| Vitest                          | 4.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
 | ESLint                          | 9.x                      | Linting (flat config, `eslint.config.mjs`)                                                                                             |
 | Prettier                        | 3.x                      | Formatting                                                                                                                             |
 | Husky                           | 9.x                      | Git hooks (pre-commit)                                                                                                                 |
-| lint-staged                     | 16.x                     | Runs Prettier/ESLint on staged files at commit time                                                                                    |
+| lint-staged                     | 17.x                     | Runs Prettier/ESLint on staged files at commit time                                                                                    |
 
 ## 5. Deliberately Not Used
 
@@ -67,7 +77,23 @@ no external integrations in v1).
 | `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                                                                                                                                     |
 | Playwright / any E2E framework             | Cut. `@playwright/test` sat in devDependencies with no config, no `e2e/`, and no `test:e2e` script — an installed runner that runs nothing implies coverage that does not exist. Removed. Re-adopting means config, specs, script and CI job in one change, mirrored in CuevikSync. |
 
-## 6. Versions & Constraints
+## 6. Selection Trade-offs
+
+Why each choice beat the alternative that was actually considered. §5 records what was rejected;
+this records what was chosen over what.
+
+| Choice                                                 | Alternatives rejected                                                    | Why                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server Components for reads, Server Actions for writes | SPA + JSON API layer; a REST or tRPC surface                             | RedyQuote has no external API consumer and no mobile client. A JSON layer would exist only to serve our own screens, and every mutation would need its own auth check instead of inheriting the session. `revalidatePath` replaces the client cache that split would have forced (§5).                         |
+| Supabase managed platform                              | Self-hosted Postgres with hand-rolled auth and storage; Firebase         | One managed vendor covers Postgres, Auth and Storage for a single internal tool. Firebase's document model was rejected outright — the domain is a relational graph with a strict quote lifecycle, which is exactly what a document store makes awkward.                                                       |
+| Supabase Auth as-is (JWT, bcrypt)                      | Roll-own session auth; an external Identity Provider                     | Reuse the managed auth already in the platform. An external IdP adds an integration and a failure mode for a fixed, internal user set.                                                                                                                                                                         |
+| Database-enforced approval gate (a trigger)            | An RLS policy; a Server Action guard; a UI check                         | An RLS `WITH CHECK` cannot see the old row, so it cannot express a _transition_ — only a resulting state. A Server Action guard is bypassable by anything that talks to Postgres directly. The trigger is the only mechanism that sees both old and new and cannot be routed around (docs/DATABASE-SQL.md §3). |
+| Atomic multi-row writes via a Postgres RPC             | Sequential client-driven writes; a transaction held open across requests | A quote is a header plus line items; a product is tiers plus defaults plus price history. Partial writes are the failure this product exists to prevent, and only a single server-side transaction rules them out.                                                                                             |
+| Append-only `price_history`                            | Updating the component cost in place                                     | An in-place update silently rewrites what past quotes were priced against. Appending keeps every quote's basis reconstructible.                                                                                                                                                                                |
+| Single-tenant, no `tenant_id`                          | Row-level tenancy carried "just in case"                                 | There is one customer: REDYREF. A `tenant_id` on every table and in every policy is real complexity paid for a second tenant that is not on any roadmap. Adding it later is a migration, not a rewrite.                                                                                                        |
+| Free Supabase tier now, Pro at cutover                 | Pro from the start                                                       | Nothing but a seeded settings row exists yet. The Pro spend starts when there is data worth backing up — which §7 makes a hard prerequisite for production cutover, not a later optimization.                                                                                                                  |
+
+## 7. Versions & Constraints
 
 - Node.js MUST be on the **Active LTS** line — currently **24.x** (Vercel runtime). Pinned in
   `.nvmrc` and enforced by `engines.node` in `package.json`. The policy is "track Active LTS,"

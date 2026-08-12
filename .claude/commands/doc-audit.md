@@ -34,42 +34,36 @@ Combine freely: `/doc-audit align docs/PRD.md`, `/doc-audit drift fix`.
 
 ## 1. The corpus — read these, nothing else
 
-Do not glob `**/*.md`; `node_modules/` holds 1,500+ markdown files and will drown the run. Read
-exactly this set, once, and hold it for all three passes. Sharing this read is the reason the
-three passes live in one command.
+Read every file below once, in this order, before reporting anything. Do not read `src/`
+except where Pass B explicitly probes it.
 
-**Tier 1 — instruction files Claude loads automatically.** Highest blast radius: wrong here means
-wrong in every session.
+**Source-of-truth documents** (`docs/`, by lineage):
 
-- `CLAUDE.md`
-- `.claude/settings.json` (permissions, `env`, enabled plugins)
-- `.claude/hooks/block-applied-migration.mjs`
-- `.claude/commands/*.md` (including this file)
-- `~/.claude/projects/d--vrp-repos-rr-redyquote/memory/MEMORY.md` and the memory files it indexes
-  — read-only. A memory that contradicts the repo is a finding; **never edit one during an audit**,
-  report it and let the user decide.
+1. `docs/PRODUCT.md` — the top of the lineage. Terminology canon.
+2. `docs/PRD.md` — testable requirements.
+3. `docs/ARCHITECTURE.md` — structure and design decisions.
+4. `docs/TECH-STACK.md` — approved technologies.
+5. `docs/ENGINEERING-RULES.md` — coding conventions, banned patterns, testing.
+6. `docs/PROJECT-STRUCTURE.md` — directory layout and placement rules.
+7. `docs/DESIGN-SYSTEM.md` — brand tokens and the accessibility floor.
+8. `docs/DATABASE.md` — the data model.
+9. `docs/DATABASE-SQL.md` — the DDL for that model. **Transient**; check its
+   "Transcription status" before treating any block as authoritative.
+10. `docs/ENVIRONMENTS.md` — which Supabase environment development targets.
+11. `docs/BACKLOG.md` — epics and stories manifest. Currently a stub.
 
-**Tier 2 — permanent source of truth.** `docs/PRODUCT.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`,
-`docs/TECH-STACK.md`, `docs/PROJECT-STRUCTURE.md`, `docs/ENVIRONMENTS.md`,
-`docs/DESIGN-SYSTEM.md`, `docs/DATABASE.md`
+**Governance and agent config:**
 
-**Tier 3 — transient specs.** Same authority as Tier 2 for the slice they cover; each is deleted
-when absorbed. `docs/DATABASE-SQL.md`, `docs/superpowers/specs/*.md`
+12. `CONTRIBUTING.md` — branching, commits, the self-review gate.
+13. `CLAUDE.md` — agent behaviour, scope, escalation, off-limits.
+14. `README.md` — restates; owns nothing.
 
-**Tier 4 — ground truth the docs make claims about.** Not documentation. This is what step 4B
-checks the prose against, and it always wins.
+**Transient specs** — read everything in `docs/specs/`, and cross-check it against the
+"Approved design specs" list in `CLAUDE.md`. A spec not in that list, or a listed spec that no
+longer exists, is a Pass B finding on its own.
 
-- `README.md` (owns nothing; restates everything — audit it as a claimant, not a source)
-- `package.json` (scripts, dependencies, `engines.node`), `.nvmrc`
-- `eslint.config.mjs`, `components.json`, `.prettierrc`, `.husky/pre-commit`
-- `.impeccable/config.json`
-- `supabase/migrations/*.sql`, `supabase/config.toml`, `src/lib/supabase/types.ts`
-- `.env.example` — **read this one only.** Never open `.env` or `.env*.local`; they are denied in
-  `.claude/settings.json` and hold the service-role key.
-
-If a Tier 2/3 file exists on disk but is **not** listed in CLAUDE.md's "Source-of-truth docs"
-section, that is itself a finding — CLAUDE.md's own rule is that nothing transient lands in
-`docs/` unlisted.
+**Not the corpus:** `docs/brainstorming/` (never authoritative) and `docs/superpowers/`
+(gitignored plugin scratch).
 
 ## 2. Authority ladder — who wins when two files disagree
 
@@ -111,7 +105,7 @@ Three exceptions, all deliberate:
 _Skip entirely under `drift` or `absorb`. This pass judges coherence and completeness, not truth —
 a corpus can pass Pass B cleanly and still fail here._
 
-## 3A. Terminology — the schema is canon
+## 3A. Terminology — PRODUCT.md is canon
 
 **Rule: the database name wins.** For any concept with a table, column, or enum value, the
 canonical prose term is the schema identifier de-snake-cased. `fab_tiers` → **fab tier**;
@@ -144,7 +138,7 @@ Same treatment for **status labels** (`Review` vs `pending_approval` vs `pending
 prose uses the display form, code uses the enum value, and a doc mixing them inside one sentence is
 a finding.
 
-## 3B. Metrics and acceptance criteria
+## 3B. Requirements, metrics, and acceptance criteria
 
 - Every success criterion in `docs/PRODUCT.md` maps to at least one requirement in `docs/PRD.md`.
   An unmapped criterion is a goal nobody is building toward.
@@ -165,11 +159,11 @@ Pass B only compares things that exist. This is where a _gap_ gets caught.
 - A table in DATABASE.md with no RLS policy described, or a status transition with no audit row.
 - A screen listed in PROJECT-STRUCTURE with no requirement behind it — scope that arrived
   undocumented.
-- A blocked decision (PRD §2A, PRD-007A) with no named decider and no statement of what unblocks it.
+- A blocked decision (PRD §7A, PRD-007A) with no named decider and no statement of what unblocks it.
 
 Report a gap as **Missing**, not as a contradiction, and say which file should own the new section.
 
-## 3D. Goals vs. scope vs. implementation
+## 3D. Goals vs. scope vs. mechanism
 
 Walk `PRODUCT.md` goals → `PRD.md` scope → `ARCHITECTURE.md` mechanism → what's built. Flag:
 
@@ -196,8 +190,8 @@ State the impact as a **consequence**, not a category: _"a rep prices against th
 Close Pass A with three lists, each specific enough to act on without re-reading the report:
 
 - **Tests to run** — the command, and what a pass would prove. Note where no test can exist yet
-  (`npm run test` is `--passWithNoTests` with an empty suite; a green run is "not run").
-- **Who decides** — for every unresolved item, the human who owns it. PRD §2A and PRD-007A are
+  there is no E2E framework (docs/TECH-STACK.md §5), so any claim resting on an end-to-end assertion has no runner behind it.
+- **Who decides** — for every unresolved item, the human who owns it. PRD §7A and PRD-007A are
   product decisions, not coding tasks; say so rather than proposing a default.
 - **Replacement snippets** — for each High finding, the exact sentence to substitute, written to
   drop in. Not a description of the edit — the text.
@@ -223,7 +217,7 @@ where this repo has actually drifted or is structurally likely to:
 - **Approved stack and cuts.** Versions, and the v1 cut list (Resend, Sentry, PostHog, `pgmq`,
   `pg_cron`, Edge Functions). A tool mentioned as available anywhere but absent from TECH-STACK.md
   is a finding.
-- **Open product decisions.** PRD §2A (pricing formula) and PRD-007A (category list). Every file
+- **Open product decisions.** PRD §7A (pricing formula) and PRD-007A (category list). Every file
   that references them must agree they are still open, and agree on what they block.
 - **Placement rules.** Directory claims in PROJECT-STRUCTURE vs. paths referenced elsewhere.
 - **Design system.** Font names, the token rule, the WCAG level. DESIGN-SYSTEM.md owns all three.
@@ -249,12 +243,12 @@ Each probe turns a prose claim into a command. Run the probe; the output wins.
 | Permissions are machine-enforced           | `permissions.deny` / `permissions.ask` in `.claude/settings.json` really contain the patterns the docs claim                                                      |
 | The migration hook fires                   | the hook file exists **and** uses the shell form (`"command": "node path/to.mjs"`). The exec form silently never fires — indistinguishable from one that approved |
 | Lint bans hex literals and palette classes | the `no-restricted-syntax` block in `eslint.config.mjs`                                                                                                           |
-| "15 primitives in `src/components/ui/`"    | count the files                                                                                                                                                   |
+| Any primitive count stated in prose        | count the files. A number in prose rots; prefer deleting the count over updating it                                                                               |
 | "Nothing talks to the database"            | `src/server/` and `src/lib/pricing/` absent; `grep -r "use server" src/` empty                                                                                    |
 | Mock-only reads                            | `src/lib/mock/` and `src/components/prototype/` still exist and are still imported                                                                                |
 | shadcn style/config                        | `components.json` (`style`, `cssVariables`)                                                                                                                       |
 | Fonts self-hosted via `next/font`          | `grep -r "next/font" src/` — and no Google Fonts `<link>`                                                                                                         |
-| Test suite proves something                | `npm run test`'s script string. `--passWithNoTests` with zero test files means a green run is "not run"                                                           |
+| Test suite proves something                | `vitest.config.ts` for a `passWithNoTests` flag, and whether any `*.test.ts` file exists                                                                          |
 | `e2e/` / CI / `vitest.config.ts` exist     | check the paths before repeating any claim about them                                                                                                             |
 
 **Date staleness.** Every `Last verified:` / `Last updated:` / `verified YYYY-MM-DD` stamp: compare

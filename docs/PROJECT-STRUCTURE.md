@@ -95,7 +95,7 @@ redyquote/
 │  │  ├─ quote-status-badge.tsx     # lifecycle → Badge; app-specific, so not in ui/
 │  │  └─ freshness-badge.tsx        # PRD-009 Current/Aging/Re-quote + Deactivated
 │  ├─ lib/                          # framework-agnostic logic; no JSX, no React imports
-│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §2A
+│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §7A
 │  │  ├─ validation/            [ ] # Zod schemas for Server Action inputs (ARCH §5)
 │  │  ├─ mock/                 [tmp]# fixtures standing in for the read path
 │  │  ├─ supabase/
@@ -220,7 +220,7 @@ Consequences worth stating outright:
 | Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                |
 | Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                       |
 | Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                |
-| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                                                |
+| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §7)                                                |
 | Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                               |
 | The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                             |
 | App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be            |
@@ -244,7 +244,7 @@ Read these before creating any new feature, route, action, or component.
    atomic RPC transactions — never sequential client-driven writes (ARCH §3, §5).
 5. **Schema, RLS, the quote-number sequence, and RPC functions are SQL migration files only.**
    Add a new `supabase/migrations/*.sql`; regenerate `src/lib/supabase/types.ts` after. Never
-   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §6).
+   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §7).
 6. **Default to a Server Component.** Add `"use client"` only where genuine interactivity needs
    it — realistically just `src/components/quote-builder/`. A new client component is a
    decision to justify, not a default (ARCH §1).
@@ -294,15 +294,18 @@ Read these before creating any new feature, route, action, or component.
   block. Don't add one without doing both; don't assume a `docs/*.md` is permanent without
   checking that list.
 
-  **`docs/superpowers/**` is named after the tool, not the content** — the `superpowers`
-  Claude Code plugin hardcodes that path (`specs/` from its brainstorming skill, `plans/`
-  from writing-plans). Deliberately left alone: renaming it would just make the plugin
-  recreate the folder and split specs across two places. That is a reason to leave **plugin
-  output** there, and not a reason to put hand-authored files there — the futility argument
-  only applies to files something else would recreate. So
-  `2026-07-23-authorization-matrix-design.md` stays (the plugin wrote it) while
-  `DATABASE-SQL.md` sits beside the `DATABASE.md` it implements. Neither placement affects
-  authority; CLAUDE.md's list does.
+  | Kind                     | Path                  | Filename                          | Lifetime                                               |
+  | ------------------------ | --------------------- | --------------------------------- | ------------------------------------------------------ |
+  | Source-of-truth document | `docs/`               | `SCREAMING-KEBAB.md`              | permanent                                              |
+  | Design spec              | `docs/specs/`         | `YYYY-MM-DD-<slug>.md`            | transient — listed in CLAUDE.md, deleted when absorbed |
+  | Advisory review          | `docs/reviews/`       | `YYYY-MM-DD-<subject>-review.md`  | permanent                                              |
+  | Pre-decision exploration | `docs/brainstorming/` | `<topic>.md`, `**Status:** Draft` | permanent, never authoritative                         |
+
+  Date-first in `specs/` and `reviews/` so a directory listing sorts chronologically, which is
+  how both are read. `docs/superpowers/` is **gitignored**: the `superpowers` plugin hardcodes
+  that path and will recreate it, but what it leaves there is scratch — the same class as
+  `.superpowers/`, which was already ignored. An approved spec moves to `docs/specs/` and is
+  listed in CLAUDE.md; that list, not the folder, is what confers authority.
 
 ## 6. Keeping This File Honest
 

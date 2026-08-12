@@ -1,6 +1,6 @@
 # PRODUCT.md — Product Concept
 
-**Owner:** Viral Parikh (Product Owner)
+**Owner:** Viral Parikh
 **Last updated:** 2026-08-08
 **Source of truth for:** the problem RedyQuote solves, who it's for, and what "done" means
 for v1 — REDYREF's new sales quoting system.
@@ -9,6 +9,16 @@ for v1 — REDYREF's new sales quoting system.
 > Downstream: README.md, docs/PRD.md
 
 ---
+
+## Contents
+
+- [1. Overview](#1-overview)
+- [2. Target Users](#2-target-users)
+- [3. Features](#3-features)
+- [3A. Decision Placeholders](#3a-decision-placeholders)
+- [4. Scope (In / Out)](#4-scope-in-out)
+- [5. Success Criteria](#5-success-criteria)
+- [6. Anti-Patterns](#6-anti-patterns)
 
 ## 1. Overview
 
@@ -82,7 +92,7 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
   Until that section is completed, no implementation may invent or infer calculation order,
   rounding points, or persisted pricing fields.
 - **Authorization model beyond quote approval** — **resolved 2026-07-23:** admin owns all
-  master data, settings, and branding; reps do quoting only. Codified in PRD §2A / PRD-019
+  master data, settings, and branding; reps do quoting only. Codified in PRD §7A / PRD-019
   and docs/superpowers/specs/2026-07-23-authorization-matrix-design.md.
 
 ## 4. Scope (In / Out)
@@ -124,7 +134,7 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
 - Branding is applied consistently from one org-wide source: a single logo and a single
   favicon, both set once and used everywhere. No screen carries its own copy.
 - Pricing behavior is not implemented until the explicit PRD placeholder for the pricing
-  formula is resolved. (The authorization-model placeholder is resolved — see PRD §2A.)
+  formula is resolved. (The authorization-model placeholder is resolved — see PRD §7A.)
 
 ## 6. Anti-Patterns
 
@@ -143,3 +153,23 @@ Single organization: **REDYREF**, single tenant, no reselling to other clients p
   actual sales process — adding a third role or per-field RBAC is scope creep, not a fix.
 - **Don't add multi-tenant scaffolding.** RedyQuote is single-tenant for REDYREF; no
   `tenant_id`, no plan for reselling — don't design for a hypothetical second client.
+
+## 7. Roadmap
+
+_Not yet authored._
+
+v1 scope is fixed in §4 and the deliberate exclusions are listed there. Nothing beyond v1 has
+been committed to, and this section stays a stub rather than carrying speculation — a roadmap
+nobody has agreed to is indistinguishable from a plan, and gets cited as one.
+
+## Glossary
+
+| Term                  | Meaning                                                                                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Quote**             | The core object reps build: a product, a fab tier, and a set of components, moving through Draft → Review → Approved → Sent.                    |
+| **Fab tier**          | The fabrication cost for a product at a given order quantity (cost, quoted date, vendor). Reps price against a tier, never a flat product cost. |
+| **Component**         | A reusable, categorized part that plugs into a quote line. A cost change appends to `price_history` rather than overwriting it.                 |
+| **Component library** | The catalog of components, filtered by environment (Any / Indoor / Outdoor).                                                                    |
+| **Approval gate**     | The database-enforced restriction of both exits from `Review` to `role = 'admin'`. A trigger, not an RLS policy — see docs/ARCHITECTURE.md §1.  |
+| **rep / admin**       | The two roles. Reps quote; admins own master data, settings, branding, and approvals.                                                           |
+| **Atomic save**       | A quote or product write executed as a single Postgres RPC transaction, so no row is ever left half-written.                                    |

@@ -12,7 +12,7 @@ import { z } from "zod";
  * this folder).
  *
  * Deliberately NO upper bounds. 0003 says why, and it applies just as much
- * here: "PRD §2A has not fixed the sane ranges, and a wrong ceiling is worse
+ * here: "PRD §7A has not fixed the sane ranges, and a wrong ceiling is worse
  * than none." A markup of 400% is unusual, not invalid, and this file is not
  * the place to decide that. Precision and scale (`numeric(5,2)`, `smallint`)
  * are likewise left to Postgres to reject — mirroring them here would be

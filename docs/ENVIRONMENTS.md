@@ -120,7 +120,7 @@ present in LOCAL but blank in REMOTE has not been applied.
 | 4   | **Replay every migration from empty**                                              | `npx supabase db reset` — this is the payoff: it proves the migration chain builds a correct schema from scratch, which `db push` against a long-lived remote never verifies |
 | 5   | Regenerate types from local                                                        | `npx supabase gen types typescript --local > src/lib/supabase/types.ts`                                                                                                      |
 | 6   | Verify the app end to end                                                          | `npm run dev`, sign in, create → submit → approve a quote                                                                                                                    |
-| 7   | Verify the gate under test                                                         | `npm run test:e2e` (Playwright, including the RLS approval gate)                                                                                                             |
+| 7   | Verify the gate by hand                                                            | Sign in as a `rep` and confirm a quote cannot leave `Review`. There is no automated E2E suite (docs/TECH-STACK.md §5), so this step is manual until one exists.              |
 | 8   | Update the docs in the same change                                                 | This file's §1, README Prerequisites + Install & Run, and TECH-STACK §6 if the workflow changes                                                                              |
 
 **Expected friction at step 4.** If `db reset` fails while the remote works, the migration

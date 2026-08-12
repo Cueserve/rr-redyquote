@@ -32,12 +32,12 @@ no external integrations in v1).
 
 ## 3. Cloud & Infrastructure Services
 
-| Service                | Purpose                               | Notes                                                                                |
-| ---------------------- | ------------------------------------- | ------------------------------------------------------------------------------------ |
-| Vercel                 | Hosts the Next.js app                 | Region co-located with the Supabase project                                          |
-| Supabase Platform      | Managed Postgres, Auth, Storage       | **Free** tier for now; Pro at production cutover. No PITR (NFR-006)                  |
-| Supabase Auth (GoTrue) | Credential store and session issuance | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                          |
-| GitHub Actions         | CI on every PR to `main`              | Blocking job: lint + type-check + Vitest unit. Advisory/nightly job: Playwright E2E. |
+| Service                | Purpose                                     | Notes                                                                                                        |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Vercel                 | Hosts the Next.js app                       | Region co-located with the Supabase project                                                                  |
+| Supabase Platform      | Managed Postgres, Auth, Storage             | **Free** tier for now; Pro at production cutover. No PITR (NFR-006)                                          |
+| Supabase Auth (GoTrue) | Credential store and session issuance       | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                                                  |
+| GitHub Actions         | CI on every PR to `main` and push to `main` | One blocking job: `lint`, `typecheck`, `format:check`, `test`. No advisory job — there is no E2E suite (§5). |
 
 ## 4. Key Libraries / Tools
 
@@ -51,7 +51,6 @@ no external integrations in v1).
 | Supabase CLI                    | latest                   | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |
 | `supabase gen types typescript` | (Supabase CLI)           | Generates TypeScript types from the schema; regenerated after each migration. No ORM.                                                  |
 | Vitest                          | 3.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
-| Playwright                      | 1.x                      | E2E — quote builder flow, submit/approve gate                                                                                          |
 | ESLint                          | 9.x                      | Linting (flat config, `eslint.config.mjs`)                                                                                             |
 | Prettier                        | 3.x                      | Formatting                                                                                                                             |
 | Husky                           | 9.x                      | Git hooks (pre-commit)                                                                                                                 |
@@ -59,13 +58,14 @@ no external integrations in v1).
 
 ## 5. Deliberately Not Used
 
-| Not used                                   | Why not                                                                                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TanStack Query                             | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework                                              |
-| Sentry                                     | Confirmed cut for v1 — revisit if production error visibility becomes a real problem                                                                                  |
-| PostHog                                    | No onboarding funnel or product-analytics need for a single internal tool                                                                                             |
-| Resend, `@react-pdf/renderer`              | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model. |
-| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                       |
+| Not used                                   | Why not                                                                                                                                                                                                                                                                             |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TanStack Query                             | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework                                                                                                                                                            |
+| Sentry                                     | Confirmed cut for v1 — revisit if production error visibility becomes a real problem                                                                                                                                                                                                |
+| PostHog                                    | No onboarding funnel or product-analytics need for a single internal tool                                                                                                                                                                                                           |
+| Resend, `@react-pdf/renderer`              | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model.                                                                                                               |
+| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                                                                                                                                     |
+| Playwright / any E2E framework             | Cut. `@playwright/test` sat in devDependencies with no config, no `e2e/`, and no `test:e2e` script — an installed runner that runs nothing implies coverage that does not exist. Removed. Re-adopting means config, specs, script and CI job in one change, mirrored in CuevikSync. |
 
 ## 6. Versions & Constraints
 

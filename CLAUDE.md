@@ -175,8 +175,10 @@ These are structural guarantees, not conventions — don't write code that break
     are applied, so `db:push` has **nothing pending**; `db:types` regenerates against the real
     applied schema and `types.ts` is current (see "Built" above, which is the authority on
     schema state — don't duplicate the migration list here, it rots).
-  - **`test:e2e` does not exist.** No Playwright config, no `e2e/`
-    (docs/PROJECT-STRUCTURE.md §6, "Deferred structural work").
+  - **There is no end-to-end suite, by decision.** No `test:e2e`, no
+    `playwright.config.ts`, no `e2e/`, and `@playwright/test` is no longer a
+    dependency — an installed runner that runs nothing implies coverage that
+    does not exist (docs/TECH-STACK.md §5).
 - **Applying migrations: use `/db-migrate`, not a bare `db:push`.** The slash command
   ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the approved path —
   pre-flight, dry run, push, `db:types`, then verification that RLS is actually enabled on

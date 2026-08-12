@@ -114,7 +114,6 @@ redyquote/
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
 │  ├─ migrations/               [~] # *.sql — 0001–0005; 0006+ categories/products/quotes/RPCs TBD
 │  └─ config.toml                   # local stack config
-├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
 │  ├─ DATABASE.md                   #   the data model — permanent
 │  ├─ DATABASE-SQL.md          [tmp]#   its DDL — deleted once migrations are authored
@@ -184,8 +183,8 @@ type-check globs one unambiguous anchor for "code we wrote." Next 16 supports `s
 `@/server/actions/quotes`, `@/components/ui/button`.
 
 Unit tests (Vitest) are **co-located** as `*.test.ts` next to the module under test — the
-`src/lib/pricing/` calc function especially gets exhaustive coverage there. Playwright E2E
-specs live in `e2e/`, separate from unit tests.
+`src/lib/pricing/` calc function especially gets exhaustive coverage there. There is no E2E
+suite (docs/TECH-STACK.md §5).
 
 ## 2. The Four Placement Questions
 
@@ -278,7 +277,9 @@ Read these before creating any new feature, route, action, or component.
 - **Middleware** — the entry file is `src/proxy.ts`, Next 16's name for it. Next 16.2 still
   accepts `middleware.ts`; use `proxy.ts` so the repo has one name for one thing, and keep the
   reusable session logic in `src/lib/supabase/update-session.ts`.
-- **Tests** — `*.test.ts` co-located for Vitest units; `*.spec.ts` under `e2e/` for Playwright.
+- **Tests** — `*.test.ts` co-located for Vitest units. There is no E2E suite; if one is ever
+  adopted, its specs are `*.spec.ts` under `e2e/` so the Vitest include glob never picks
+  them up.
 - **Docs** — top-level `docs/*.md`, named by content in SCREAMING-KEBAB
   (`ARCHITECTURE.md`, `TECH-STACK.md`). Two things about this folder are worth stating
   precisely, because they are easy to conflate:
@@ -321,21 +322,19 @@ update [§1](#1-directory-tree) in the same change. Absorbed here on 2026-08-08 
 `docs/TODO.md`, which was deleted once its two open tooling items (Vitest config, CI
 workflow) landed.
 
-| Item                                                       | Trigger                                                                     |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `e2e/`, `playwright.config.ts`, `test:e2e`, nightly CI job | The first E2E spec is written (a real quote flow exists)                    |
-| `src/hooks/`                                               | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
-| Delete `src/lib/mock/` + `src/components/prototype/`       | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
-| App #2 packaging decision                                  | A second RedyRef app is concrete                                            |
+| Item                                                 | Trigger                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/hooks/`                                         | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
+| Delete `src/lib/mock/` + `src/components/prototype/` | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
+| App #2 packaging decision                            | A second RedyRef app is concrete                                            |
 
-**`e2e/` — the first spec is the approval gate, not a happy path.** ARCHITECTURE's
-database-enforced gate is the one invariant a UI-only test can pass while the real thing is
-broken: assert that a `rep` session cannot move a quote out of `Review` even when
-the request is made directly, bypassing the UI. `@playwright/test` is already a devDependency;
-the config and specs are not. **Three files claim `test:e2e` does not exist and must be
-corrected in the same change** — `CLAUDE.md` § "Claude Code-specific config", this file's §1
-(`e2e/ [ ]` marker), and `docs/ENVIRONMENTS.md` §4 step 7, which already instructs you to run
-`npm run test:e2e` at local-stack adoption, a command that does not yet exist.
+**No E2E suite, and the gap is specific.** ARCHITECTURE's database-enforced approval gate is
+the one invariant a UI-only test can pass while the real thing is broken: a `rep` session must
+not be able to move a quote out of `Review` even when the request bypasses the UI. Nothing
+automated asserts that today. `@playwright/test` used to sit in devDependencies with no
+config and no specs, which implied coverage that did not exist; it was removed
+(docs/TECH-STACK.md §5). If E2E is adopted, that assertion is the first spec — not a happy
+path — and the config, specs, script and CI job land in one change, mirrored in CuevikSync.
 
 **Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
 affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).

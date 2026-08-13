@@ -1,7 +1,7 @@
 # DATABASE.md — Data Model
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-13
 **Source of truth for:** RedyQuote's entities, their columns and constraints, and the
 design decisions behind why each table looks the way it does.
 
@@ -45,6 +45,12 @@ admin-only, and all master-data writes are **enforced inside Postgres, not in ap
 code** (PRD-019, NFR-002) — master data by RLS policy, the two review transitions by the
 `validate_quote_status_transition` trigger, because a `WITH CHECK` clause cannot see the old
 row and so cannot express a transition at all.
+
+**The approval gate is two triggers, not one.** `validate_quote_status_transition` is
+`BEFORE UPDATE` and therefore covers only quotes that _move_. A companion
+`BEFORE INSERT` trigger, `enforce_quote_created_in_draft`, is what stops a quote being
+_created_ already approved — see §5.5. Neither is a backstop for the other, and RLS is a
+backstop for neither.
 
 Three structural guarantees drove this design, matching PRD's stated anti-patterns:
 
@@ -184,6 +190,7 @@ erDiagram
         text sku UK
         environment_type environment
         numeric cost
+        date quoted_date
         boolean active
     }
     PRICE_HISTORY {
@@ -395,17 +402,44 @@ Component library (PRD-006).
 | `vendor`                    | `text`             | NULL                                |
 | `environment`               | `environment_type` | NOT NULL, DEFAULT `'any'`           |
 | `cost`                      | `numeric(12,2)`    | NOT NULL, CHECK `>= 0`              |
+| `quoted_date`               | `date`             | NOT NULL — the vendor's quote date  |
 | `default_labor_hours`       | `numeric(6,2)`     | NOT NULL, DEFAULT `0`, CHECK `>= 0` |
 | `active`                    | `boolean`          | NOT NULL, DEFAULT `true`            |
 | `created_at` / `updated_at` | `timestamptz`      | NOT NULL                            |
 
+**`quoted_date` means the same thing here as on `fab_tiers`** — when the _vendor_ quoted
+this cost, not when the row was last touched. It arrives in
+`0009_components_quoted_date.sql`, not `0006`, because `0006` had already merged when the
+omission was caught; editing it would have been skipped silently by `db push`, which is why
+`0004` exists too.
+
+The omission looked harmless and was not. With no date column a component's freshness could
+only be derived from when a change was recorded, so PRD-009's badge would have measured "how
+long since we edited this" on components and "how long since the vendor quoted" on fab
+tiers, while feeding both to the same `freshness_warning_months` /
+`freshness_requote_months` thresholds. The badge exists so a rep knows whether to trust a
+price before quoting it; the recency of our own edits does not answer that question.
+
 ### 4.9 `price_history`
 
 Append-only cost history for **either** a component **or** a fab tier (discriminated by
-`source_type`), written automatically by triggers whenever `components.cost` or
-`fab_tiers.cost` changes (NFR-005). Modeled as one table (matching ARCHITECTURE.md's data
-design table) with a `CHECK` constraint enforcing exactly one relation is populated,
-rather than two separate tables — see §5.4 for the trade-off.
+`source_type`), written automatically by triggers — on **insert**, seeding the cost a row is
+born with, and on every subsequent change to `components.cost` or `fab_tiers.cost`
+(NFR-005). Modeled as one table (matching ARCHITECTURE.md's data design table) with a
+`CHECK` constraint enforcing exactly one relation is populated, rather than two separate
+tables — see §5.4 for the trade-off.
+
+**The insert half exists so the trail is whole.** With change-only triggers the cost a row
+was born with never appears in history, and its first edit reads as though it were the
+original — NFR-005 asks for the whole trail, not the edits to it.
+
+**`quoted_date` carries one meaning on every row of this table: the vendor's quote date.**
+That is worth stating because it was briefly untrue. `0006` gave `components` no date
+column, so the component path wrote `current_date` — the moment the change was recorded —
+while the fab-tier path wrote the vendor's date, and PRD-009 applied one set of thresholds
+to both. `0009` adds `components.quoted_date` (§4.8) and rewrites both component logging
+functions to read it. Any future writer of this table takes the source row's `quoted_date`;
+nothing writes `current_date` here.
 
 | Column         | Type            | Constraints                                                  |
 | -------------- | --------------- | ------------------------------------------------------------ |
@@ -439,6 +473,15 @@ PRD-011). `fab_cost_snapshot` and every `quote_lines.hard_cost` capture the cost
 the save**, so a later fab-tier or component price change never silently drifts a
 previously saved quote — the historical basis is preserved, matching the "one consistent
 formula, agreeing every time" requirement.
+
+**`Review` is not a stored value.** The `quote_status` enum is
+`('draft', 'pending_approval', 'approved', 'sent')` — four values, defined in
+`supabase/migrations/0001_extensions_and_types.sql`. Every doc in this repo, this one
+included, writes the lifecycle in product language as
+`Draft → Review → Approved → Sent`, so **`Review` in prose means `pending_approval` in
+the column.** There is no `'review'` value and a query filtering for one returns nothing.
+The prose name is kept because it is what REDYREF calls the step; the mapping is stated
+here rather than renaming the enum, because `0001` is applied and immutable.
 
 | Column                      | Type                | Constraints                                              |
 | --------------------------- | ------------------- | -------------------------------------------------------- |
@@ -528,6 +571,29 @@ recomputes those values and writes them (NFR-007); the database only holds them.
 Consequence, carried in [§6](#6-open-items): the save RPC must not be wired into a real
 Server Action until PRD §7A is signed off.
 
+**The pricing trust boundary is a Server Action convention, not a database guarantee — and
+this is the honest statement of a known gap, not a guarantee restated.** ARCHITECTURE's
+"server recomputes the canonical breakdown" invariant describes what the _write path_ does.
+It does not describe what the _database_ permits, and the two are not the same thing here.
+`quotes_update_owner_or_admin` grants table-wide UPDATE, so the row's owner can write any of
+the ten value columns directly over the Data API — the nine pricing outputs plus
+`fab_cost_snapshot` — with no Server Action involved. Nothing in the schema rejects it.
+
+Sized honestly: a rep cannot approve their own quote (§5.5 and the transition trigger cover
+that), so a tampered number is seen by an admin at review. The sharp edge is
+`below_margin_floor`, the advisory flag PRD-016 puts in front of that approver — set it
+`false` on a quote genuinely below floor and the review that is supposed to catch the price
+no longer flags it.
+
+**Deliberately not closed yet.** Every enforcement option needs a final column list, and PRD
+§7A is what decides which pricing fields are canonical versus preview-only. A guard authored
+against today's guess would be frozen into an immutable migration against a list that may
+change — the same mistake `0004_settings_markup_units.sql` exists to commemorate. The
+options considered and their costs are recorded with the open item in [§6](#6-open-items);
+authoring the guard is on that sign-off's checklist. Do not treat this paragraph as
+permission to write a client-trusted number through a Server Action — the recompute rule
+still stands. It is a statement that the database is not currently backing it up.
+
 ### 5.2 Two tables exist beyond ARCHITECTURE.md's data-design table
 
 - **`categories`** — PRD-007A's fixed-category list is explicitly "MUST be defined before
@@ -570,6 +636,69 @@ If price-history reporting ever grows query needs specific to one source type, s
 a clean, low-risk migration later: nothing references `price_history` by name outside the
 two logging triggers.
 
+### 5.5 A quote is created in Draft, enforced at INSERT
+
+Decided 2026-08-13. `validate_quote_status_transition` is a `BEFORE UPDATE` trigger, so it
+never sees an `INSERT`. `quotes_insert_own` checks `owner_id = auth.uid()` and nothing else.
+Together that left the approval gate defeatable by the one statement the trigger does not
+cover: a rep with a valid session could `POST` a new row carrying `status = 'approved'`,
+`approved_by = <self>`, and `approved_at = now()`, and the database would accept it. No
+Server Action, no UI, no admin. The gate is this repo's top invariant and it held only on
+the update path.
+
+**A companion `BEFORE INSERT` trigger on `quotes` closes it**, rejecting any insert where
+`status <> 'draft'` or any of `submitted_at` / `approved_by` / `approved_at` / `sent_at` is
+non-null. The five columns describe where a quote _has been_, and a brand-new quote has been
+nowhere. `fn_save_quote` sets none of them on insert, so no legitimate caller can trip the
+guard — any trip is a bug or a bypassed client.
+
+**It raises rather than silently coercing**, matching `enforce_profile_role_change` and
+`validate_quote_status_transition`. Coercing to Draft would never break a caller, but it
+hands a bypassed client a success response and leaves the attempt no trace; a guard that
+cannot be observed failing is indistinguishable from one that was never added.
+
+**It carries no `auth.uid() is not null` carve-out, unlike `enforce_profile_role_change` in
+`0002`** — and the difference is the point, not an inconsistency. It was drafted with one,
+on the reasoning that `0002` set a precedent and the exemption cost nothing. Both halves of
+that were wrong, and the trigger was rewritten unconditional on 2026-08-13.
+
+`0002` needs its carve-out to solve a **bootstrap** problem: `handle_new_user()` always
+writes `'rep'`, so without an exemption for the NULL-`auth.uid()` dashboard session the
+schema could never have a first admin at all. Importing historical quotes has no
+chicken-and-egg of that kind — it is ordinary data loading.
+
+And the carve-out did not work. `log_quote_status_insert` writes `auth.uid()` into
+`quote_status_history.actor`, which is `NOT NULL`, so a `postgres`-context insert fails at
+the audit row whether or not this trigger exempts it. Making it work would have meant
+dropping that `NOT NULL` permanently — trading the standing guarantee that every audit row
+names a real person for a convenience on a one-time event that appears nowhere in the PRD.
+
+If REDYREF ever does import historical quotes, that migration disables both triggers around
+the load and re-enables them after. It is more typing than a carve-out and it shows up in
+review, which is the right trade for a schema whose audit trail is a requirement (PRD-017,
+NFR-005).
+
+**This closes the lifecycle columns only.** The ten value columns stay openly writable by
+the row owner — that is the separate, still-open gap in §5.1.
+
+### 5.6 `environment_mismatch` is client-supplied, and that is a narrower guarantee
+
+`quote_lines.environment_mismatch` (PRD-008) is written from a value passed into
+`fn_save_quote`, computed by the same shared TypeScript module the rest of NFR-007 relies
+on. It is **not** recomputed server-side the way the pricing totals are, and the difference
+is deliberate rather than an oversight: NFR-007 names the cost breakdown specifically, and
+no requirement asks for the mismatch flag to be re-derived in Postgres.
+
+State the consequence plainly, because "computed by the shared module" reads like a
+guarantee and is not one: a bypassed client can save a line with
+`environment_mismatch = false` on a component whose `environment` genuinely conflicts with
+the quote's, and nothing rejects it. The flag is an advisory badge, not a constraint.
+
+If that guarantee is wanted later it is a `BEFORE INSERT OR UPDATE` trigger on
+`quote_lines` comparing `components.environment` against the parent quote's `environment`
+and overwriting whatever the client sent — the same treatment the pricing totals will get
+when §6.1 is closed. Cheap, and it needs no PRD decision, unlike the pricing guard.
+
 ---
 
 ## 6. Open Items
@@ -580,10 +709,50 @@ alone.
 
 | Item                                 | Blocks                                                     | Owner decision needed                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Pricing formula** (PRD §7A)        | Wiring the save RPC into a real Server Action              | **Decider: Viral Parikh (Product Owner), with REDYREF sales and estimating.** Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not.                                                                                                                                                   |
+| **Pricing formula** (PRD §7A)        | Wiring the save RPC into a real Server Action              | **Decider: Viral Parikh (Product Owner), with REDYREF sales and estimating.** Calculation order, rounding points, and which fields are canonical vs. preview-only. On sign-off, confirm the nine columns on `quotes` still match that field list and reconcile if not — **and author the pricing-column write guard described below, which is deliberately deferred to this decision (§5.1).**                           |
 | **Fixed-category list** (PRD-007A)   | Populating `categories`; the quote builder's row structure | **Decider: Viral Parikh (Product Owner), with REDYREF estimating.** REDYREF's actual category names, ordered. The table ships empty — nothing in this repo invents them.                                                                                                                                                                                                                                                 |
 | **Editing a quote after submission** | Whether `quote_lines` freezes outside `Draft`              | Neither PRD.md nor ARCHITECTURE.md says whether a rep may still edit line items once a quote leaves `Draft` — only that _status transitions_ follow the fixed state machine. This model allows content edits at any status by owner-or-admin. If the real process expects a submitted quote's lines to be frozen, that is a trigger, and it should be a deliberate decision rather than an assumption baked in silently. |
 
-One further item is an implementation risk rather than a product decision, and is tracked in
-the SQL spec: the `profiles` update policy permits a user to set `role = 'admin'` on their
-own row, which needs a companion trigger before go-live.
+### 6.1 The pricing-column write guard, deferred to PRD §7A
+
+Deferred 2026-08-13, not overlooked. §5.1 states the gap: the ten value columns on `quotes`
+are writable directly by the row owner. Closing it is on the §7A sign-off checklist above.
+Three options were weighed; recording them here is what stops the cheapest-looking one being
+picked later without the cost being seen again.
+
+| Option                                                                                                                | Cost                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Session-flag guard trigger** — reject writes to the ten columns unless `fn_save_quote` set a transaction-local flag | Formula-independent and compatible with `SECURITY INVOKER`. But it is a pattern this repo has not used anywhere, and every write path must remember to set the flag — a guard whose bypass is "forgot one line".                                                                                                                                                  |
+| **Column-level `REVOKE` + `SECURITY DEFINER`**                                                                        | Strongest guarantee, but `fn_save_quote` is `SECURITY INVOKER` and runs as the caller, so a `REVOKE ... FROM authenticated` breaks the RPC along with the direct write. It only works if the function becomes `SECURITY DEFINER`, which moves the owner-or-admin check out of RLS and into function code — a trade the SQL spec records as deliberately rejected. |
+| **Guard `below_margin_floor` only**                                                                                   | Protects the one signal the approver relies on, and its meaning does not depend on §7A's rounding or field-list decisions the way the numbers do. Leaves the nine numeric columns open, so it is a narrowing, not a fix.                                                                                                                                          |
+
+Why none of them yet: each needs a final column list, and §7A is what fixes which fields are
+canonical versus preview-only. A guard frozen into an immutable migration against today's
+guess repeats `0004`.
+
+### 6.2 Do not "harden" the approval gate with an RLS policy — it decides an open item
+
+This one is a trap, and it looks like a free security win, which is what makes it worth
+writing down rather than leaving to be rediscovered.
+
+The `Review → Approved` transition is admin-only by trigger alone.
+`quotes_update_owner_or_admin` says nothing about status, and there is deliberately no
+second RLS layer. Sooner or later someone will read that as a gap and reach for a
+`WITH CHECK`. A `WITH CHECK` clause sees only the **new** row, never the old, so it cannot
+express a transition at all — the closest it gets is:
+
+```sql
+with check ((status <> 'approved' or is_admin()) and (owner_id = auth.uid() or is_admin()))
+```
+
+which reads as "no non-admin may leave a quote sitting in Approved."
+
+**That policy also blocks a rep from editing any field of their own already-approved quote.**
+Which silently answers the third open item in the table above — "Editing a quote after
+submission" — in the freeze direction, without anyone deciding it. A product decision made
+as a side effect of a hardening tweak is the worst way to make one, and it would be
+invisible in review: the diff looks like security, not scope.
+
+**Add this policy when the freeze question is decided, and not before.** If the answer comes
+back "reps may keep editing after submission," this policy is simply wrong and the trigger
+stays the only layer — which is fine, because it is a complete layer on its own (NFR-002).

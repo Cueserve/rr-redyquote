@@ -1,7 +1,7 @@
 # ENGINEERING-RULES.md — Coding Conventions, Banned Patterns, Testing
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-13
 **Source of truth for:** the engineering rules every change to the RedyQuote codebase must
 follow, whoever or whatever writes it.
 
@@ -114,10 +114,48 @@ Each is banned because it breaks a decision in [ARCHITECTURE.md](ARCHITECTURE.md
   is adequately tested when its PRD-traced behaviour and its failure/rejection paths are
   asserted. A single happy-path test does not satisfy this.
 
-### Known gap
+### Known gap — the assertions nothing currently makes
 
 The database-enforced approval gate is the one invariant a unit test cannot reach and a UI-only
 test can pass while the real thing is broken. Nothing automated asserts today that a `rep`
 session cannot move a quote out of `Review` when the request bypasses the UI. That gap is real
 and is recorded in [docs/TECH-STACK.md](TECH-STACK.md) §5 alongside the decision not to carry an
-E2E framework for it.
+End-to-End (E2E) framework for it.
+
+**This is a gap register, not a test plan.** None of the six below is runnable under the
+current stack: each needs a real Postgres session as a specific role, unit tests may not write
+to the database (§3, "Where tests run"), and there is no E2E runner by decision. They are
+written down because the alternative is worse — an invariant nobody has named is one nobody
+notices losing. Moved here 2026-08-13 from `docs/DATABASE-SQL.md` §4.5 when that transient
+spec was deleted; it was the only content in it with no migration to live in.
+
+Each is concurrency or authorization behaviour that **reading the SQL will not confirm**:
+
+1. **The approval gate.** A non-admin's direct `UPDATE quotes SET status = 'approved'` must be
+   rejected **even when they own the row** (PRD-010, NFR-002). The single highest-value
+   assertion in the repo: it is what distinguishes a database guarantee from a UI convention.
+   Note `validate_quote_status_transition` is the _only_ layer enforcing it — there is no RLS
+   backstop, by design — so nothing else catches this regression.
+2. **A quote cannot be born approved.** A rep's direct
+   `INSERT INTO quotes (..., status) VALUES (..., 'approved')` with `owner_id = self` must be
+   rejected by `enforce_quote_created_in_draft`, as must an insert setting `approved_by`,
+   `approved_at`, `sent_at`, or `submitted_at`. Pair it with an assertion that a normal
+   `fn_save_quote` insert still succeeds, so a future tightening cannot break the save path
+   unnoticed. This is the INSERT half of (1) — the trigger there is `BEFORE UPDATE` and covers
+   nothing about creation. Losing either one leaves the gate covering a single statement type.
+3. **Request-changes is admin-only too.** The `UPDATE` to `status = 'draft'` from
+   `pending_approval` must be rejected for a non-admin owner. Easy to miss, because it is the
+   one transition that moves a quote _backwards_ and the intuitive reading — "a rep can always
+   pull their own quote back to Draft" — is the wrong one under PRD-010.
+4. **A rejected quote can be resubmitted.** `pending_approval → draft → pending_approval` must
+   succeed and leave `submitted_at` holding the _second_ submission's timestamp, not the first.
+   This is the assertion that the `submitted_at := null` reset actually fires.
+5. **The quote-number counter is race-free.** Two concurrent `fn_next_quote_number()` calls in
+   the same calendar year must produce distinct numbers (PRD-011).
+6. **`quote_number_sequences` is unreachable.** A plain `authenticated` caller's direct `select`
+   or `update` must be denied, while `fn_save_quote` still allocates a number successfully.
+   The pair proves the `SECURITY DEFINER` hop is doing the work and that the table's
+   zero-policy state has not been "fixed" by someone chasing a permission-denied error.
+
+Adopting a runner for these is a [docs/TECH-STACK.md](TECH-STACK.md) §5 decision first, and it
+must land in CuevikSync in the same change.

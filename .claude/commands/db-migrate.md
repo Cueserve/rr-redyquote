@@ -1,137 +1,176 @@
----
-description: Push pending Supabase migrations to the linked project, regenerate types, and verify
-allowed-tools: Bash, Read, Glob, Grep
----
-
 # DB Migrate
 
-Apply RedyQuote's pending `supabase/migrations/*.sql` to the **linked hosted Supabase
-project** and leave the repo in a verified, type-synced state.
+Verify that RedyQuote's hosted Supabase schema matches `supabase/migrations/*.sql`, bring
+`src/lib/supabase/types.ts` back in sync, and prove the invariants the SQL cannot prove about
+itself.
 
-Development runs against a hosted Supabase project with no local Docker stack
-([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §1). There is no local stack to
-`db reset`, so every push is irreversible against real data and the pre-flight below is not
-optional ceremony.
+**This command no longer applies migrations, because merging already did.** The Supabase
+GitHub integration pushes on merge to `main` — verified 2026-08-13: `0009` reported
+`remote: ""` before its PR merged and `remote: "0009"` immediately after, with no `db push`
+run by anyone. `0006`–`0008` landed the same way. An earlier version of this file described
+itself as the apply path; it was wrong, and the mistake mattered because it put the review
+step after the database had already changed.
 
-Migrations are applied **after** merging to `main`, never before
-([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md), "Migration ordering"). If the migration you
-are about to push is not yet on `main`, stop and say so.
+**Three consequences, all load-bearing:**
+
+1. **The gate is the pull request.** Development targets a hosted project with no local Docker
+   stack and no `db reset` ([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §1), and no
+   automated backups on the Free tier (PRD NFR-006a). The SQL must be read **in review**, before
+   merge. A pre-flight that runs afterwards protects nothing.
+2. **`npm run db:types` is the step with no automation behind it.** The integration does not run
+   it. That is exactly how `types.ts` sat 620 lines stale across two merges, knowing none of ten
+   live tables. Running it, and committing the result, is this command's single most useful act.
+3. **A migration is immutable at merge**, not at apply. A correction is always a new file —
+   `0004` corrects `0003`, `0009` corrects `0006`.
 
 **A schema or migration change requires explicit human approval before it is authored at all**
 ([CLAUDE.md](../../CLAUDE.md)), and `supabase/migrations/` is off-limits to autonomous edits.
-This command applies migrations a human has already approved — it is not a license to write them.
 
-Arguments (optional): `$ARGUMENTS` — pass `dry-run` to stop after step 3 and report only.
+Arguments (optional): `$ARGUMENTS` — pass `check` to stop after step 2 and report only.
 
 ---
 
-## 1. Pre-flight — stop and report if any check fails
+## 1. Pre-flight
 
-1. `git status --short supabase/migrations/` — list what is unstaged/untracked, and name every
-   pending file. Never push a migration the user has not seen.
-2. Confirm the project is linked: `supabase/.temp/project-ref` exists. If not, stop — the user
-   must run `npx supabase link` themselves (it needs their credentials, and credentials are
-   out of scope for this command).
-3. **Read every pending migration file before pushing it.** A migration is irreversible against a
-   hosted database. Specifically flag, and stop for confirmation, if any contains:
-   - `drop table`, `drop column`, `truncate`, `alter column ... type`, or `delete from`
-   - a change to a file already present in `origin/main` — the `block-applied-migration` hook
-     denies that edit for a reason; if one reached the working tree anyway, treat it as a
-     divergence and stop. New change → new file.
-   - **an RLS policy change.** RedyQuote's approval gate is a database guarantee
-     ([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §1); a weakened policy or trigger
-     lets a rep approve their own quote. Name the policy, the table, and what the
-     change permits that it did not before.
-4. If any destructive statement is present, take a dump first:
+1. Confirm the project is linked: `supabase/.temp/project-ref` exists. If not, stop — the user
+   must run `npx supabase link` themselves; it needs their credentials.
+2. `git status --short supabase/migrations/` — anything unstaged or untracked here has **not**
+   merged and therefore has **not** applied. Name it and say so.
+3. `git fetch && git status -sb` — if the local branch is behind `origin/main`, the comparison in
+   step 2 is against a stale clone. Pull first.
 
-   ```bash
-   npx supabase db dump --linked -f backup-<YYYYMMDD>.sql
-   ```
+## 2. Compare local files against the remote
 
-   That filename MUST NOT land in git. Confirm it is ignored or removed before any commit.
+```bash
+npx supabase migration list
+```
 
-## 2. Confirm before writing
+Every row pairs a `local` version with a `remote` one. Read it carefully:
 
-State plainly: which files will apply, in what order, and that the target is the **hosted**
-project (never assume it is disposable). Get an explicit yes before step 3.
+- **`local` and `remote` both set** — applied. Normal state after a merge.
+- **`local` set, `remote` empty** — authored but not applied. If that file **is** on `main`, the
+  integration did not run: report it and go to step 3. If it is **not** on `main`, that is
+  correct and expected — it applies when its PR merges. Do not push it early.
+- **`remote` set, `local` empty** — a migration exists on the database with no file behind it.
+  Stop and report. Someone edited schema in the dashboard, which
+  [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §5 prohibits, or a file was deleted.
 
-## 3. Dry run
+Stop here if `$ARGUMENTS` contains `check`.
+
+## 3. Fallback push — only when the integration did not run
+
+Skip this entirely in the normal case. Reach it only when step 2 found a migration that is on
+`main` and still unapplied.
+
+**Read every such file before pushing it.** Stop and get confirmation if any contains
+`drop table`, `drop column`, `truncate`, `alter column ... type`, `delete from`, or a change to
+RLS or to a lifecycle trigger. Name the table, the policy or trigger, and what the change permits
+that it did not before — RedyQuote's approval gate is a database guarantee
+([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §1), and a weakened trigger lets a rep
+approve their own quote.
+
+If anything destructive is present, dump first:
+
+```bash
+npx supabase db dump --linked -f backup-<YYYYMMDD>.sql
+```
+
+That filename MUST NOT land in git. Confirm it is ignored or removed before any commit.
+
+Then dry-run, and only then push:
 
 ```bash
 npx supabase db push --linked --dry-run
+npx supabase db push --linked --yes
 ```
 
-Read the output. Common failures and what they mean:
+Common failures: **connection refused / project paused** — a Free-plan project pauses after a
+week idle ([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §3); the user resumes it in the
+dashboard, do not retry in a loop. If `db push` fails **partway**, say which migrations applied
+and stop. Do not re-run hoping for idempotence.
 
-- **Naming rejected** — the files use an `NNNN_` prefix
-  ([docs/PROJECT-STRUCTURE.md](../../docs/PROJECT-STRUCTURE.md) §5), not the CLI's own 14-digit
-  UTC timestamp. If the CLI refuses them, rename all files to one consistent scheme in a single
-  change rather than mixing the two, and update PROJECT-STRUCTURE §5 in the same commit so the
-  doc stops being wrong.
-- **Connection refused / project paused** — a Free-plan project pauses after a week idle
-  ([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §3). Tell the user to resume it in the
-  dashboard; do not retry in a loop.
-
-Stop here if `$ARGUMENTS` contains `dry-run`.
-
-## 4. Push, then regenerate types
+## 4. Regenerate types — the step nothing else does
 
 ```bash
-npx supabase db push --linked --yes
 npm run db:types
 ```
 
-`db:types` is not optional — [docs/TECH-STACK.md](../../docs/TECH-STACK.md) §4 makes
-`src/lib/supabase/types.ts` a generated artifact in a no-ORM stack, and a schema that moved
-without its types leaves every `supabase-js` call lying about its shape. Then run
-`npm run typecheck` and report any new errors: a rename or a dropped column surfaces here, and
-that is the point.
+Not optional. [docs/TECH-STACK.md](../../docs/TECH-STACK.md) §4 makes
+`src/lib/supabase/types.ts` a generated artifact in a no-ORM stack, so a schema that moved
+without its types leaves every `supabase-js` call lying about its shape. A failed run is safe —
+the script generates to `types.ts.tmp` and renames only on exit 0 — so re-run it once connected
+rather than hand-editing.
 
-If `db push` fails **partway**, say so explicitly and report which migrations applied. Do not
-re-run it hoping for idempotence.
+Report whether the file changed. **If a migration merged and this produces no diff, something is
+wrong** — say so rather than assuming it was already current.
 
 ## 5. Verify the invariants the SQL cannot prove
 
-For every table the pushed migrations created, confirm RLS is actually on — a table with policies
-but `relrowsecurity = false` enforces nothing:
+RLS on every table — a table with policies but `relrowsecurity = false` enforces nothing:
 
 ```sql
-select relname, relrowsecurity from pg_class
-where relnamespace = 'public'::regnamespace and relkind = 'r' order by relname;
+select relname, relrowsecurity,
+       (select count(*) from pg_policies p
+         where p.tablename = c.relname and p.schemaname = 'public') as policies
+from pg_class c
+where relnamespace = 'public'::regnamespace and relkind = 'r'
+order by relname;
 ```
 
-Any `false` is a defect, not a nit. Report it.
+Any `false` is a defect, not a nit. Expect **zero policies on `quote_number_sequences`** — that
+is deliberate and must stay that way; it is why `fn_next_quote_number()` is `SECURITY DEFINER`.
 
-Then check whatever the pushed migration specifically claims, e.g.:
+Then the triggers, because a dropped one is silent:
 
-- `settings` — a second `insert` is rejected by the singleton PK; a non-admin `update`
-  affects 0 rows
-- `profiles` — a rep cannot set `role = 'admin'` on their own row (the escalation guard)
-- `quotes` — a non-admin cannot move `pending_approval → approved` **even owning the row**
-  ([docs/DATABASE-SQL.md](../../docs/DATABASE-SQL.md) §4.5 calls this the single most
-  important assertion in the repo)
+```sql
+select c.relname as tbl, t.tgname, t.tgenabled
+from pg_trigger t join pg_class c on c.oid = t.tgrelid
+where not t.tgisinternal and c.relnamespace = 'public'::regnamespace
+order by c.relname, t.tgname;
+```
+
+`quotes` must carry **both** halves of the approval gate — `quotes_enforce_created_in_draft`
+(`BEFORE INSERT`) and `quotes_validate_status_transition` (`BEFORE UPDATE`) — each with
+`tgenabled = 'O'`. Neither backstops the other and RLS backstops neither
+([docs/DATABASE.md](../../docs/DATABASE.md) §5.5). `profiles` must carry
+`profiles_guard_role_change`.
+
+Then whatever the merged migration specifically claims, e.g. a new column's type and nullability
+via `information_schema.columns`.
 
 Run these through **`npx supabase db query --linked "<sql>"`**. It is `db query`, **not**
 `db execute`: the latter does not exist, and the CLI answers an unknown subcommand by printing
-help and exiting **0** — so a naive `--help` probe reports success. If the subcommand is ever
-missing, print the SQL and ask the user to run it in the dashboard SQL editor rather than
-skipping the step. Add `--output json` for parseable rows.
+help and exiting **0**, so a naive probe reports success. Add `--output json` for parseable rows.
+If the subcommand is ever missing, print the SQL and ask the user to run it in the dashboard SQL
+editor rather than skipping the step.
 
-Then run the blocking gate: `npm run lint`, `npm run typecheck`, `npm run format:check`,
-`npm run test`. A type regeneration that breaks the type-check is the whole reason this step
-exists.
+**What cannot be checked here, and must not be faked:** whether a non-admin is actually rejected
+when moving a quote out of `Review`, and the five sibling assertions. Those need a real Postgres
+session as a specific role. They are recorded as a standing gap in
+[docs/ENGINEERING-RULES.md](../../docs/ENGINEERING-RULES.md) §3, "Known gap". Reading the trigger
+source is not evidence it fires.
 
-## 6. Report — do not commit or push
+## 6. Gate
 
-- Migrations applied, in order
-- Extensions and policies touched
-- Whether `types.ts` changed, and whether `typecheck` still passes
-- RLS verification result per table
+```bash
+npm run lint && npm run typecheck && npm run format:check && npm run test
+```
+
+A type regeneration that breaks the type-check is the whole reason this step exists: a rename or
+a dropped column surfaces here.
+
+## 7. Report — do not commit or push to a remote
+
+- Migration versions: local vs remote, and any mismatch
+- Whether the fallback push was needed (normally: no)
+- Whether `types.ts` changed
+- RLS result per table, and the trigger check
+- Gate result
 - Anything left undone, named explicitly
 
 **Do not commit, and do not push to any remote.** Both are human actions
-([CLAUDE.md](../../CLAUDE.md), "Workflow"). State the suggested Conventional Commit message and
-stop.
+([CLAUDE.md](../../CLAUDE.md), "Workflow"). A regenerated `types.ts` normally wants its own
+`chore(db):` commit — state the suggested message and stop.
 
 ## Never
 
@@ -140,6 +179,7 @@ stop.
 - Suggest `supabase start` or `db reset` — Docker is not installed on this machine
   ([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §1).
 - Read, print, or write `.env`, `.env*.local`, or anything holding the service-role key.
-- Edit schema or RLS in the Supabase dashboard to work around a failed migration. Fix the
-  migration file ([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §5,
-  [docs/TECH-STACK.md](../../docs/TECH-STACK.md)).
+- Edit schema or RLS in the Supabase dashboard to work around a failed migration. Fix it in a new
+  migration file ([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §5).
+- Treat this command as a review. It runs after the database changed; the pull request is the
+  review.

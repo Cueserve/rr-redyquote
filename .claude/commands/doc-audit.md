@@ -46,17 +46,18 @@ except where Pass B explicitly probes it.
 5. `docs/ENGINEERING-RULES.md` — coding conventions, banned patterns, testing.
 6. `docs/PROJECT-STRUCTURE.md` — directory layout and placement rules.
 7. `docs/DESIGN-SYSTEM.md` — brand tokens and the accessibility floor.
-8. `docs/DATABASE.md` — the data model.
-9. `docs/DATABASE-SQL.md` — the DDL for that model. **Transient**; check its
-   "Transcription status" before treating any block as authoritative.
-10. `docs/ENVIRONMENTS.md` — which Supabase environment development targets.
-11. `docs/BACKLOG.md` — epics and stories manifest. Currently a stub.
+8. `docs/DATABASE.md` — the data model. **The schema itself is not a document**: it is
+   `supabase/migrations/*.sql`, and those files are the anchor for every schema claim
+   (ARCHITECTURE §5). There is no DDL spec to consult; `docs/DATABASE-SQL.md` was retired once
+   `0001`–`0009` covered it.
+9. `docs/ENVIRONMENTS.md` — which Supabase environment development targets.
+10. `docs/BACKLOG.md` — epics and stories manifest. Currently a stub.
 
 **Governance and agent config:**
 
-12. `CONTRIBUTING.md` — branching, commits, the self-review gate.
-13. `CLAUDE.md` — agent behaviour, scope, escalation, off-limits.
-14. `README.md` — restates; owns nothing.
+11. `CONTRIBUTING.md` — branching, commits, the self-review gate.
+12. `CLAUDE.md` — agent behaviour, scope, escalation, off-limits.
+13. `README.md` — restates; owns nothing.
 
 **Transient specs** — read everything in `docs/specs/`, and cross-check it against the
 "Approved design specs" list in `CLAUDE.md`. A spec not in that list, or a listed spec that no
@@ -71,12 +72,13 @@ Apply top-down. The higher entry is right by construction; the lower one is the 
 
 1. **Executable reality** — `package.json` scripts, `eslint.config.mjs` rules, hook code,
    `.impeccable/config.json`, generated `types.ts`. Code does not have opinions.
-2. **Applied migrations** (`supabase/migrations/*.sql`) — the authoritative schema per
-   ARCHITECTURE §5. Beats any prose description of the schema, including `docs/DATABASE-SQL.md`.
+2. **Migrations** (`supabase/migrations/*.sql`) — the authoritative schema per ARCHITECTURE §5,
+   and the anchor for every schema claim in the corpus. Beats any prose description, including
+   `docs/DATABASE.md`'s column tables. Note the merge/apply relationship: **merging to `main`
+   applies the migration** (the Supabase GitHub integration does it), so a file on `main` is
+   live, and a file only on a branch is not. There is no separate apply step to check for.
 3. **Tier 3 specs**, for the slice they explicitly amend. The authorization-matrix spec amends
    PRD-010 and ARCHITECTURE §2/§7; the base text it amends is **superseded, not authoritative**.
-   For tables not yet migrated (`0005` onward), `docs/DATABASE-SQL.md`'s DDL is the schema anchor —
-   check its "Transcription status" for which blocks it still governs.
 4. **Tier 2 docs** among themselves, by ownership — each fact has exactly one owner:
    stack → TECH-STACK · layout → PROJECT-STRUCTURE · schema model → DATABASE · tokens and the
    WCAG floor → DESIGN-SYSTEM · Supabase environment → ENVIRONMENTS · structural invariants →
@@ -110,8 +112,13 @@ a corpus can pass Pass B cleanly and still fail here._
 **Rule: the database name wins.** For any concept with a table, column, or enum value, the
 canonical prose term is the schema identifier de-snake-cased. `fab_tiers` → **fab tier**;
 `price_history` → **price history**; the `quote_status` enum values fix the lifecycle labels.
-Source in ladder order: applied migrations first, then `docs/DATABASE-SQL.md`'s DDL for tables not
-yet transcribed (`0005` onward).
+Source: `supabase/migrations/*.sql`, and nothing else — there is no prose DDL to fall back to.
+
+**One deliberate exception, and do not report it as a defect.** The lifecycle step every doc
+calls **Review** is stored as `pending_approval`. The prose name is kept because it is what
+REDYREF calls the step, and `0001` is applied and immutable so the enum cannot be renamed. The
+mapping is stated in `docs/DATABASE.md` §4.11. A file using "Review" in prose is correct; a
+file implying a `'review'` enum value exists is a finding.
 
 Build the term register, then check every prose use against it:
 
@@ -207,9 +214,12 @@ _Skip entirely under `align` or `absorb`._
 For each fact class, extract every statement across the corpus and compare. These are the classes
 where this repo has actually drifted or is structurally likely to:
 
-- **Invariant mechanisms.** How is the approval gate enforced — trigger or RLS? ARCHITECTURE and
-  DATABASE-SQL insist `WITH CHECK` cannot see the old row, so a file saying "RLS-enforced" for a
-  _transition_ is describing a mechanism that cannot exist.
+- **Invariant mechanisms.** How is the approval gate enforced — trigger or RLS? `WITH CHECK`
+  cannot see the old row, so a file saying "RLS-enforced" for a _transition_ describes a
+  mechanism that cannot exist. Note the gate is **two** triggers, not one:
+  `quotes_enforce_created_in_draft` (`BEFORE INSERT`) and
+  `quotes_validate_status_transition` (`BEFORE UPDATE`), both in `0007_quotes.sql`. A file
+  naming only the second is describing half a gate — a quote could be created already approved.
 - **Role model.** Which roles, and what may each write? The authorization-matrix spec is the
   amendment; anything still describing the pre-amendment model is superseded text.
 - **Quote lifecycle.** The state list and the transitions out of `Review`. Both exits
@@ -231,25 +241,25 @@ where this repo has actually drifted or is structurally likely to:
 
 Each probe turns a prose claim into a command. Run the probe; the output wins.
 
-| Claim in prose                             | Probe                                                                                                                                                             |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A named `npm run X` exists                 | read `scripts` in `package.json` — do not trust CLAUDE.md's script list                                                                                           |
-| Node version                               | `.nvmrc` and `engines.node` agree with every doc that names a version                                                                                             |
-| Migration set and numbering                | `Get-ChildItem supabase/migrations` — compare filenames and count to every doc that enumerates them                                                               |
-| "Applied to the linked project"            | `git log --oneline -- supabase/migrations/` plus `supabase/.temp/project-ref` exists. This repo merges then pushes, so merged into `main` ⇒ applied               |
-| `types.ts` is current                      | its table/column names cover every table the migrations create                                                                                                    |
-| impeccable suppression list                | `.impeccable/config.json` `detector.ignoreRules` — compare the **count and the exact rule names** to every doc that describes them                                |
-| impeccable context is pinned               | `env.IMPECCABLE_CONTEXT_DIR` in `.claude/settings.json`                                                                                                           |
-| Permissions are machine-enforced           | `permissions.deny` / `permissions.ask` in `.claude/settings.json` really contain the patterns the docs claim                                                      |
-| The migration hook fires                   | the hook file exists **and** uses the shell form (`"command": "node path/to.mjs"`). The exec form silently never fires — indistinguishable from one that approved |
-| Lint bans hex literals and palette classes | the `no-restricted-syntax` block in `eslint.config.mjs`                                                                                                           |
-| Any primitive count stated in prose        | count the files. A number in prose rots; prefer deleting the count over updating it                                                                               |
-| "Nothing talks to the database"            | `src/server/` and `src/lib/pricing/` absent; `grep -r "use server" src/` empty                                                                                    |
-| Mock-only reads                            | `src/lib/mock/` and `src/components/prototype/` still exist and are still imported                                                                                |
-| shadcn style/config                        | `components.json` (`style`, `cssVariables`)                                                                                                                       |
-| Fonts self-hosted via `next/font`          | `grep -r "next/font" src/` — and no Google Fonts `<link>`                                                                                                         |
-| Test suite proves something                | `vitest.config.ts` for a `passWithNoTests` flag, and whether any `*.test.ts` file exists                                                                          |
-| `e2e/` / CI / `vitest.config.ts` exist     | check the paths before repeating any claim about them                                                                                                             |
+| Claim in prose                             | Probe                                                                                                                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A named `npm run X` exists                 | read `scripts` in `package.json` — do not trust CLAUDE.md's script list                                                                                                                 |
+| Node version                               | `.nvmrc` and `engines.node` agree with every doc that names a version                                                                                                                   |
+| Migration set and numbering                | `Get-ChildItem supabase/migrations` — compare filenames and count to every doc that enumerates them                                                                                     |
+| "Applied to the linked project"            | `npx supabase migration list` — the only real answer. Merging to `main` applies automatically via the Supabase GitHub integration, so on `main` ⇒ applied, but verify rather than infer |
+| `types.ts` is current                      | its table/column names cover every table the migrations create. **This is the probe most likely to fail**: nothing in the merge path runs `db:types`, so it goes stale silently         |
+| impeccable suppression list                | `.impeccable/config.json` `detector.ignoreRules` — compare the **count and the exact rule names** to every doc that describes them                                                      |
+| impeccable context is pinned               | `env.IMPECCABLE_CONTEXT_DIR` in `.claude/settings.json`                                                                                                                                 |
+| Permissions are machine-enforced           | `permissions.deny` / `permissions.ask` in `.claude/settings.json` really contain the patterns the docs claim                                                                            |
+| The migration hook fires                   | the hook file exists **and** uses the shell form (`"command": "node path/to.mjs"`). The exec form silently never fires — indistinguishable from one that approved                       |
+| Lint bans hex literals and palette classes | the `no-restricted-syntax` block in `eslint.config.mjs`                                                                                                                                 |
+| Any primitive count stated in prose        | count the files. A number in prose rots; prefer deleting the count over updating it                                                                                                     |
+| "Nothing talks to the database"            | `src/server/` and `src/lib/pricing/` absent; `grep -r "use server" src/` empty                                                                                                          |
+| Mock-only reads                            | `src/lib/mock/` and `src/components/prototype/` still exist and are still imported                                                                                                      |
+| shadcn style/config                        | `components.json` (`style`, `cssVariables`)                                                                                                                                             |
+| Fonts self-hosted via `next/font`          | `grep -r "next/font" src/` — and no Google Fonts `<link>`                                                                                                                               |
+| Test suite proves something                | `vitest.config.ts` for a `passWithNoTests` flag, and whether any `*.test.ts` file exists                                                                                                |
+| `e2e/` / CI / `vitest.config.ts` exist     | check the paths before repeating any claim about them                                                                                                                                   |
 
 **Date staleness.** Every `Last verified:` / `Last updated:` / `verified YYYY-MM-DD` stamp: compare
 it to the last commit touching the file it vouches for. A stamp older than the thing it certifies
@@ -296,11 +306,20 @@ exists to prevent.
 
 Tier 3 specs are transient by design: each is deleted when its content lands in what it feeds.
 For each spec, determine per-section whether it is **fully absorbed**, **partly absorbed**, or
-**not yet**. `docs/DATABASE-SQL.md` carries its own "Transcription status" — use it, and verify it
-against the migration files rather than trusting it.
+**not yet**, and verify that against the artifact it feeds rather than against the spec's own
+claim about itself.
 
 A spec is deletable only when **every** section has landed. Deleting it means removing its entry
 from CLAUDE.md's source-of-truth list **in the same change** — propose both halves or neither.
+
+**Absorbed is not the same as deletable, and `docs/DATABASE-SQL.md` is the worked example.**
+Its SQL was fully transcribed into `0001`–`0009`, but deleting it stranded roughly twenty
+citations across eight files, and three pieces of its prose had no migration to live in
+(`environment_mismatch` → DATABASE.md §5.6; the RLS-hardening trap → DATABASE.md §6.2; six
+untested database invariants → ENGINEERING-RULES.md §3). It was deleted, restored the same day,
+reduced to a signpost, and only removed once every citation had been repointed. So for any
+deletion proposal, report **both**: what has been absorbed, and what still points at the file.
+A spec whose content has landed but whose inbound links have not is a two-step change, not one.
 
 Also flag the reverse: a spec section that contradicts what actually landed. The landed artifact
 wins (ladder rungs 1–2), and the spec text needs correcting before anyone reads it as current.
@@ -309,26 +328,31 @@ wins (ladder rungs 1–2), and the spec text needs correcting before anyone read
 
 ## 6. Known-open findings, for calibration
 
-Open as of **2026-08-08**. Confirm each still reproduces before reporting it, and **delete this
-section once all three are fixed** — a stale calibration list is the exact failure this command
+Reviewed **2026-08-13**. Confirm each still reproduces before reporting it, and **delete this
+section once the list is empty** — a stale calibration list is the exact failure this command
 exists to catch.
 
-1. **[Align] Tier terminology.** _fab tier_ / _fab-tier_ / _quantity tier_ across `docs/PRD.md`,
-   `docs/PRODUCT.md`, `docs/DATABASE.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT-STRUCTURE.md`, and
-   the authorization-matrix spec. Schema anchor is `fab_tiers` (DATABASE-SQL.md DDL — not yet
-   migrated). Unresolved: whether _quantity tier_ is a synonym or names the quantity break itself,
-   which would be a distinct concept deserving its own term.
-2. **[Drift] Suppression count.** `README.md` §"Claude Code Setup" says `.impeccable/config.json`
+**Closed since the last review, kept briefly as calibration for what a fixed finding looks
+like:**
+
+- **[Align] Tier terminology** — settled. `docs/DATABASE.md` §2 now separates **fab tier** (a
+  row on `fab_tiers`) from **qty tier** (the `qty_tier` integer on it) and states why the
+  distinction is load-bearing rather than cosmetic: a quote binds the row, not the number. The
+  schema anchor is `supabase/migrations/0006_master_data.sql`.
+
+**Still open:**
+
+1. **[Drift] Suppression count.** `README.md` §"Claude Code Setup" says `.impeccable/config.json`
    holds **one** suppression (`cramped-padding`). `CLAUDE.md` and the file itself carry **three**
-   (`+ nested-cards`, `+ clipped-overflow-container`). README is stale — dated 2026-07-31, the
-   config entries 2026-08-08. **Ruling:** README loses to both the config file (rung 1) and
-   CLAUDE.md (rung 5).
-3. **[Drift] Approval-gate mechanism.** `README.md` "Key Concepts" labels it _RLS-enforced_ and
-   attributes the `Review → Approved` restriction to RLS. `CLAUDE.md` and
-   `docs/DATABASE-SQL.md` §3 say the mechanism is the `validate_quote_status_transition` **trigger**,
-   because `WITH CHECK` cannot see the old row and therefore cannot express a transition.
-   **Ruling:** README is wrong about a non-negotiable invariant — the worst class of finding, since
-   it teaches a mental model under which someone could weaken the trigger believing RLS backs it up.
+   (`+ nested-cards`, `+ clipped-overflow-container`). **Ruling:** README loses to both the config
+   file (rung 1) and CLAUDE.md (rung 5).
+2. **[Drift] Approval-gate mechanism.** `README.md` "Key Concepts" labels authorization
+   _RLS-enforced_ and attributes the `Review → Approved` restriction to RLS. The mechanism is the
+   `validate_quote_status_transition` **trigger** in `0007_quotes.sql`, because `WITH CHECK`
+   cannot see the old row and therefore cannot express a transition. **Ruling:** README is wrong
+   about a non-negotiable invariant — the worst class of finding, since it teaches a mental model
+   under which someone could weaken the trigger believing RLS backs it up. It also names only one
+   gate; there are two (see §4A).
 
 ## 7. Report format
 

@@ -35,10 +35,17 @@ a quote is never left half-saved — see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **Component library** — reusable, categorized components (environment: Any/Indoor/
   Outdoor) that plug into a quote line. A cost change appends to `price_history` instead of
   overwriting it, so nothing is lost.
-- **RLS-enforced authorization** — writes are enforced at the database, not the UI. The
-  `Review → Approved` transition and all master-data / settings / branding writes
-  are restricted to `role = 'admin'`; quote content edits are owner-or-admin; reads are flat.
-  A bypassed or scripted client is still denied. (admin-owns-master-data model, PRD §7A)
+- **Database-enforced authorization** — writes are enforced at the database, not the UI. All
+  master-data / settings / branding writes are restricted to `role = 'admin'` **by RLS
+  policy**; quote content edits are owner-or-admin; reads are flat. A bypassed or scripted
+  client is still denied.
+  - **The approval gate is not RLS, and the distinction is load-bearing.** Both exits from
+    `Review` — forward to `Approved` and back to `Draft` — are admin-only, enforced by the
+    `validate_quote_status_transition` **trigger**, because an RLS `WITH CHECK` clause cannot
+    see the old row and therefore cannot express a transition at all. A second trigger,
+    `enforce_quote_created_in_draft`, stops a quote being _created_ already approved — the
+    first is `BEFORE UPDATE` and never sees an insert. Neither backstops the other and RLS
+    backstops neither. See [DATABASE.md](docs/DATABASE.md) §5.5 before touching either.
 - **Atomic multi-row save** — saving a quote (header + line items) or a product (fab tiers +
   defaults + price history) goes through a single Postgres RPC transaction, so a failure
   partway through never leaves a row half-written.
@@ -178,9 +185,13 @@ so there is no local payload to ignore — a `.claude/skills/` directory should 
 one appears you hand-installed something (see the bullet above) and it **will** be committed.
 
 `.impeccable/config.json` **is** committed, because a suppression is a team decision. It holds
-one: `cramped-padding`, which misfires on the data table's scroll container (the rationale is in
-the file's `$comment`). That suppression is repo-wide, since the tool has no per-file scope for
-rules — run `npx impeccable detect src/ --no-config` to see what it hides.
+**three**, all verified false positives: `cramped-padding` and `nested-cards`, which both
+misfire on the data table's scroll container, and `clipped-overflow-container`, which fires on
+every `sr-only` element — being clipped is the entire point of `sr-only`. The rationale and the
+blind spot each one creates are in the file's `$comment`; `nested-cards` is the costliest,
+since a genuinely nested card would now pass unnoticed. All three are repo-wide, since the tool
+has no per-file scope for rules — run `npx impeccable detect src/ --no-config` to see what they
+hide, and read the `$comment` before adding a fourth.
 
 You can also run the auditor outside Claude Code:
 
@@ -249,9 +260,9 @@ deletion.
 - [PRD.md](docs/PRD.md) — requirements and feature scope
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, columns, and why each table
-  is shaped that way. The SQL that implements it is a
-  [spec](docs/DATABASE-SQL.md), now **partly** authored as
-  migrations — that file's "Transcription status" says which blocks it no longer governs.
+  is shaped that way. The SQL that implements it is `supabase/migrations/*.sql` — `0001`–`0009`,
+  all applied — and **those files are the schema** (ARCHITECTURE §5). There is no prose DDL to
+  consult.
 - [TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
 - [PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
 - [DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, the WCAG AA floor

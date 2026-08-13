@@ -41,13 +41,27 @@ in `docs/specs/`, dated-filename-first (see PROJECT-STRUCTURE.md §5, "Docs").
   restatement of one. Read it before touching `QuoteTable`, `ProductTable`, `ComponentTable`,
   `data-table.tsx`, or `vitest.config.ts`. Its §9 records three rejected alternatives with
   reasons; don't reopen them from memory. Design-only in this phase; nothing is implemented.
-- [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — the full DDL for
-  [docs/DATABASE.md](docs/DATABASE.md)'s model: tables, enums, triggers, the atomic RPC
-  functions, and every RLS policy. **Feeds `supabase/migrations/*.sql`; delete it once those
-  migrations are authored**, because ARCHITECTURE §5 makes the migrations the authoritative
-  schema and two copies of the same SQL would drift. Carries two go-live blockers in its §4 —
-  a `profiles` role self-escalation hole, and the rule not to wire the save RPC before
-  PRD §7A is signed off.
+- [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — **fully transcribed as of 2026-08-13, and
+  no longer a source of anything.** It holds no SQL: every block became a migration, and
+  ARCHITECTURE §5 makes those files the schema. **Do not read it for DDL and do not add SQL
+  back to it** — it is a signpost saying where each section went, plus the checklist for
+  deleting it.
+  - **Deleting it is its own change, deliberately deferred.** It was deleted once and
+    restored the same day: the content relocated cleanly, but ~20 citations across eight
+    files did not, and one of them —
+    [.claude/commands/doc-audit.md](.claude/commands/doc-audit.md) — is built around the file
+    existing and needs rework rather than a link swap. Its "Deleting this file" section is
+    the full list. Do it after `0006`–`0008` are applied.
+  - **Three pieces of its prose moved into permanent homes** and are not duplicated:
+    `environment_mismatch` is client-supplied → docs/DATABASE.md §5.6; the six untested
+    database invariants → docs/ENGINEERING-RULES.md §3; the RLS-hardening trap that would
+    silently decide an open product question → docs/DATABASE.md §6.2.
+  - **One go-live blocker remains, and it now lives in docs/DATABASE.md:** do not wire the
+    save RPC into a Server Action before PRD §7A is signed off. That sign-off carries two
+    obligations — confirm the pricing column list, **and** author the guard that stops those
+    columns being written directly over the Data API (docs/DATABASE.md §5.1 and §6.1). The
+    `profiles` role-self-escalation hole is **fixed** — `enforce_profile_role_change()` in
+    `0002`.
 
 When a new spec lands, add it to this list in the same change, wherever it lives. A spec's
 content moves into what it feeds once fully incorporated (see docs/DESIGN-SYSTEM.md's
@@ -108,16 +122,39 @@ section — it is a snapshot, and a stale one is worse than none.
   flat to `is_admin()` (PRD-018B). Each table ships with its own RLS, verified enabled on the
   remote 2026-08-08. `src/lib/supabase/types.ts` is generated against this schema and is
   current — `0005` changed no columns, so it did not move.
-  `0006` onward (categories, products, quotes, RPCs) is untranscribed — see
-  [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md)'s "Transcription status".
-  - **The hosted schema is real. Treat every merged migration as immutable** — `db push`
-    compares recorded versions, not file contents, so editing an applied file is skipped
-    silently while reading as though it landed. `0004` exists because that happened once.
-    Migrations are applied **after** a change merges to `main`, never before: author on a
-    branch, open the PR, merge, then run `/db-migrate` from an up-to-date `main`. A
-    `PreToolUse` hook enforces this — see the machine-enforced bullet under "Claude
-    Code-specific config". Run `git fetch` before editing a migration; the guard reads
-    `origin/main`, and a stale clone is its one false-allow.
+- **Migrations `0006`–`0008`, applied 2026-08-13** (PR #40). `0006_master_data.sql`
+  (categories, products, fab_tiers, components, product_defaults, price_history, their
+  triggers and RLS, plus a backfill index on `settings.updated_by`); `0007_quotes.sql`
+  (quotes, lines, status history, the sequence table, **both** lifecycle triggers, RLS);
+  `0008_rpc_functions.sql` (the four atomic-write RPCs). All ten tables are live and empty.
+  - **`0009_components_quoted_date.sql`, applied 2026-08-13** (PR #41). Adds
+    `components.quoted_date` and repoints both component price-history functions off
+    `current_date`, correcting `0006` — which had already merged when the omission was found,
+    so it could not be edited. Same shape as `0004` correcting `0003`. Reason it matters:
+    without it PRD-009's freshness badge measures "how long since we edited this" on
+    components and "how long since the vendor quoted" on fab tiers, against one set of
+    thresholds (docs/DATABASE.md §4.8).
+  - **`src/lib/supabase/types.ts` is current again** — regenerated 2026-08-13 against
+    `0001`–`0009`, 916 lines, all 13 tables. It had sat at 296 lines across two merges,
+    knowing none of the new tables, because nothing in the merge path runs `db:types` (see
+    the next bullet). If it ever looks short again, that is the symptom.
+  - **Merging to `main` APPLIES the migration. There is no separate apply step.** The
+    Supabase GitHub integration pushes on merge — verified 2026-08-13: `0009` reported
+    `remote: ""` before PR #41 merged and `remote: "0009"` after, with no `db push` run by
+    anyone. `0006`–`0008` landed the same way via #40.
+    - **Consequence 1 — the PR review is the only gate.** `/db-migrate`'s pre-flight cannot
+      protect a hosted database it reaches after the fact. Read the SQL in the PR, not after.
+    - **Consequence 2 — `db:types` is the step that actually gets skipped**, because the
+      integration does not run it. Run `npm run db:types` after any migration merges, and
+      commit the result. This is the failure that produced the 620-line gap above.
+    - **Consequence 3 — a migration is immutable the moment it merges**, not once someone
+      applies it. That is stricter than "applied and immutable" implies, and it is what makes
+      a correction a new file every time (`0004` → `0003`, `0009` → `0006`).
+    - `db push` compares recorded versions, not file contents, so editing a merged migration
+      is skipped silently while reading as though it landed. A `PreToolUse` hook denies the
+      edit — see the machine-enforced bullet under "Claude Code-specific config". Run
+      `git fetch` before editing a migration; the guard reads `origin/main`, and a stale
+      clone is its one false-allow.
   - **`npm run db:types` works, and a failed run is now safe.** It calls `npx supabase`, not a
     bare `supabase`, generates to `types.ts.tmp` and renames only on exit 0, then pipes through
     Prettier with `--end-of-line crlf` — so no manual follow-up is needed. A failure (no
@@ -165,18 +202,29 @@ fixed-category list (PRD-007A). See docs/DATABASE.md §6.
 
 These are structural guarantees, not conventions — don't write code that breaks them:
 
-- **Database-enforced approval gate** — both exits from `Review` (→ `Approved`
-  and → `Draft`) are restricted to `role = 'admin'` inside Postgres, never by a UI-only
-  check. The mechanism is the `validate_quote_status_transition` trigger, **not** an RLS
+- **Database-enforced approval gate — two triggers, not one.** Both exits from `Review`
+  (→ `Approved` and → `Draft`) are restricted to `role = 'admin'` inside Postgres, never by
+  a UI-only check. The mechanism is `validate_quote_status_transition`, **not** an RLS
   policy: `WITH CHECK` cannot see the old row, so it cannot express a transition. Don't
   weaken the trigger on the assumption RLS is a second layer here — it isn't
-  (docs/DATABASE-SQL.md §3).
+  (`supabase/migrations/0007_quotes.sql`; the trap is docs/DATABASE.md §6.2).
+  - That trigger is `BEFORE UPDATE`, so it covers the update path **only**.
+    `enforce_quote_created_in_draft` is its `BEFORE INSERT` half: without it, a rep can
+    `POST` a new row already carrying `status = 'approved'` and defeat the gate without
+    ever performing a transition. Both are load-bearing; neither is a backstop for the
+    other (docs/DATABASE.md §5.5).
 - **Atomic multi-row save** — quote (header + line items) and product (fab tiers + defaults
   - price history) writes go through a single Postgres RPC transaction. No client-side
     multi-step writes that can leave a row half-written.
 - **Server-side pricing trust boundary** — the Server Action recomputes the canonical cost
   breakdown from stored data at save time. Client-calculated numbers are for UX only and
   are never persisted as the trusted value.
+  - **This one is a rule the code must follow, not a guarantee the database enforces**, and
+    the difference matters. RLS grants the row's owner table-wide UPDATE, so the ten value
+    columns on `quotes` are writable directly over the Data API today. The guard is
+    deliberately deferred to PRD §7A sign-off, which fixes the canonical column list
+    (docs/DATABASE.md §5.1 and §6.1). Until then the boundary holds only as far as every
+    write path honours it.
 - **Quote lifecycle** — Draft → Review → Approved → Sent, **plus
   Review → Draft** (request changes, PRD-010), and nothing else. Both transitions
   out of Review are admin-only. Every status change writes an audit row.
@@ -267,27 +315,30 @@ specific to working as an agent:
   - `npm run test` runs the unit suites under `src/lib/list/`. `vitest.config.ts` sets no
     `passWithNoTests`, so an empty suite would fail rather than pass silently — a green `test`
     means the tests actually ran.
-  - `npm run db:push` / `db:types` both run, and the project is linked. Migrations `0001`–`0005`
-    are applied, so `db:push` has **nothing pending**; `db:types` regenerates against the real
-    applied schema and `types.ts` is current (see "Built" above, which is the authority on
-    schema state — don't duplicate the migration list here, it rots).
+  - `npm run db:push` / `db:types` both run, and the project is linked. `db:push` normally has
+    **nothing pending**, because merging to `main` applies migrations automatically; `db:types`
+    regenerates against the real applied schema and must be run after every such merge (see
+    "Built" above, which is the authority on schema state — don't duplicate the migration list
+    here, it rots).
   - **There is no end-to-end suite, by decision.** No `test:e2e`, no
     `playwright.config.ts`, no `e2e/`, and `@playwright/test` is no longer a
     dependency — an installed runner that runs nothing implies coverage that
     does not exist (docs/TECH-STACK.md §5).
-- **Applying migrations: use `/db-migrate`, not a bare `db:push`.** The slash command
-  ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the approved path —
-  pre-flight, dry run, push, `db:types`, then verification that RLS is actually enabled on
-  every new table. `/db-migrate dry-run` stops after the dry run.
-  - Reason it exists: dev runs against a hosted project with **no local stack and no `db reset`**
-    (docs/ENVIRONMENTS.md §1), so a bad migration lands on a real database with no automated
-    backups on the Free tier (PRD NFR-006a). The pre-flight is the whole value; a bare
-    `db push` skips it.
-  - **Never push without the user seeing the migration first**, and never re-apply or edit an
-    already-applied migration file — a new change is a new file. Both halves have an
-    enforcement layer below: `permissions.ask` forces a prompt on any `db push` spelling, and
-    the `PreToolUse` hook blocks edits to committed migrations. The prompt is a speed bump,
-    not the review — it does not show anyone the SQL.
+- **`/db-migrate` no longer applies anything — the merge already did.** Its own file
+  ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) still describes itself as
+  the apply path, and **that description is now wrong**; it needs rewriting, which is its own
+  change. Verified 2026-08-13: running it against a freshly merged `0009` found the remote
+  already up to date and pushed nothing.
+  - **What it is still worth running for** is everything after the push: `db:types`, the
+    `relrowsecurity` check on every new table, the trigger check, and the blocking gate. That
+    is real value — the integration does none of it — but it is verification, not application.
+  - **Where the actual gate moved: the PR.** Dev runs against a hosted project with **no local
+    stack and no `db reset`** (docs/ENVIRONMENTS.md §1) and no automated backups on the Free
+    tier (PRD NFR-006a). Since merge applies, the SQL must be read **in review**. A pre-flight
+    that runs after the database changed protects nothing.
+  - `permissions.ask` still forces a prompt on any `db push` spelling and the `PreToolUse`
+    hook still blocks edits to committed migrations. Both remain useful, and neither is the
+    review — the prompt does not show anyone the SQL.
   - There is deliberately **no `npm run db:migrate`** wrapper: a one-liner that pushes
     unreviewed SQL is the thing this command exists to prevent.
 - **No local Supabase stack.** Development runs against a hosted project; Docker is not

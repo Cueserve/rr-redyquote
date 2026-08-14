@@ -94,8 +94,7 @@ Each is banned because it breaks a decision in [ARCHITECTURE.md](ARCHITECTURE.md
 
 - **Frameworks:** Vitest 4.x for unit tests. Do not introduce a competing test runner. There is
   **no end-to-end framework** in the approved stack: no Playwright, no `e2e/`, no `test:e2e`.
-  Adding one is a [docs/TECH-STACK.md](TECH-STACK.md) change first, and it must land in both
-  RedyQuote and CuevikSync together.
+  Adding one is a [docs/TECH-STACK.md](TECH-STACK.md) change first.
 - **Placement:** unit tests are co-located as `*.test.ts` beside the module under test
   ([docs/PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md) §5). `vitest.config.ts` includes
   `src/**/*.test.ts` and nothing else.
@@ -157,5 +156,4 @@ Each is concurrency or authorization behaviour that **reading the SQL will not c
    The pair proves the `SECURITY DEFINER` hop is doing the work and that the table's
    zero-policy state has not been "fixed" by someone chasing a permission-denied error.
 
-Adopting a runner for these is a [docs/TECH-STACK.md](TECH-STACK.md) §5 decision first, and it
-must land in CuevikSync in the same change.
+Adopting a runner for these is a [docs/TECH-STACK.md](TECH-STACK.md) §5 decision first.

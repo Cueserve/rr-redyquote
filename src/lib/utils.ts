@@ -13,9 +13,6 @@ export function cn(...inputs: ClassValue[]) {
 // implied here — `formatMoney` rounds for display the way Intl.NumberFormat
 // always has, which is not a business rule.
 //
-// This module is shared verbatim between CuevikSync and RedyQuote, so it cites
-// neither repo's requirement numbering.
-//
 // `en-US` is pinned rather than left to the runtime locale so a server render
 // and a client hydration produce identical strings. Money and quantities are
 // rendered in `font-mono tabular-nums` at the call site (DESIGN-SYSTEM.md §8).

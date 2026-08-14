@@ -106,7 +106,7 @@ export function SettingsTabs({
     }
 
     // The Server Action goes here, and nothing stands in for it: PRD §7A is
-    // unsigned and DATABASE-SQL.md §4 blocks wiring the save RPC until it is.
+    // unsigned and docs/DATABASE.md §6 blocks wiring the save RPC until it is.
     // `result.values` is the parsed row it will take. A fake success toast
     // would make an unwired screen read as a working one — the login form
     // reserves its error slot the same way rather than pretending.

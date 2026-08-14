@@ -121,7 +121,10 @@ export interface LibraryComponent {
   cost: number;
   default_labor_hours: number;
   active: boolean;
-  /** Latest `price_history.quoted_date` for this component. */
+  /** The vendor's quote date for `cost` — a real column on `components` as of
+   *  `0009`, not a value derived from `price_history`. It means exactly what
+   *  `fab_tiers.quoted_date` means, which is what lets PRD-009's freshness
+   *  thresholds apply to both (docs/DATABASE.md §4.8). */
   quoted_date: string;
   freshness: Freshness;
 }

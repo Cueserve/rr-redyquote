@@ -28,7 +28,8 @@ import { formatPercent } from "@/lib/utils";
  *
  * FOUR transitions, not three. The backward one — Review → Draft —
  * is as much a part of the state machine as the other three: it is in PRD-010,
- * in `validate_quote_status_transition` (docs/DATABASE-SQL.md §1, which clears
+ * in `validate_quote_status_transition` (supabase/migrations/0007_quotes.sql,
+ * which clears
  * `submitted_at` on the way), and in the lifecycle invariant CLAUDE.md lists as
  * non-negotiable. It is the one an implementation keeps dropping, because
  * "approve" reads like the only thing an approver does. Without it a quote that
@@ -67,7 +68,8 @@ function offeredActions({
     // The two gated transitions. BOTH exits from Review are
     // admin-only, and both are enforced by the same `BEFORE UPDATE` trigger --
     // not by RLS, which cannot see the old row and so cannot express a
-    // transition at all (docs/DATABASE-SQL.md §3).
+    // transition at all (supabase/migrations/0007_quotes.sql; the trap that
+    // makes adding one costly is docs/DATABASE.md §6.2).
     //
     // `canRequestChanges` deliberately does NOT include `isOwner`. The obvious
     // reading -- "a rep can always pull their own quote back out of review" --
@@ -242,7 +244,7 @@ export function LifecycleBar({
             {/* No reason field, and that is a schema fact rather than a design
                 preference: `quote_status_history` records from_status,
                 to_status, actor and changed_at, and has no note column
-                (docs/DATABASE-SQL.md §1). A box here would collect a
+                (docs/DATABASE.md §4.13). A box here would collect a
                 reviewer's reasoning and then drop it. Adding the column is a
                 DATABASE.md decision, not something to fake in the UI. */}
             <p className="text-sm text-muted-foreground">

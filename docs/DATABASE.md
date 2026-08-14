@@ -6,19 +6,20 @@
 design decisions behind why each table looks the way it does.
 
 > Derived from: docs/PRD.md, docs/ARCHITECTURE.md, docs/PRODUCT.md, docs/TECH-STACK.md
-> Downstream: `docs/DATABASE-SQL.md`,
-> `src/lib/supabase/types.ts`
+> Downstream: `supabase/migrations/*.sql`, then `src/lib/supabase/types.ts` via
+> `npm run db:types`
 
 **This file describes the model, not the DDL.** The SQL that implements it — `CREATE TABLE`
-statements, triggers, RPC functions, and RLS policies — lives in the implementation spec
-listed above, which `supabase/migrations/*.sql` consumes and which is deleted once those
-migrations are authored.
+statements, triggers, RPC functions, and RLS policies — lives in `supabase/migrations/*.sql`,
+and **those files are the authoritative schema** (ARCHITECTURE.md §5). Where this file and a
+migration disagree, the migration is right and this file is the defect.
 
-The split exists so this file can be permanent. ARCHITECTURE.md §5 is unaffected by it:
-**the migration files are the authoritative schema.** Keeping the DDL here too would mean
-two copies of the same SQL, each free to drift from the other — which is the exact failure
-that rule was written to prevent. Column tables below stay because they describe the model
-a reader needs; they are not a second implementation of it.
+The split exists so this file can be permanent. A prose copy of the DDL would be a second
+copy of the same SQL, each free to drift from the other — the exact failure that rule was
+written to prevent. There was such a copy, `docs/DATABASE-SQL.md`, and it produced two drift
+bugs of its own before being retired once `0001`–`0009` covered it. The column tables below
+stay because they describe the model a reader needs, and they are deliberately not a second
+implementation of it: they carry types and constraints, never statements.
 
 ---
 
@@ -330,13 +331,14 @@ these two columns after `0003_settings.sql` had already shipped them as `*_multi
 ### 4.4 `settings_history`
 
 Append-only (PRD-018A, NFR-005). One row per changed field, written by a trigger in the
-same transaction as the `settings` update — never insertable directly by a client (see [SQL spec §3](DATABASE-SQL.md#3-rls-policies)).
+same transaction as the `settings` update — never insertable directly by a client, because
+the table has no client-facing INSERT/UPDATE/DELETE policy at all (`0003_settings.sql`).
 
 **The only admin-only read in the schema** (PRD-018B). Every other table is flat-read for any
 authenticated user; this one is not, because markup, commission, and margin-floor history is
 compensation-adjacent. **Live on the remote** since 2026-08-08 — `0003` shipped the flat policy
-and is immutable, so `0005_settings_history_admin_read.sql` replaced it; see
-[§3](DATABASE-SQL.md#3-rls-policies).
+and is immutable, so `0005_settings_history_admin_read.sql` dropped it and created the
+`is_admin()` one in its place.
 
 | Column          | Type          | Constraints                   |
 | --------------- | ------------- | ----------------------------- |
@@ -457,7 +459,7 @@ nothing writes `current_date` here.
 ### 4.10 `quote_number_sequences`
 
 Internal bookkeeping only — never read or written directly by application code, only by
-`fn_next_quote_number()` ([SQL spec §2](DATABASE-SQL.md#2-rpc-functions-atomic-multi-row-writes)), which `fn_save_quote` calls. Backs PRD-011's
+`fn_next_quote_number()` (`0008_rpc_functions.sql`), which `fn_save_quote` calls. Backs PRD-011's
 race-free `Q-YYYY-NNNN` numbering. RLS is on with **zero policies**, so no client can reach
 the counter; that is why the allocator is the schema's one `SECURITY DEFINER` RPC.
 
@@ -538,7 +540,8 @@ One line per fixed category, plus unlimited ad-hoc misc lines (PRD-007, PRD-007A
 ### 4.13 `quote_status_history`
 
 Append-only (PRD-017, NFR-005). Written by an `AFTER UPDATE` trigger on `quotes`, in the
-same transaction as the status change — never insertable directly by a client (see [SQL spec §3](DATABASE-SQL.md#3-rls-policies)).
+same transaction as the status change — never insertable directly by a client, because the
+table has no client-facing INSERT/UPDATE/DELETE policy at all (`0007_quotes.sql`).
 
 | Column        | Type          | Constraints                                   |
 | ------------- | ------------- | --------------------------------------------- |

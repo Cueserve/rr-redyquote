@@ -112,11 +112,10 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [~] # *.sql — 0001–0005; 0006+ categories/products/quotes/RPCs TBD
+│  ├─ migrations/                   # *.sql — 0001–0009, all applied. THE schema (ARCHITECTURE §5)
 │  └─ config.toml                   # local stack config
 ├─ docs/                            # source-of-truth docs (this file lives here)
-│  ├─ DATABASE.md                   #   the data model — permanent
-│  ├─ DATABASE-SQL.md          [tmp]#   its DDL — deleted once migrations are authored
+│  ├─ DATABASE.md                   #   the data model — permanent; the DDL lives in migrations/
 │  ├─ …                             #   PRODUCT, PRD, ARCHITECTURE, TECH-STACK, DESIGN-SYSTEM,
 │  │                                #   ENVIRONMENTS — all permanent
 │  └─ superpowers/                  # tool-owned path — the `superpowers` Claude Code plugin
@@ -286,13 +285,19 @@ Read these before creating any new feature, route, action, or component.
 
   **Permanent vs. transient is a property of the file, not its folder.** Almost everything in
   `docs/` is a permanent source-of-truth doc. A few files are **specs**: authoritative for
-  what they cover, but deleted once their content lands in whatever they feed.
-  `DATABASE-SQL.md` is one — it holds the DDL for `DATABASE.md`'s model and goes away when
-  `supabase/migrations/*.sql` is authored, because ARCHITECTURE §5 makes the migrations the
-  authoritative schema and a second copy of the same SQL would drift. Every transient file
-  declares it in its own header **and** is listed in CLAUDE.md's "Approved design specs"
-  block. Don't add one without doing both; don't assume a `docs/*.md` is permanent without
-  checking that list.
+  what they cover, but deleted once their content lands in whatever they feed. The
+  branding-assets and list-sort specs in `docs/specs/` are the current examples. Every
+  transient file declares it in its own header **and** is listed in CLAUDE.md's "Approved
+  design specs" block. Don't add one without doing both; don't assume a `docs/*.md` is
+  permanent without checking that list.
+
+  **Retiring a spec takes two steps, and skipping the second is the usual failure.**
+  `DATABASE-SQL.md` was the worked example: it held the DDL for `DATABASE.md`'s model until
+  `0001`–`0009` covered it. Its content was fully absorbed well before it could be deleted,
+  because roughly twenty citations across eight files still pointed at it and three pieces of
+  its prose had no migration to live in. So: absorb the content, **then** repoint every
+  inbound link, and only then delete. A spec whose content has landed but whose citations
+  have not is not yet deletable.
 
   | Kind                     | Path                  | Filename                          | Lifetime                                               |
   | ------------------------ | --------------------- | --------------------------------- | ------------------------------------------------------ |

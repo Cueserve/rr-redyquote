@@ -41,27 +41,22 @@ in `docs/specs/`, dated-filename-first (see PROJECT-STRUCTURE.md §5, "Docs").
   restatement of one. Read it before touching `QuoteTable`, `ProductTable`, `ComponentTable`,
   `data-table.tsx`, or `vitest.config.ts`. Its §9 records three rejected alternatives with
   reasons; don't reopen them from memory. Design-only in this phase; nothing is implemented.
-- [docs/DATABASE-SQL.md](docs/DATABASE-SQL.md) — **fully transcribed as of 2026-08-13, and
-  no longer a source of anything.** It holds no SQL: every block became a migration, and
-  ARCHITECTURE §5 makes those files the schema. **Do not read it for DDL and do not add SQL
-  back to it** — it is a signpost saying where each section went, plus the checklist for
-  deleting it.
-  - **Deleting it is its own change, deliberately deferred.** It was deleted once and
-    restored the same day: the content relocated cleanly, but ~20 citations across eight
-    files did not, and one of them —
-    [.claude/commands/doc-audit.md](.claude/commands/doc-audit.md) — is built around the file
-    existing and needs rework rather than a link swap. Its "Deleting this file" section is
-    the full list. Do it after `0006`–`0008` are applied.
-  - **Three pieces of its prose moved into permanent homes** and are not duplicated:
-    `environment_mismatch` is client-supplied → docs/DATABASE.md §5.6; the six untested
-    database invariants → docs/ENGINEERING-RULES.md §3; the RLS-hardening trap that would
-    silently decide an open product question → docs/DATABASE.md §6.2.
-  - **One go-live blocker remains, and it now lives in docs/DATABASE.md:** do not wire the
-    save RPC into a Server Action before PRD §7A is signed off. That sign-off carries two
-    obligations — confirm the pricing column list, **and** author the guard that stops those
-    columns being written directly over the Data API (docs/DATABASE.md §5.1 and §6.1). The
-    `profiles` role-self-escalation hole is **fixed** — `enforce_profile_role_change()` in
-    `0002`.
+
+**`docs/DATABASE-SQL.md` was retired on 2026-08-13 and nothing replaces it.** It held a prose
+copy of the DDL; `supabase/migrations/0001`–`0009` now cover all of it, and ARCHITECTURE §5
+makes those files the schema. **Do not recreate it, and do not add SQL back to `docs/`** — a
+second copy of the schema is the drift that rule exists to prevent, and this one produced two
+bugs of its own before it went. Three pieces of its prose had no migration to live in and moved
+to permanent homes, where they are not duplicated: `environment_mismatch` is client-supplied →
+docs/DATABASE.md §5.6; the RLS-hardening trap that would silently decide an open product
+question → docs/DATABASE.md §6.2; the six untested database invariants →
+docs/ENGINEERING-RULES.md §3.
+
+**One go-live blocker remains, and it lives in docs/DATABASE.md:** do not wire the save RPC
+into a Server Action before PRD §7A is signed off. That sign-off carries two obligations —
+confirm the pricing column list, **and** author the guard that stops those columns being
+written directly over the Data API (docs/DATABASE.md §5.1 and §6.1). The `profiles`
+role-self-escalation hole is **fixed** — `enforce_profile_role_change()` in `0002`.
 
 When a new spec lands, add it to this list in the same change, wherever it lives. A spec's
 content moves into what it feeds once fully incorporated (see docs/DESIGN-SYSTEM.md's

@@ -143,8 +143,11 @@ price-history rows for any tier whose cost changed — all in one transaction.
   because an RLS `WITH CHECK` clause cannot see the old row and so cannot express a
   transition at all. Trigger or policy, the guarantee is the same and it lives in the
   database: a Server Action must never be the only thing standing between a user and a write
-  they aren't allowed. (PRD-010, PRD-019, NFR-002 — mechanism detail in
-  [docs/DATABASE-SQL.md](DATABASE-SQL.md) §1 and §3)
+  they aren't allowed. The gate is **two** triggers, not one:
+  `validate_quote_status_transition` covers movement, and `enforce_quote_created_in_draft`
+  covers creation — without the second, a quote can simply be inserted already approved.
+  (PRD-010, PRD-019, NFR-002 — mechanism in `supabase/migrations/0007_quotes.sql`, model in
+  [docs/DATABASE.md](DATABASE.md) §5.5)
 - **Server Actions are the sole mutation path.** No direct browser-to-Postgres writes.
   (NFR-007)
 - **Client-side pricing calculation is preview-only.** The Server Action's recomputed

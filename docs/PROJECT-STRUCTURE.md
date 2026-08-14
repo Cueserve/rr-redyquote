@@ -342,7 +342,7 @@ not be able to move a quote out of `Review` even when the request bypasses the U
 automated asserts that today. `@playwright/test` used to sit in devDependencies with no
 config and no specs, which implied coverage that did not exist; it was removed
 (docs/TECH-STACK.md §5). If E2E is adopted, that assertion is the first spec — not a happy
-path — and the config, specs, script and CI job land in one change, mirrored in CuevikSync.
+path — and the config, specs, script and CI job land in one change.
 
 **Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
 affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).

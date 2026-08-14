@@ -255,8 +255,7 @@ the ones that are not file-scoped or are broader than a single path:
   triggers, RPC functions, or history tables.
 - **Breaking changes to a database schema or shared contract** - sign-off before commit.
 - **Any change to the two-role authorization model** (`rep` / `admin`).
-- **Adopting an end-to-end test framework** - it must land in CuevikSync in the same change, or
-  the two repos fork (docs/TECH-STACK.md §5).
+- **Adopting an end-to-end test framework** - a docs/TECH-STACK.md §5 decision first.
 
 ## Off-limits
 
@@ -268,8 +267,7 @@ Never touch the following without explicit human instruction:
 - **Lock files** - `package-lock.json` is a side-effect of `npm`, not a direct edit.
 - **Database migrations** - never create, modify, or delete files under `supabase/migrations/`
   autonomously. A migration present in `main` is applied and immutable.
-- **CI/CD config** - `.github/workflows/` and Vercel settings require human review. The
-  workflow is byte-identical to CuevikSync's; a change here is a change to both.
+- **CI/CD config** - `.github/workflows/` and Vercel settings require human review.
 - **Auth-related code** - RLS policies, the transition trigger, JWT/role-claim handling,
   Supabase Auth wiring, session cookies (`@supabase/ssr`), and `src/proxy.ts`.
 - **Dependency changes** - do not add or remove packages; state the package and reason and get

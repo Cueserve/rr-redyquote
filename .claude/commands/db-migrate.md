@@ -10,9 +10,15 @@ Apply RedyQuote's pending `supabase/migrations/*.sql` to the **linked** Supabase
 bring `src/lib/supabase/types.ts` back in sync, and prove the invariants the SQL cannot prove
 about itself.
 
-**The Supabase GitHub integration has been disconnected. This command is the apply path again.**
-Until 2026-08-15 the integration pushed on merge to `main` and this file was verification only.
-It no longer runs, so **a merged migration now sits unapplied until a human runs this command.**
+**The GitHub integration's "Deploy to production" was switched off on 2026-08-15. This command
+is the apply path again.** Until then the integration applied on merge to `main` and this file
+was verification only. It no longer applies anything, so **a merged migration now sits unapplied
+until a human runs this command.**
+
+The integration itself stays connected — only auto-apply is off. Nothing was lost by switching
+it: preview databases per pull request need branching, branching needs the Pro plan, and this
+project is on Free, so the `Supabase Preview` check has always reported `skipping`. If the
+project ever moves to Pro, preview branches become a toggle rather than a reconnect.
 That gap is real and is the single most likely way `main` and the database drift apart — Phase 8
 reports it explicitly, and [.github/workflows/db-drift.yml](../../.github/workflows/db-drift.yml)
 posts a warning when a migration merges. **Neither is a schedule**: there is no nightly check, so
@@ -88,8 +94,8 @@ npx supabase migration list --linked
 Read each row:
 
 - **`local` and `remote` both set** — applied. Normal.
-- **`local` set, `remote` empty** — pending. This is the set to apply. Since the integration
-  was disconnected this is the expected state after any migration merges.
+- **`local` set, `remote` empty** — pending. This is the set to apply. Since auto-apply was
+  switched off this is the expected state after any migration merges.
 - **`remote` set, `local` empty** — a version on the database with no file behind it. **Report
   it and require acknowledgement before continuing.** Phase 1 prevents this going forward but
   cannot fix it retroactively; it means a dashboard edit (prohibited by
@@ -256,8 +262,8 @@ or a dropped column surfaces here. `vitest.config.ts` sets no `passWithNoTests`,
 - Dump path, if one was taken
 - Gate result
 - **Any version still present on `main` and unapplied on the remote** — call this out on its own,
-  not as a footnote. Since the GitHub integration was disconnected, nothing applies migrations
-  automatically; a merge that nobody follows up on leaves `main` and the database disagreeing.
+  not as a footnote. With auto-apply switched off, nothing applies migrations automatically; a
+  merge that nobody follows up on leaves `main` and the database disagreeing.
   This line and the merge-time warning from `db-drift.yml` are the only two places that surfaces,
   and neither runs on a schedule — so state it every run, even when the answer is "none".
 - Anything left undone, named explicitly

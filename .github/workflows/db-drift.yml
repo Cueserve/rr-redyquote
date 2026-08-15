@@ -2,9 +2,12 @@ name: DB Drift
 
 # Reports when `main` holds a migration the linked Supabase project has not applied.
 #
-# The Supabase GitHub integration was disconnected on 2026-08-15, so nothing applies migrations
-# automatically any more - `/db-migrate` is the only apply path, and it is a human action. This
-# workflow exists because that leaves `main` and the database free to disagree in silence.
+# The GitHub integration's "Deploy to production" was switched off on 2026-08-15, so nothing
+# applies migrations automatically any more - `/db-migrate` is the only apply path, and it is a
+# human action. This workflow exists because that leaves `main` and the database free to
+# disagree in silence. The integration stays connected; only auto-apply is off. Preview
+# databases per pull request need branching, which needs the Pro plan - this project is on Free,
+# so nothing was lost by switching it off.
 #
 # TWO BEHAVIOURS, ON PURPOSE:
 #
@@ -22,7 +25,7 @@ name: DB Drift
 #
 # THIS WORKFLOW IS READ-ONLY. `db push --dry-run` reports what would apply and applies nothing.
 # It must never gain a real push, a `migration repair`, or any other write: CI as a third writer
-# to the database is exactly the ambiguity disconnecting the integration was meant to remove.
+# to the database is exactly the ambiguity switching off auto-apply was meant to remove.
 
 on:
   push:

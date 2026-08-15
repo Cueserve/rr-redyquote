@@ -75,8 +75,8 @@ Apply top-down. The higher entry is right by construction; the lower one is the 
 2. **Migrations** (`supabase/migrations/*.sql`) — the authoritative schema per ARCHITECTURE §5,
    and the anchor for every schema claim in the corpus. Beats any prose description, including
    `docs/DATABASE.md`'s column tables. Note the merge/apply relationship: **merging to `main`
-   no longer applies the migration** — the Supabase GitHub integration was disconnected on
-   2026-08-15 and `/db-migrate` is the apply step. So a file on `main` is merged but not
+   no longer applies the migration** — the GitHub integration's "Deploy to production" was
+   switched off on 2026-08-15 and `/db-migrate` is the apply step. So a file on `main` is merged but not
    necessarily live, and a file only on a branch is neither. `npx supabase migration list` is
    the only way to tell the two apart; do not infer applied-ness from `main`.
 3. **Tier 3 specs**, for the slice they explicitly amend. The authorization-matrix spec amends

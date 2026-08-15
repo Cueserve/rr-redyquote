@@ -2,8 +2,47 @@
 
 **Owner:** Viral Parikh
 **Date:** 2026-08-09
-**Status:** Approved (design only; no implementation in this change)
+**Status:** **Implemented** — shipped in PR #38 (`feat: list sorting, pagination, and
+URL-backed filter state`), 2026-08-11. Moved to `docs/specs/implemented/` on 2026-08-15.
 **Scope:** The three list screens — `/quotes`, `/products`, `/library`
+
+---
+
+## 0. Fully absorbed — this file is now deletable
+
+The design in this file is live. `src/lib/list/` holds `apply-list-view.ts` (§3.1),
+`list-params.ts` (the §4 URL contract and the §6 normalization table), and
+`use-list-params.ts` (§4.1 router behavior); `src/components/ui/pagination.tsx` is §5.1;
+`QuoteTable`, `ProductTable`, and `ComponentTable` each declare their own `SORTS` map per
+§3.2. `apply-list-view.test.ts` and `list-params.test.ts` cover §8 — 44 assertions.
+
+**As of 2026-08-15 every durable claim has a permanent home.** Nothing below is the only copy
+of anything, so this file has met the deletion condition in
+[PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §5 and can go in its own change:
+
+| Section                                   | Absorbed into                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
+| §2 D1, D2, D3, D6 — the decisions kept    | [ARCHITECTURE.md](../../ARCHITECTURE.md) §4, "List view state" row         |
+| §9 — the three rejected alternatives      | [ARCHITECTURE.md](../../ARCHITECTURE.md) §4.1                              |
+| §10 — the server-side querying seam       | [ARCHITECTURE.md](../../ARCHITECTURE.md) §4.1, fourth bullet               |
+| §10 — the trigger that fires the move     | [PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §6, deferred-work table |
+| §4.3 — the measured client-rendering bail | [ARCHITECTURE.md](../../ARCHITECTURE.md) §4.1, closing block               |
+
+`docs/` was the wrong first guess for §10: [BACKLOG.md](../../BACKLOG.md) declares itself "not
+yet authored" and says outright that a file listing a few stale items is worse than none, so a
+single entry there would have been the exact failure it warns about. PROJECT-STRUCTURE.md §6 is
+a trigger-bound deferred-work table already — the item fits it without inventing a section.
+
+**Everything not in that table needed no home, and that is a finding rather than an omission.**
+§2 D4 (clickable column headers) and D5 (per-screen sort defaults), and all of §3, §5, §6, §7
+and §8, describe behaviour the code now states more precisely than prose can: the defaults live
+in `list-params.ts`, the normalization rules are its test file, the comparators are each
+screen's own `SORTS` map, and the accessibility contract is `aria-sort` in the markup. Copying
+any of it into `docs/` would create a second copy free to drift — which is the whole reason
+specs get deleted rather than archived.
+
+**Read this file as history, not as work.** Nothing in it is a task. Deleting it means removing
+its row from [CLAUDE.md](../../../CLAUDE.md)'s spec table in the same change.
 
 ---
 
@@ -12,7 +51,7 @@
 Add column sorting and pagination to the three list screens, and move the filter state
 those screens already carry out of component state and into the URL.
 
-Neither sorting nor pagination appears in [PRD.md](../PRD.md). This is net-new scope,
+Neither sorting nor pagination appears in [PRD.md](../../PRD.md). This is net-new scope,
 which is why it went through brainstorming before design.
 
 ### What is wrong today
@@ -24,7 +63,7 @@ box and every filter — a live annoyance, not a hypothetical one.
 
 ### The scale this is designed against
 
-[PRD.md](../PRD.md) NFR-001 fixes REDYREF's real size at "a handful of concurrent users,
+[PRD.md](../../PRD.md) NFR-001 fixes REDYREF's real size at "a handful of concurrent users,
 low hundreds of products/components/quotes." That number was pressure-tested against
 pagination twice during brainstorming and the decision was still to page every list
 uniformly. The reasoning is recorded in §9 so it is not relitigated from memory.
@@ -174,7 +213,7 @@ alternative and §10's migration target, and it stays deferred to when Supabase 
 land, because it has to happen then anyway.
 
 It does **not** interact with the `(list)` route groups or the 404-under-200 rule
-documented in [PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) §4 — that rule is about
+documented in [PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §4 — that rule is about
 detail (`[id]`) routes calling `notFound()`, and no detail route is touched here.
 
 ## 5. Components
@@ -184,7 +223,7 @@ detail (`[id]`) routes calling `notFound()`, and no detail route is touched here
 Presentational only. It receives `page`, `pageCount`, `total`, `size`, `onPageChange` and
 `onSizeChange`, and **never reads the URL**. [data-table.tsx](../../../src/components/ui/data-table.tsx)
 is presentational by charter and `ui/` must stay app-agnostic
-([PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) §3); the routing stays in the app layer.
+([PROJECT-STRUCTURE.md](../../PROJECT-STRUCTURE.md) §3); the routing stays in the app layer.
 
 **First / Prev / Next / Last, with no page-number list.** At 2000 quotes and size 25 that
 is 80 pages: Prev/Next alone means 79 clicks to reach the end, and a numbered list needs

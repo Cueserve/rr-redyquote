@@ -1,78 +1,391 @@
 # CLAUDE.md — RedyQuote
 
-Claude Code reads this file automatically from the repo root.
+Claude Code reads this file automatically from the repo root. It is the single home for
+working rules; product and architecture facts live in `docs/`.
 
-## Source-of-truth docs
+**Last verified against the filesystem: 2026-08-15.** Confirm a file or script still exists
+before relying on a claim here — a stale instruction is worse than none.
 
-RedyQuote's product, requirements, architecture, and stack decisions live in `docs/`.
-**Read the relevant one before proposing a change; never derive architecture or stack
-decisions from memory.**
+---
+
+## 1. Read this first — routing by task
+
+Find the row for what you are about to do. Read the "Read before you start" column, then come
+back. **Never derive an architecture, stack, or schema decision from memory.**
+
+| Task                                          | Read before you start                                                                              | Section here |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------ |
+| A new route, screen, or user-facing component | `/impeccable shape` first → [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) → `src/components/ui/`  | §6           |
+| Editing an existing screen                    | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) §7 + the component's own header comment             | §6           |
+| Adding a `ui/` primitive                      | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) + `src/components/ui/input.tsx` (the `cva` pattern) | §6           |
+| Anything that reads or writes a table         | [docs/DATABASE.md](docs/DATABASE.md) + the relevant `supabase/migrations/*.sql`                    | §5, §7       |
+| A Server Action, RLS policy, or role check    | [docs/specs/2026-07-23-authorization-matrix.md](docs/specs/2026-07-23-authorization-matrix.md)     | §4, §5       |
+| A migration                                   | [docs/DATABASE.md](docs/DATABASE.md) §5–6 + §7 below — **merging applies it**                      | §7           |
+| Any pricing or margin math                    | **Stop.** PRD §7A is unsigned — see §4 "Blocked"                                                   | §4           |
+| Where does this new file go?                  | [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) §2 "Four Placement Questions"               | —            |
+| Validation for any external input             | `src/lib/validation/settings.ts` — the shape to copy                                               | —            |
+| A list screen (sort / filter / pagination)    | `src/lib/list/` — already built, do not rebuild                                                    | §3           |
+| Adding or removing a package                  | [docs/TECH-STACK.md](docs/TECH-STACK.md) — a change there lands first, in its own PR               | §4           |
+
+### Source-of-truth docs
+
+Permanent, in lineage order. Each file's header names its own `Derived from:` / `Downstream:`.
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — problem statement, scope, success criteria
 - [docs/PRD.md](docs/PRD.md) — requirements and feature scope
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system structure and design decisions
 - [docs/TECH-STACK.md](docs/TECH-STACK.md) — approved technologies and usage rules
-- [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file-placement rules
-- [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against, and why
-- [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, the semantic-token rule, and the
-  WCAG AA floor. Read it before adding a color, a font, or a `ui/` component.
-- [docs/DATABASE.md](docs/DATABASE.md) — the data model: entities, ERD, every column and
-  constraint, and why each table is shaped that way. Read it before touching anything that
-  reads or writes a table. It is the **model**, not the DDL — the SQL that implements it is
-  the spec listed below.
+- [docs/ENGINEERING-RULES.md](docs/ENGINEERING-RULES.md) — coding conventions, banned patterns, testing
+- [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) — directory layout and file placement
+- [docs/DATABASE.md](docs/DATABASE.md) — the data **model**; the DDL is `supabase/migrations/`
+- [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) — brand tokens, semantic-token rule, WCAG AA floor
+- [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — which Supabase environment dev runs against
 
-**Approved design specs** — same authority as the docs above, for the slice they cover, but
-**transient**: each one is deleted when its content lands in whatever it feeds. They all live
-in `docs/specs/`, dated-filename-first (see PROJECT-STRUCTURE.md §5, "Docs").
+[`CONTRIBUTING.md`](CONTRIBUTING.md) owns process: branching, commits, review flow, the
+self-review gate, and the documentation-change process.
 
-- [docs/specs/2026-07-23-authorization-matrix.md](docs/specs/2026-07-23-authorization-matrix.md)
-  — the complete two-role (`rep` / `admin`) authorization model. **Amends** PRD-010 and
-  ARCHITECTURE §2/§7, and resolves PRD §7A, PRD-012, PRD-013. Read it before writing any RLS
-  policy, Server Action guard, or permission check — the base PRD/ARCHITECTURE text it amends
-  is superseded, not authoritative.
-- [docs/specs/2026-08-01-branding-assets-upload.md](docs/specs/2026-08-01-branding-assets-upload.md)
-  — future design for settings-branding logo/favicon upload and replacement using deployment-safe
-  asset storage without immediate `settings` schema changes. Design-only in this phase; no code
-  wiring and no DB migration are part of that spec.
-- [docs/specs/2026-08-09-list-sort-pagination.md](docs/specs/2026-08-09-list-sort-pagination.md)
-  — column sorting and pagination for the three list screens, plus moving their existing
-  filter state from `useState` into the URL. **Adds scope the PRD does not carry** — neither
-  sorting nor pagination appears in PRD.md — so this spec is the requirement, not a
-  restatement of one. Read it before touching `QuoteTable`, `ProductTable`, `ComponentTable`,
-  `data-table.tsx`, or `vitest.config.ts`. Its §9 records three rejected alternatives with
-  reasons; don't reopen them from memory. Design-only in this phase; nothing is implemented.
+`README.md` and [docs/BACKLOG.md](docs/BACKLOG.md) **restate; they own nothing.**
 
-**`docs/DATABASE-SQL.md` was retired on 2026-08-13 and nothing replaces it.** It held a prose
-copy of the DDL; `supabase/migrations/0001`–`0009` now cover all of it, and ARCHITECTURE §5
-makes those files the schema. **Do not recreate it, and do not add SQL back to `docs/`** — a
-second copy of the schema is the drift that rule exists to prevent, and this one produced two
-bugs of its own before it went. Three pieces of its prose had no migration to live in and moved
-to permanent homes, where they are not duplicated: `environment_mismatch` is client-supplied →
-docs/DATABASE.md §5.6; the RLS-hardening trap that would silently decide an open product
-question → docs/DATABASE.md §6.2; the six untested database invariants →
-docs/ENGINEERING-RULES.md §3.
+### Design specs — transient, and each one says so
 
-**One go-live blocker remains, and it lives in docs/DATABASE.md:** do not wire the save RPC
-into a Server Action before PRD §7A is signed off. That sign-off carries two obligations —
-confirm the pricing column list, **and** author the guard that stops those columns being
-written directly over the Data API (docs/DATABASE.md §5.1 and §6.1). The `profiles`
-role-self-escalation hole is **fixed** — `enforce_profile_role_change()` in `0002`.
+Same authority as the docs above for the slice they cover. Every spec must appear in this
+table; a spec not listed here has no declared authority.
 
-When a new spec lands, add it to this list in the same change, wherever it lives. A spec's
-content moves into what it feeds once fully incorporated (see docs/DESIGN-SYSTEM.md's
-provenance note in §1 for the precedent) — remove it from this list in that same change.
+| Spec                                                                                                     | Status                                         | What it governs                                                                                                                                                                                                                                               |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [2026-07-23-authorization-matrix](docs/specs/2026-07-23-authorization-matrix.md)                         | Approved; DB half built, actions not           | The complete two-role (`rep`/`admin`) model. **Amends** PRD-010 and ARCHITECTURE §2/§7 — the base text it amends is superseded, not authoritative                                                                                                             |
+| [2026-08-01-branding-assets-upload](docs/specs/2026-08-01-branding-assets-upload.md)                     | **Draft** — design only, nothing built         | Settings→Branding logo/favicon upload. No code wiring and no migration are in scope                                                                                                                                                                           |
+| [implemented/2026-08-09-list-sort-pagination](docs/specs/implemented/2026-08-09-list-sort-pagination.md) | **Implemented and fully absorbed** — deletable | List sort, pagination, URL filter state. **Already shipped in PR #38 — do not build it.** Every durable claim now lives in ARCHITECTURE.md §4/§4.1 and PROJECT-STRUCTURE.md §6; the file is retained only until someone deletes it, and its own §0 is the map |
 
-**Everything else in `docs/*.md` is permanent.** The specs above are the only exceptions, and
-each says so in its own header. Don't add a transient file to `docs/` without listing it here.
+A spec's content moves into what it feeds once fully incorporated, and it leaves this table in
+the same change. Between "designed" and "deleted" it may sit in `docs/specs/implemented/` —
+see [that folder's README](docs/specs/implemented/README.md) for the three-state rule.
+**Don't add a transient file to `docs/` without adding it here.**
 
-**Before creating any new route, Server Action, component, `src/lib/` module, or migration,
-consult [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) for where it goes** — its §2
-"Four Placement Questions" decides the location, and §4 encodes the placement rules that keep
-the ARCHITECTURE invariants intact. If reality has to diverge from that layout, update that
-file in the same change (see its §6).
+**`docs/DATABASE-SQL.md` was retired on 2026-08-13 and nothing replaces it.** Do not recreate
+it, and **do not add SQL back to `docs/`** — a second copy of the schema is the drift that rule
+exists to prevent, and this one produced two bugs before it went. Its three homeless pieces
+moved to permanent homes: `environment_mismatch` → DATABASE.md §5.6; the RLS-hardening trap →
+DATABASE.md §6.2; the six untested database invariants → ENGINEERING-RULES.md §3.
 
-This file is the single home for Claude Code's working rules on RedyQuote. Keep AI-behavior rules
-here and product/architecture facts in `docs/`.
+---
+
+## 2. Project state
+
+**Verified 2026-08-15.** The `@/*` alias resolves to `./src/*`.
+
+### Built
+
+- **UI, end to end but unwired.** All routes under `src/app/(app)/` (quotes list, quote
+  builder, products, component library, settings), `src/app/(auth)/login/`, the app shell, and
+  **18 primitives** in `src/components/ui/`. Every screen reads from **`src/lib/mock/`**.
+- **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
+- **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
+  `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
+- **Migrations `0001`–`0009`, all applied.** All 13 tables live, RLS enabled on each, and all
+  empty except the seeded `settings` row. `src/lib/supabase/types.ts` is **current** —
+  regenerated 2026-08-13 against `0001`–`0009`, 916 lines, all 13 tables. It once sat at 296
+  lines across two merges because nothing in the merge path runs `db:types`; **if it ever looks
+  short again, that is the symptom.** The per-migration history is in `git log` and
+  [docs/DATABASE.md](docs/DATABASE.md) — not restated here, because it rots.
+- **`src/lib/list/`** — filter/sort/slice (`apply-list-view.ts`), the URL contract
+  (`list-params.ts`), and the router hook (`use-list-params.ts`), consumed by all three list
+  tables plus `src/components/ui/pagination.tsx`. **44 unit tests, and the only tests in the
+  repo.** Shipped in PR #38.
+- **`src/lib/validation/settings.ts`** — a Zod schema over the eight numeric `settings`
+  columns, mirroring the CHECK constraints in `0003`/`0004`. Two of its choices are
+  load-bearing, not incidental: the edit buffer stays a **string** until submit (parsing per
+  keystroke eats a half-typed `2.`, putting the 2.5 cushion out of reach), and there are **no
+  upper bounds**, because PRD §7A has not fixed sane ranges and a wrong ceiling is worse than
+  none. **It validates a form, not a write** — no Server Action consumes it. Wiring the save
+  path does not get to skip re-validating server-side.
+- **`src/lib/config.ts`** (env parsing + constants), **`src/lib/fonts.ts`**, `src/lib/utils.ts`.
+- **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
+  semantic-token rules, GitHub Actions CI.
+
+### Not built
+
+No `src/server/` and **no Server Action exists** — the app has no write path at all. No
+`src/lib/pricing/`. No `e2e/`. An applied schema does not change this: any feature work starts
+by creating the write path, not extending one.
+
+### Delete-on-wiring
+
+`src/lib/mock/` (fixtures) and `src/components/prototype/` (a client-side role switch that is
+**not** authorization). Don't build on either; replace them.
+
+### Blocked
+
+Two open product decisions gate real work, and neither is a coding task
+([docs/DATABASE.md](docs/DATABASE.md) §6):
+
+- **The pricing formula and rounding rules (PRD §7A).** Nothing may infer a calculation order
+  or which fields are canonical.
+- **The fixed quote-line category list (PRD-007A).** The `categories` table ships empty.
+
+**One go-live blocker:** do not wire the save RPC into a Server Action before PRD §7A is signed
+off. That sign-off carries two obligations — confirm the pricing column list, **and** author
+the guard that stops those columns being written directly over the Data API (DATABASE.md §5.1,
+§6.1). The `profiles` role-self-escalation hole is **fixed** — `enforce_profile_role_change()`
+in `0002`.
+
+---
+
+## 3. Non-negotiable invariants
+
+Structural guarantees. Don't write code that breaks them.
+
+1. **The approval gate is two triggers, not one — and not RLS.** Both exits from `Review`
+   (→ `Approved`, → `Draft`) are admin-only inside Postgres via
+   `validate_quote_status_transition`. An RLS `WITH CHECK` **cannot see the old row**, so it
+   cannot express a transition at all. **Do not weaken the trigger assuming RLS is a second
+   layer — it isn't.** `enforce_quote_created_in_draft` is its `BEFORE INSERT` half: without
+   it a rep can `POST` a row already carrying `status = 'approved'` and defeat the gate without
+   ever performing a transition. Neither backstops the other
+   (`supabase/migrations/0007_quotes.sql`; the trap is DATABASE.md §6.2).
+2. **Atomic multi-row save.** Quote (header + lines) and product (fab tiers + defaults + price
+   history) writes go through a single Postgres RPC transaction. No client-side multi-step
+   writes that can leave a row half-written.
+3. **Server-side pricing trust boundary.** The Server Action recomputes the canonical cost
+   breakdown from stored data at save time. Client numbers are UX only and are never persisted
+   as the trusted value. **This one is a rule the code must follow, not a guarantee the
+   database enforces** — RLS grants the row's owner table-wide UPDATE, so the ten value columns
+   on `quotes` are writable directly over the Data API today. The guard is deferred to PRD §7A
+   sign-off. Until then the boundary holds only as far as every write path honours it.
+4. **Quote lifecycle:** Draft → Review → Approved → Sent, **plus Review → Draft** (request
+   changes, PRD-010), and nothing else. Both exits from Review are admin-only. Every status
+   change writes an audit row.
+5. **Append, never overwrite.** Component cost changes append to `price_history`.
+
+---
+
+## 4. Stop and ask
+
+### Off-limits — never touch without explicit human instruction
+
+- **Secrets and env files** — `.env`, `.env.*`, anything holding a Supabase key.
+  `.claude/settings.json` denies these for read _and_ write; that is the mechanical backstop,
+  not a substitute for the rule. `.env.example` is deliberately readable. Consequence: Claude
+  also cannot delete or rotate `.env.local`.
+- **Database migrations** — never create, modify, or delete files under `supabase/migrations/`
+  autonomously. **A migration present in `main` is applied and immutable.**
+- **Auth-related code** — RLS policies, the transition triggers, JWT/role-claim handling,
+  Supabase Auth wiring, session cookies (`@supabase/ssr`), `src/proxy.ts`.
+- **CI/CD config** — `.github/workflows/` and Vercel settings.
+- **Lock files** — `package-lock.json` is an `npm` side effect, not a direct edit.
+- **Dependencies** — do not add or remove packages.
+
+### Escalate — state the change and its reason, then wait for approval
+
+- **Adding or removing a package** — name it, the reason, and the alternative rejected.
+  [docs/TECH-STACK.md](docs/TECH-STACK.md) changes first, in its own PR.
+- **Any schema or migration change** — tables, indexes, RLS policies, triggers, RPC functions,
+  history tables.
+- **Any change to the two-role (`rep`/`admin`) authorization model.**
+- **Any change to how the `Review` exits are gated** — the single most costly mistake
+  available in this repo.
+- **The atomic-RPC contract** or **the server-side pricing trust boundary.**
+- **Adopting an end-to-end test framework** — a TECH-STACK.md §5 decision first.
+- **Editing anything in `docs/`, `CLAUDE.md`, or `CONTRIBUTING.md`** — a deliberate decision
+  and a standalone PR, never folded into feature work (CONTRIBUTING.md, "Documentation
+  changes"). This includes adding a design token.
+
+### In bounds without asking
+
+Implementing PRD-traced features inside an existing route group; writing Vitest tests; adding
+Zod schemas; wiring Server Actions behind the existing authorization path; building screens
+from `src/components/ui/` + the token layer.
+
+When a task appears to need an out-of-bounds change, **flag it and propose it — never make it
+silently.**
+
+---
+
+## 5. Building UI
+
+Four steps, in order. Only the last two are plugin decisions.
+
+**1. `/impeccable shape` first — required, not optional,** for a new route, screen, or
+user-facing component. It plans UX, information architecture, and states _before_ any code
+exists, and **writes no code** — which is precisely why it is allowed when the rest of
+impeccable's generating commands are not. **Backend-only work is exempt:** a migration, a
+Server Action, or a `src/lib/` module follows the `docs/` + PROJECT-STRUCTURE.md path instead.
+
+- **It is an interview, not a one-shot** — a discovery round, 2–3 questions at a time. Budget
+  for the conversation.
+- **The output is a design brief you must explicitly confirm.** An unconfirmed brief is a
+  failure by the skill's own gate. Put the confirmed brief in the PR or the issue.
+- **Order against `superpowers:brainstorming`:** brainstorming settles _what_ and _why_;
+  `shape` settles _what it looks like and how it behaves_. Requirement still open →
+  brainstorming, then `shape`. Requirement already pinned by PRD.md — the normal case — → go
+  straight to `shape`.
+- **If `shape` ever routes you to `/impeccable teach`, stop.** That is its fallback when the
+  context gate fails, and `teach` is forbidden here. The gate passes because `docs/PRODUCT.md`
+  exists and `.claude/settings.json` pins `IMPECCABLE_CONTEXT_DIR=docs`. Being routed to
+  `teach` means the context broke — fix the context, never run the command.
+- **`/impeccable craft` is banned.** It is `shape` plus a build, and the build half is exactly
+  what step 4 prohibits. The ban is about provenance: a screen assembled from
+  `src/components/ui/` and the token layer is reviewable against the design system line by
+  line; one generated wholesale is not.
+
+**2. The design system decides how it looks — always.**
+[docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) → the tokens in `src/app/globals.css` → the
+`no-restricted-syntax` rule in `eslint.config.mjs`. Every color, font, radius, and type size
+comes from there. **Never a hex literal, never a raw Tailwind color class (`bg-slate-100`),
+never a Google Font.** Brand values are Archivo + IBM Plex Mono; colors come from the semantic
+layer (`bg-background`, `text-muted-foreground`, …). Adding a token is a DESIGN-SYSTEM.md
+change requiring approval. No plugin, skill, or CLI output authorizes one.
+
+**3. shadcn/ui builds it.** [components.json](components.json) at the root (style
+`radix-nova`, `cssVariables: true`), `shadcn@4` as a devDependency, and the 18 primitives in
+`src/components/ui/` are shadcn components already adapted to our tokens.
+
+- **Reuse before you add.** Check `src/components/ui/` first, then extend a primitive with a
+  `cva` variant — see the `editable` variant in
+  [src/components/ui/input.tsx](src/components/ui/input.tsx) — before pulling in a new one.
+- **Adding a primitive:** `npx shadcn@latest add <name>`. Output is compatible by construction
+  (shadcn names its tokens exactly as `globals.css` defines them), which is why generated
+  components pass lint. Read the diff anyway — it needs our comment-the-why convention, and a
+  hardcoded color in it is a bug, not a starting point.
+- **`frontend-design@claude-plugins-official` is optional taste input** for a genuinely new
+  screen. It picks no values. Skip it when editing an existing screen — which is most work here.
+
+**4. `impeccable@impeccable` audits the result — it never writes it.** `/impeccable audit` and
+`/impeccable critique` are the sanctioned entry points; `npx impeccable detect src/` is the
+deterministic CLI check (exit `2` = findings, `--json` for tooling). **Never** `craft`,
+`polish`, `teach`, or `document` — the last two write context files, and `document` writes a
+`DESIGN.md` that would silently displace `docs/PRODUCT.md` as impeccable's context.
+
+- **The baseline is clean, so treat any new finding as real.** `detect src/` returns zero
+  findings — not luck: `eslint.config.mjs` already makes the raw palette classes its detectors
+  key on unwritable. A finding means something got past lint.
+- **Three rules are suppressed**, all verified false positives, all repo-wide (`ignoreRules`
+  has no per-file scope). Rationale and the blind spot each creates are in the `$comment` of
+  [.impeccable/config.json](.impeccable/config.json) — **read it before adding a fourth.**
+  `npx impeccable detect <path> --no-config` shows what they hide. Suppress only via
+  `npx impeccable ignores add-rule <rule>`, never by changing a token, and always report what
+  you suppressed and why. Note `--reason` is silently dropped by `add-rule`, so the rationale
+  goes in `$comment`. `--local` writes a gitignored per-developer file — never put a team
+  decision there.
+- **`em-dash-overuse` on `/quotes/new` is known, deliberate noise — do not suppress it.** It
+  counts 40 `—` placeholder glyphs in table cells as prose cadence. It is `advisory: true`, so
+  the route still exits 0.
+- **Static scanning cannot check contrast, and that gap is real.** `low-contrast` and
+  `gray-on-color` need two resolved colors; our semantic tokens resolve at runtime, so
+  `detect src/` **skips** the WCAG AA question rather than answering it. To actually check:
+  `npm run dev`, then `npx impeccable detect http://localhost:3000/<route>`. Nothing to
+  install. Never add `puppeteer` to `package.json`, whatever impeccable's error message says.
+- **Do not create `DESIGN.md`, rename DESIGN-SYSTEM.md to it, or add frontmatter to it**,
+  without approval. The four `design-system-*` rules are inert by deliberate choice — a second
+  machine-readable copy of the token values would drift, and ESLint enforces the same thing.
+
+**Ship gate:** `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm run test` —
+the four CI runs. A suggestion that fails lint was never a valid suggestion.
+
+---
+
+## 6. Database and migrations
+
+**Merging to `main` APPLIES the migration. There is no separate apply step.** The Supabase
+GitHub integration pushes on merge — verified 2026-08-13. Three consequences:
+
+1. **The PR review is the only gate.** Read the SQL _in the PR_, not after. A pre-flight that
+   runs once the database has already changed protects nothing — and dev runs against a hosted
+   project with no local stack, no `db reset`, and no automated backups on the Free tier.
+2. **`db:types` is the step that actually gets skipped**, because the integration doesn't run
+   it. Run `npm run db:types` after any migration merges, and commit the result.
+3. **A migration is immutable the moment it merges**, not once someone applies it. A correction
+   is a new file every time (`0004` → `0003`, `0009` → `0006`). `db push` compares recorded
+   versions, not file contents, so editing a merged migration is skipped silently while reading
+   as though it landed. **Run `git fetch` before editing any migration** — the guard hook reads
+   `origin/main`, and a stale clone is its one false-allow.
+
+**`/db-migrate` no longer applies anything — the merge already did.** Its file
+([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) says so in its own opening
+line; the name is a holdover kept only because renaming it breaks every citation. What it is
+worth running for is everything _after_ the push: `db:types`, the `relrowsecurity` check on
+every new table, the both-halves trigger check, and the blocking gate. That is verification,
+not application. It carries a fallback push for the one case where the integration did not
+run, gated on reading the SQL first. There is deliberately **no `npm run db:migrate`** wrapper.
+
+**No local Supabase stack.** Docker is not installed. Never suggest `supabase start` or
+`db reset` — see [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4.
+
+---
+
+## 7. Commands and machine-enforced config
+
+[`package.json`](package.json) is the authority on what scripts exist. **Do not invent one.**
+
+- **Run clean:** `dev`, `build`, `start`, `lint`, `typecheck`, `format`, `format:check`.
+- **`npm run test`** runs the 44 unit tests under `src/lib/list/`. `vitest.config.ts` sets no
+  `passWithNoTests`, so an empty suite fails rather than passing silently — a green run means
+  the tests actually ran.
+- **`npm run db:push` / `db:types`** both run, and the project is linked. `db:push` normally
+  has nothing pending (see §6). A failed `db:types` is safe: it generates to a gitignored
+  `.tmp` and renames only on exit 0, so `types.ts` is left untouched. Re-run it once
+  connected — never hand-edit `types.ts`.
+- **There is no end-to-end suite, by decision.** No `test:e2e`, no `playwright.config.ts`, no
+  `e2e/`, and `@playwright/test` is not a dependency — an installed runner that runs nothing
+  implies coverage that does not exist (TECH-STACK.md §5). The specific assertions nobody
+  makes are registered in ENGINEERING-RULES.md §3.
+- **Slash commands:** `/db-migrate` (verification, see §6) and `/doc-audit` (three-pass doc
+  audit: `align` → `drift` → `absorb`; README.md documents the arguments). Run `/doc-audit`
+  after landing a spec, after a migration merges, and after any `docs/` edit.
+
+### Enforced by the harness, not by convention
+
+`permissions` in [.claude/settings.json](.claude/settings.json) plus one `PreToolUse` hook,
+[.claude/hooks/block-applied-migration.mjs](.claude/hooks/block-applied-migration.mjs). This is
+a floor under the rules in §4, not a replacement for reading them.
+
+- **Applied migrations are unwritable.** The hook denies `Write`/`Edit` on any
+  `supabase/migrations/*.sql` present in `origin/main` or local `main`. A migration still on a
+  feature branch stays editable — the normal case while under review. It **fails open** when
+  git is unavailable.
+- **`.env` and `.env*.local` are denied for read and write.** `.env.example` is readable.
+- **`db push` in any spelling forces a prompt** — `ask`, not `deny`, because `deny` would break
+  `/db-migrate` itself. **`git push *` also prompts.**
+- **`supabase db reset` is denied outright.**
+- Writing another hook: use the **shell form** (`"command": "node path/to.mjs"`). The exec form
+  silently never fires here — indistinguishable from a hook that approved. Prove a new hook
+  fires before trusting it.
+
+---
+
+## 8. Agent behavior and workflow
+
+`CONTRIBUTING.md` owns branch naming, commit convention, the review flow, and the self-review
+gate — read them there, they are not restated. These are the agent-specific constraints:
+
+- **Branch creation is a human action** — never create one autonomously.
+- **Never push to any remote branch** without explicit approval — including the branch you are
+  on, not just `main`.
+- **Never open, close, or comment on a Pull Request** without explicit instruction.
+- **Plan before execute** — for any non-trivial task, show a plan and wait for approval.
+- **One change at a time** when modifying existing files. Propose, explain why, wait. No silent
+  batch edits.
+- **Scope discipline** — touch only what was asked. Flag out-of-scope issues without acting.
+- **No invented scope** — no features, refactors, error handling, or abstractions beyond the
+  request.
+- **Ask, don't assume.** Keep clarifying questions minimal and batched, not one at a time.
+- **Uncertainty is explicit.** Never present a guess as a fact.
+- **When blocked, stop and say so.** Name what is ambiguous, state the options, and wait. Do
+  not guess, do not proceed on an assumption, and do not silently narrow the task.
+
+---
+
+## 9. Authority order
+
+When two sources disagree, the higher one wins:
+
+1. **The filesystem and `git`** — a document claiming a file exists loses to `ls`.
+2. **`CONTRIBUTING.md`** for process, governance, and commands.
+3. **`docs/` by lineage:** PRODUCT → PRD → ARCHITECTURE → TECH-STACK → ENGINEERING-RULES.
+4. **This file**, for the Claude Code behavior rules it owns.
+5. **`README.md` and `docs/BACKLOG.md`** — they restate; they own nothing.
+
+---
 
 ## Engineering rules
 
@@ -81,439 +394,3 @@ here and product/architecture facts in `docs/`.
 The line above **imports** the project's coding conventions, banned patterns, and testing rules
 into every session. They are not restated here. If one changes, edit
 `docs/ENGINEERING-RULES.md`; never add a competing copy to this file.
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) is the governance authority - branching, commit convention,
-review flow, the self-review gate, the documentation-change process, and the command policy.
-
-## Authority order
-
-When two sources disagree, the higher one wins:
-
-1. The filesystem and `git` - a document claiming a file exists loses to `ls`.
-2. `CONTRIBUTING.md` for anything about process, governance, or commands.
-3. `docs/` by lineage: PRODUCT -> PRD -> ARCHITECTURE -> TECH-STACK -> ENGINEERING-RULES. Each
-   document's header names its own `Derived from:` / `Downstream:` files.
-4. This file, for the Claude Code behavior rules below that it owns.
-5. `README.md` and `docs/BACKLOG.md` - they restate, they own nothing.
-
-## Project state
-
-**Last verified: 2026-08-08.** Confirm a file or script still exists before relying on this
-section — it is a snapshot, and a stale one is worse than none.
-
-**Built.** The `@/*` alias resolves to `./src/*`.
-
-- **UI, end to end but unwired.** All routes under `src/app/(app)/` (quotes list, quote
-  builder, products, component library, settings) plus `src/app/(auth)/login/`, the app shell,
-  and the primitives in `src/components/ui/`. Every screen reads from **`src/lib/mock/`**, not
-  from Supabase.
-- **Token layer** — `src/app/globals.css`, enforced by `eslint.config.mjs`.
-- **Supabase plumbing** — `src/lib/supabase/` (browser + server clients, session refresh),
-  `src/proxy.ts`, `.env.example`, `supabase/config.toml`, and a linked hosted project.
-- **Migrations `0001`–`0005`, all applied to the linked project** — extensions and enums;
-  `profiles` + auth + `is_admin()` + the role-escalation guard; `settings` +
-  `settings_history` + seed row; `0004`, which renames the two markup columns from
-  `*_multiplier` to `*_percent`; and `0005`, which narrows `settings_history` SELECT from
-  flat to `is_admin()` (PRD-018B). Each table ships with its own RLS, verified enabled on the
-  remote 2026-08-08. `src/lib/supabase/types.ts` is generated against this schema and is
-  current — `0005` changed no columns, so it did not move.
-- **Migrations `0006`–`0008`, applied 2026-08-13** (PR #40). `0006_master_data.sql`
-  (categories, products, fab_tiers, components, product_defaults, price_history, their
-  triggers and RLS, plus a backfill index on `settings.updated_by`); `0007_quotes.sql`
-  (quotes, lines, status history, the sequence table, **both** lifecycle triggers, RLS);
-  `0008_rpc_functions.sql` (the four atomic-write RPCs). All ten tables are live and empty.
-  - **`0009_components_quoted_date.sql`, applied 2026-08-13** (PR #41). Adds
-    `components.quoted_date` and repoints both component price-history functions off
-    `current_date`, correcting `0006` — which had already merged when the omission was found,
-    so it could not be edited. Same shape as `0004` correcting `0003`. Reason it matters:
-    without it PRD-009's freshness badge measures "how long since we edited this" on
-    components and "how long since the vendor quoted" on fab tiers, against one set of
-    thresholds (docs/DATABASE.md §4.8).
-  - **`src/lib/supabase/types.ts` is current again** — regenerated 2026-08-13 against
-    `0001`–`0009`, 916 lines, all 13 tables. It had sat at 296 lines across two merges,
-    knowing none of the new tables, because nothing in the merge path runs `db:types` (see
-    the next bullet). If it ever looks short again, that is the symptom.
-  - **Merging to `main` APPLIES the migration. There is no separate apply step.** The
-    Supabase GitHub integration pushes on merge — verified 2026-08-13: `0009` reported
-    `remote: ""` before PR #41 merged and `remote: "0009"` after, with no `db push` run by
-    anyone. `0006`–`0008` landed the same way via #40.
-    - **Consequence 1 — the PR review is the only gate.** `/db-migrate`'s pre-flight cannot
-      protect a hosted database it reaches after the fact. Read the SQL in the PR, not after.
-    - **Consequence 2 — `db:types` is the step that actually gets skipped**, because the
-      integration does not run it. Run `npm run db:types` after any migration merges, and
-      commit the result. This is the failure that produced the 620-line gap above.
-    - **Consequence 3 — a migration is immutable the moment it merges**, not once someone
-      applies it. That is stricter than "applied and immutable" implies, and it is what makes
-      a correction a new file every time (`0004` → `0003`, `0009` → `0006`).
-    - `db push` compares recorded versions, not file contents, so editing a merged migration
-      is skipped silently while reading as though it landed. A `PreToolUse` hook denies the
-      edit — see the machine-enforced bullet under "Claude Code-specific config". Run
-      `git fetch` before editing a migration; the guard reads `origin/main`, and a stale
-      clone is its one false-allow.
-  - **`npm run db:types` works, and a failed run is now safe.** It calls `npx supabase`, not a
-    bare `supabase`, generates to `types.ts.tmp` and renames only on exit 0, then pipes through
-    Prettier with `--end-of-line crlf` — so no manual follow-up is needed. A failure (no
-    network, project unlinked) leaves `types.ts` untouched; the CLI's JSON error blob lands in
-    the gitignored `.tmp` instead. Re-run it once connected — don't hand-edit `types.ts`.
-- **One validation module — `src/lib/validation/settings.ts`** (PR #3). A Zod schema over the
-  eight numeric `settings` columns, mirroring the named CHECK constraints in `0003`/`0004`, and
-  consumed only by the settings Defaults tab. `zod@^4` is a real dependency now, so a second
-  module adds no new tool. Read it before writing one — it is the shape to copy, and two of its
-  choices are load-bearing rather than incidental: the edit buffer stays a **string** until
-  submit (parsing per keystroke eats a half-typed `2.`, which puts the 2.5 cushion out of
-  reach), and there are **no upper bounds**, because PRD §7A has not fixed the sane ranges and a
-  wrong ceiling is worse than none.
-  - **It validates a form, not a write.** No Server Action consumes it, because none exists.
-    The database is still the enforcement boundary; this only tells an admin which field is
-    wrong before a round trip. Wiring the save path does not get to skip re-validating
-    server-side.
-- **Tooling** — Prettier, Husky + lint-staged, ESLint with the `ui/` boundary and
-  semantic-token rules.
-
-**Not built.** No `src/server/actions/`, no `src/lib/pricing/`,
-no `e2e/`. **Nothing in the app talks to the database
-yet**, and no Server Action exists — so any feature work starts by creating that path, not by
-extending one. An applied schema does not change this: `profiles`, `settings`, and
-`settings_history` exist on the remote and hold nothing but the seeded `settings` row —
-zero users, zero history. Every screen still reads `src/lib/mock/`.
-
-**Two prototype-only directories, both delete-on-wiring** — `src/lib/mock/` (fixtures) and
-`src/components/prototype/` (a client-side role switch that is _not_ authorization). Don't
-build on either; replace them.
-
-**Two open product decisions block real work** — the pricing formula (PRD §7A) and the
-fixed-category list (PRD-007A). See docs/DATABASE.md §6.
-
-## Approved stack
-
-- **Next.js 16** (App Router) · **React 19** · **TypeScript 5** · **Node.js 24 LTS** (Active
-  LTS; `.nvmrc` + `engines.node`)
-- **Supabase** — Postgres 17 + Auth. Single-tenant, single runtime role.
-- **npm only** — do not use pnpm or yarn.
-- **Cut for v1:** Resend, Sentry, PostHog, `pgmq`, `pg_cron`, Edge Functions. Do not
-  introduce a tool that isn't in TECH-STACK.md.
-
-## Non-negotiable invariants
-
-These are structural guarantees, not conventions — don't write code that breaks them:
-
-- **Database-enforced approval gate — two triggers, not one.** Both exits from `Review`
-  (→ `Approved` and → `Draft`) are restricted to `role = 'admin'` inside Postgres, never by
-  a UI-only check. The mechanism is `validate_quote_status_transition`, **not** an RLS
-  policy: `WITH CHECK` cannot see the old row, so it cannot express a transition. Don't
-  weaken the trigger on the assumption RLS is a second layer here — it isn't
-  (`supabase/migrations/0007_quotes.sql`; the trap is docs/DATABASE.md §6.2).
-  - That trigger is `BEFORE UPDATE`, so it covers the update path **only**.
-    `enforce_quote_created_in_draft` is its `BEFORE INSERT` half: without it, a rep can
-    `POST` a new row already carrying `status = 'approved'` and defeat the gate without
-    ever performing a transition. Both are load-bearing; neither is a backstop for the
-    other (docs/DATABASE.md §5.5).
-- **Atomic multi-row save** — quote (header + line items) and product (fab tiers + defaults
-  - price history) writes go through a single Postgres RPC transaction. No client-side
-    multi-step writes that can leave a row half-written.
-- **Server-side pricing trust boundary** — the Server Action recomputes the canonical cost
-  breakdown from stored data at save time. Client-calculated numbers are for UX only and
-  are never persisted as the trusted value.
-  - **This one is a rule the code must follow, not a guarantee the database enforces**, and
-    the difference matters. RLS grants the row's owner table-wide UPDATE, so the ten value
-    columns on `quotes` are writable directly over the Data API today. The guard is
-    deliberately deferred to PRD §7A sign-off, which fixes the canonical column list
-    (docs/DATABASE.md §5.1 and §6.1). Until then the boundary holds only as far as every
-    write path honours it.
-- **Quote lifecycle** — Draft → Review → Approved → Sent, **plus
-  Review → Draft** (request changes, PRD-010), and nothing else. Both transitions
-  out of Review are admin-only. Every status change writes an audit row.
-- **Append, never overwrite** — component cost changes append to `price_history`.
-
-## Scope boundaries
-
-**In bounds** without asking: implementing PRD-traced features inside an existing route group,
-writing Vitest tests, adding Zod schemas, wiring Server Actions behind the existing
-authorization path, and building screens from `src/components/ui/` + the token layer.
-
-**Out of bounds** without explicit human instruction - stop and get approval. This covers
-everything under **Off-limits** below, plus these design-level contracts that are not file paths:
-
-- Any change to how the `Review` exits are gated. The mechanism is the
-  `validate_quote_status_transition` trigger, not an RLS policy, and weakening it on the
-  assumption RLS is a second layer is the single most costly mistake available here.
-- The atomic-RPC contract for quote and product saves.
-- The server-side pricing trust boundary.
-
-When a task appears to need an out-of-bounds change, flag it and propose it - never make it
-silently.
-
-## Decision escalation
-
-Stop and get explicit human approval before any of the following. State the change and its
-reason first. **Touching anything under Off-limits always requires this**; the triggers here are
-the ones that are not file-scoped or are broader than a single path:
-
-- **Adding or removing a package** - name the package, the reason, and the alternative
-  rejected; wait for approval. Updates [`docs/TECH-STACK.md`](docs/TECH-STACK.md) first.
-- **Any schema or migration change** - new, edited, or dropped tables, indexes, RLS policies,
-  triggers, RPC functions, or history tables.
-- **Breaking changes to a database schema or shared contract** - sign-off before commit.
-- **Any change to the two-role authorization model** (`rep` / `admin`).
-- **Adopting an end-to-end test framework** - a docs/TECH-STACK.md §5 decision first.
-
-## Off-limits
-
-Never touch the following without explicit human instruction:
-
-- **Secrets and env files** - `.env`, `.env.*`, and anything holding a Supabase key.
-  `.claude/settings.json` denies these reads outright; that is the mechanical backstop, not a
-  substitute for the rule. `.env.example` is deliberately still readable.
-- **Lock files** - `package-lock.json` is a side-effect of `npm`, not a direct edit.
-- **Database migrations** - never create, modify, or delete files under `supabase/migrations/`
-  autonomously. A migration present in `main` is applied and immutable.
-- **CI/CD config** - `.github/workflows/` and Vercel settings require human review.
-- **Auth-related code** - RLS policies, the transition trigger, JWT/role-claim handling,
-  Supabase Auth wiring, session cookies (`@supabase/ssr`), and `src/proxy.ts`.
-- **Dependency changes** - do not add or remove packages; state the package and reason and get
-  approval first.
-
-## Agent behavior
-
-- **Plan before execute** - for any non-trivial task, show a plan and wait for approval before
-  writing code or editing files.
-- **Ask, do not assume** - if the task is ambiguous, ask before proceeding rather than guessing.
-  Keep clarifying questions minimal and batched, not a drip of one-at-a-time round trips.
-- **Scope discipline** - touch only what was explicitly asked. Flag out-of-scope issues without
-  acting on them.
-- **Stop and report** - if blocked or on a wrong path, say so immediately. Do not burn cycles on
-  a dead end.
-- **One change at a time** - when modifying existing files, propose one change, explain why, and
-  wait for approval. No silent batch edits.
-- **No invented scope** - do not add features, refactors, error handling, or abstractions
-  beyond what was requested.
-- **Uncertainty is explicit** - if unsure, say so. Never present a guess as a fact.
-
-## Workflow
-
-`CONTRIBUTING.md` owns branch naming, commit convention, the review flow, and the self-review
-gate. Those rules are **not restated here** - read them there. These are the constraints
-specific to working as an agent:
-
-- **Branch creation is a human action** - never create a branch autonomously.
-- **PRs** - never open, close, or comment on a Pull Request without explicit instruction.
-- **Pushing to remote** - never push to any remote branch without explicit human approval. This
-  includes the branch you are currently working on, not just `main`.
-
-## Claude Code-specific config
-
-- **Commands** (script list verified 2026-08-01, the `db:*` lines re-verified 2026-08-08 —
-  `package.json` is the authority; don't invent scripts):
-  - Run clean: `npm run dev`, `build`, `lint`, `typecheck`, `format`, `format:check`, `start`.
-  - `npm run test` runs the unit suites under `src/lib/list/`. `vitest.config.ts` sets no
-    `passWithNoTests`, so an empty suite would fail rather than pass silently — a green `test`
-    means the tests actually ran.
-  - `npm run db:push` / `db:types` both run, and the project is linked. `db:push` normally has
-    **nothing pending**, because merging to `main` applies migrations automatically; `db:types`
-    regenerates against the real applied schema and must be run after every such merge (see
-    "Built" above, which is the authority on schema state — don't duplicate the migration list
-    here, it rots).
-  - **There is no end-to-end suite, by decision.** No `test:e2e`, no
-    `playwright.config.ts`, no `e2e/`, and `@playwright/test` is no longer a
-    dependency — an installed runner that runs nothing implies coverage that
-    does not exist (docs/TECH-STACK.md §5).
-- **`/db-migrate` no longer applies anything — the merge already did.** Its own file
-  ([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) still describes itself as
-  the apply path, and **that description is now wrong**; it needs rewriting, which is its own
-  change. Verified 2026-08-13: running it against a freshly merged `0009` found the remote
-  already up to date and pushed nothing.
-  - **What it is still worth running for** is everything after the push: `db:types`, the
-    `relrowsecurity` check on every new table, the trigger check, and the blocking gate. That
-    is real value — the integration does none of it — but it is verification, not application.
-  - **Where the actual gate moved: the PR.** Dev runs against a hosted project with **no local
-    stack and no `db reset`** (docs/ENVIRONMENTS.md §1) and no automated backups on the Free
-    tier (PRD NFR-006a). Since merge applies, the SQL must be read **in review**. A pre-flight
-    that runs after the database changed protects nothing.
-  - `permissions.ask` still forces a prompt on any `db push` spelling and the `PreToolUse`
-    hook still blocks edits to committed migrations. Both remain useful, and neither is the
-    review — the prompt does not show anyone the SQL.
-  - There is deliberately **no `npm run db:migrate`** wrapper: a one-liner that pushes
-    unreviewed SQL is the thing this command exists to prevent.
-- **No local Supabase stack.** Development runs against a hosted project; Docker is not
-  installed. Never suggest `supabase start` or `db reset` as a current step — see
-  [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4 for the deferred adoption plan.
-- **Building UI has its own section below.** `.claude/settings.json` is the authority on which
-  plugins every developer gets; see "Building UI" for which of them touch design and how.
-- **Secrets:** never read, print, or write `.env`, `.env*.local`, or any file holding the
-  Supabase service-role key or other credentials.
-- **Three of the rules above are machine-enforced now, not advisory** — `permissions` in
-  [.claude/settings.json](.claude/settings.json) plus one `PreToolUse` hook,
-  [.claude/hooks/block-applied-migration.mjs](.claude/hooks/block-applied-migration.mjs).
-  Verified live 2026-08-08. This is a floor under the rules, not a replacement for reading them.
-  - **Applied migrations are unwritable.** The hook denies `Write`/`Edit` on any
-    `supabase/migrations/*.sql` present in `origin/main` or local `main` — the proxy for
-    "applied", since this repo merges then pushes. A migration still on a feature branch
-    stays editable even after it is committed, which is the normal case while it is under
-    review. It fails open when git is unavailable, so it hardens the immutability rule above
-    without replacing it. Its one gap is a stale `origin/main`: fetch before editing.
-  - **`.env` and `.env*.local` are denied for read _and_ write**; `.env.example` is
-    deliberately still readable. Consequence: Claude also cannot delete or rotate
-    `.env.local` — lift the rule in `permissions.deny` first, or do it by hand.
-  - **`db push` in any spelling forces a prompt** — `permissions.ask`, not `deny`, because
-    `deny` would break `/db-migrate` itself, which runs `npm run db:push` at its push step.
-  - Writing another hook: use the **shell form** (`"command": "node path/to.mjs"`). The exec
-    form (`"command": "node", "args": [...]`) silently never fires here — indistinguishable
-    from a hook that approved. Prove a new hook fires before trusting it.
-- **Editing source-of-truth docs:** changes to anything in `docs/` are deliberate decisions,
-  not incidental edits during feature work — call them out and get approval, don't fold them
-  into an unrelated change.
-
-## Building UI
-
-Four steps, in order. Only the last two are plugin decisions.
-
-**1. `/impeccable shape` first — required, not optional.**
-Every piece of **UI-bearing** work starts here: a new route, a new screen, or a new
-user-facing component. `shape` plans the UX, information architecture, and states _before_
-any code exists, and it **writes no code** — which is precisely why it is allowed when the
-rest of impeccable's generating commands are not (step 4). Backend-only work is **exempt**:
-a migration, a Server Action, or a `src/lib/` module follows the `docs/` +
-[docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) path instead, because `shape` has no
-useful output for something with no surface.
-
-- **It is an interview, not a one-shot.** `shape` opens with a discovery round and asks 2–3
-  questions at a time, then waits. Budget for the conversation; firing it off and walking away
-  gets you nothing. `docs/PRODUCT.md` and `docs/PRD.md` shorten it by answering questions in
-  advance, but they do not replace it — `shape` is task-specific and PRD-level scope is not a
-  design brief.
-- **The output is a design brief, and you must explicitly confirm it.** The skill's own gate
-  treats an unconfirmed brief as a failure — a brief the tool drafted and nobody agreed to is
-  not a plan. Put the confirmed brief in the PR or the issue: it is the design rationale a
-  reviewer needs, and writing the "why" down is already this repo's convention (see the
-  comment style in any `src/components/ui/` file).
-- **Order against `superpowers:brainstorming`, which also claims to go first.** Brainstorming
-  settles _what_ to build and _why_; `shape` settles _what it looks like and how it behaves_.
-  Requirement still open → brainstorming, then `shape`. Requirement already pinned by
-  [docs/PRD.md](docs/PRD.md) — the normal case here — → straight to `shape`.
-- **If `shape` ever routes you to `/impeccable teach`, stop.** That is the skill's documented
-  fallback when its context gate fails, and `teach` is forbidden here (step 4). The gate
-  passes because `docs/PRODUCT.md` exists and `.claude/settings.json` pins
-  `IMPECCABLE_CONTEXT_DIR=docs` — verified 2026-08-08. Being routed to `teach` means the
-  context broke; fix the context, never run the command.
-- **`shape` plans around an open decision, it cannot close one.** Two are still open and block
-  the work it would plan: the pricing formula (PRD §7A) and the fixed-category list
-  (PRD-007A). See docs/DATABASE.md §6.
-
-**`/impeccable craft` is banned — use `shape` instead.** `craft` is `shape` plus an end-to-end
-build, and the build half is exactly what step 4 prohibits: impeccable does not write UI in
-this repo. Run `shape`, then build it yourself through steps 2 and 3. The ban is about
-provenance, not output quality — a screen assembled from `src/components/ui/` and the token
-layer is reviewable against the design system line by line; one generated wholesale is not,
-and it is the fastest route to a hardcoded color or an off-scale type size landing unnoticed.
-
-**2. The design system decides how it looks — always.**
-[docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) → the tokens in `src/app/globals.css` → the
-`no-restricted-syntax` rule in `eslint.config.mjs`. Every color, font, radius, and type size
-comes from there. Never a hex literal, never a raw Tailwind color class (`bg-slate-100`), never
-a Google Font — brand values are Archivo + IBM Plex Mono, and colors come from the semantic
-layer (`bg-background`, `text-muted-foreground`, …). Adding a token is a DESIGN-SYSTEM.md
-change requiring approval, per "Editing source-of-truth docs" above. No plugin, skill, or CLI
-output authorizes one.
-
-**3. shadcn/ui builds it.** This is a shadcn project: [components.json](components.json) at the
-root (style `radix-nova`, `cssVariables: true`), `shadcn@4` as a devDependency, and the 15
-primitives in `src/components/ui/` are shadcn components already adapted to our tokens.
-
-- **Reuse before you add.** Check `src/components/ui/` first, then extend a primitive with a
-  `cva` variant — see the `editable` variant in
-  [src/components/ui/input.tsx](src/components/ui/input.tsx) — before pulling in a new one.
-- **Adding a primitive:** `npx shadcn@latest add <name>`. Its output is compatible by
-  construction: shadcn names its tokens exactly as `globals.css` defines them (`background`,
-  `card`, `popover`, `primary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`,
-  `chart-1`–`5`, `sidebar-*`), which is why generated components pass lint. Still read the diff
-  before committing — a generated file needs our comment-the-why convention, and any hardcoded
-  color in it is a bug, not a starting point.
-- **`frontend-design@claude-plugins-official` is optional taste input** for a genuinely new
-  screen: hierarchy, restraint, avoiding the AI-default look. It picks no values. Skip it when
-  editing a screen that already exists, which is most of the work here.
-
-**4. `impeccable@impeccable` audits the result — it never writes it.** `/impeccable audit` and
-`/impeccable critique` are the sanctioned entry points; `npx impeccable detect src/` is the
-deterministic CLI check (exit `2` means findings, `--json` for tooling). Do not use
-`/impeccable craft`, `/impeccable polish`, or any of its other generating commands to build
-UI, whatever its own description advertises. **`shape` (step 1) is the single exception, and
-only because it emits a plan rather than code.**
-
-- **Its context is pinned to `docs/`.** `.claude/settings.json` sets
-  `env.IMPECCABLE_CONTEXT_DIR=docs`, so impeccable's skill loader always reads
-  [docs/PRODUCT.md](docs/PRODUCT.md). Without the pin a `PRODUCT.md`, `DESIGN.md`, or
-  `.impeccable.md` landing at the repo root silently wins and `docs/PRODUCT.md` stops being
-  read, which fails impeccable's product gate and routes it to `/impeccable teach`. **Never run
-  `teach` or `document`** — both write context files, and `document` writes `DESIGN.md`.
-- **The baseline is clean — treat any new finding as real.** Verified 2026-08-05 against
-  `impeccable@3.5.0`: `npx impeccable detect src/` returns **zero** findings and exit 0. That is
-  not luck. Most of its high-signal detectors (`ai-color-palette`, `gray-on-color`,
-  `cream-palette`) key on raw Tailwind palette classes, and `eslint.config.mjs` already makes
-  those unwritable — ESLint gets there first, structurally. So there is no standing noise to
-  triage and **no pre-seeded suppression list**. A finding means something got past lint.
-  - Suppress only after establishing the finding contradicts
-    [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md), and then never by changing a token: run
-    `npx impeccable ignores add-rule <rule>`, which writes `detector.ignoreRules` into
-    `.impeccable/config.json` — or an `impeccable-disable-next-line <rule>` comment for a
-    genuine one-off. `.impeccable/config.json` **exists and is committed** as of 2026-08-08,
-    carrying exactly one entry — see the next bullet. The command's `--local` scope writes
-    `.impeccable/config.local.json`, which is per-developer and gitignored — never put a team
-    decision there. **Always report what you suppressed and why.**
-  - **`--reason` does not work on `add-rule`** — it is accepted silently and dropped (the CLI
-    stores reasons only for `add-value`). So the rationale goes in a `$comment` key at the top
-    of `config.json`, which the parser ignores harmlessly; this is verified, not assumed. Keep
-    writing it there: an unexplained suppression is indistinguishable from a mistake.
-  - **Three rules are suppressed, all verified false positives, all repo-wide.**
-    `ignoreRules` has no per-file scope (only `ignoreValues` does), so repo-wide is the
-    granularity the tool offers. Full rationale and the blind spot each one creates is in the
-    `$comment` of [.impeccable/config.json](.impeccable/config.json).
-    `npx impeccable detect <path-or-url> --no-config` bypasses the config and is the way to
-    audit what is being hidden. **Read the blind spots before adding a fourth — four
-    suppressions out of one detector set is a signal about tool fit, not a free action.**
-    - `cramped-padding` and `nested-cards` both fire on the **same** element: the DataTable's
-      scroll wrapper in `src/components/ui/data-table.tsx`. It carries no padding deliberately
-      (an inset peels the `bg-muted` header off its border, DESIGN-SYSTEM.md §7.11), and its
-      bordered, rounded, **transparent** shell reads to the detector as a card whenever a table
-      sits inside a `Card`. Verified false: `[data-slot=card] [data-slot=card]` is 0 on every
-      route. `nested-cards` is on impeccable's absolute-ban list, so this is the costliest of
-      the three — a real nested card would now pass unnoticed.
-    - `clipped-overflow-container` fires on any `position: absolute` child of the app shell's
-      `overflow-hidden` div, which is **every `sr-only` element** — and being clipped is the
-      whole point of `sr-only`. Confirmed twice by A/B test. Every workaround traded
-      screen-reader output for a quieter detector, which is the wrong trade.
-  - **`em-dash-overuse` on `/quotes/new` is known, deliberate noise — do not suppress it.**
-    It counts 42 em-dashes; 40 are the `—` placeholder glyphs in table cells and only 2 are
-    prose, so it is wrong about AI cadence. It is `advisory: true`, so the route still exits
-    **0** and the exit-code contract holds. Left in place because it is what surfaced the 40
-    dash cells that announced as silence to a screen reader (now fixed via `EmptyValue`).
-- **Static scanning cannot check contrast here — that gap is real and known.** `low-contrast`
-  and `gray-on-color` need two resolved colors. Our components use semantic tokens, which
-  resolve at runtime from `src/app/globals.css`, so a `detect src/` pass sees no color pair and
-  stays silent. It is not confirming the WCAG AA floor in DESIGN-SYSTEM.md; it is skipping the
-  question.
-  - To actually check contrast, audit the rendered page: `npm run dev`, then
-    `npx impeccable detect http://localhost:3000/<route>`. **Nothing to install:** `puppeteer`
-    is an `optionalDependency` of `impeccable`, so `npx` already pulls it into its own cache
-    (verified 2026-08-08 — URL mode launches Chrome with no separate install). Should it ever
-    go missing, install it outside the project; never into `package.json`, which is what
-    impeccable's own `npm install puppeteer` error message would have you do (it is not in
-    TECH-STACK.md).
-  - The four `design-system-*` rules are also inert: impeccable builds its font/color/radius
-    allowlists from the **YAML frontmatter** of a `DESIGN.md` (repo root, then
-    `.agents/context/`, then `docs/`) and bails the moment that frontmatter is missing — the
-    markdown body is never read for this. We have `docs/DESIGN-SYSTEM.md`: different filename,
-    no frontmatter. Leaving it inert is the current, deliberate choice; a second
-    machine-readable copy of the token values would drift from DESIGN-SYSTEM.md, and ESLint
-    already enforces the same constraint. Do not create `DESIGN.md`, rename DESIGN-SYSTEM.md
-    to it, or add frontmatter, without approval.
-
-**Ship gate:** `npm run lint` and `npm run typecheck`. A suggestion that fails lint was never a
-valid suggestion.
-
-`superpowers@claude-plugins-official` is the third plugin on the roster — process guidance, not
-a design layer.
-
-## When blocked
-
-Stop and say so. Do not guess, do not proceed on an assumption, and do not silently narrow the
-task. Name what is ambiguous, state the options, and wait.

@@ -1,7 +1,7 @@
 # PROJECT-STRUCTURE.md — Directory Layout & File Placement
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-15
 **Source of truth for:** where each kind of file lives and the rules for placing new code —
 so features and components land in the right place and don't break the invariants in
 docs/ARCHITECTURE.md.
@@ -11,10 +11,9 @@ docs/ARCHITECTURE.md.
 
 ---
 
-> **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
+> **Mostly built, as of 2026-08-15.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0005`; `0006` onward — categories, products, quotes, RPCs — is
-> untranscribed. **Which of those files have reached the remote is tracked in CLAUDE.md's
+> holds `0001`–`0009`. **Which of those files have reached the remote is tracked in CLAUDE.md's
 > "Project state", not here.** This file describes layout; push state restated in a second
 > place has already drifted once.
 > Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
@@ -96,7 +95,8 @@ redyquote/
 │  │  └─ freshness-badge.tsx        # PRD-009 Current/Aging/Re-quote + Deactivated
 │  ├─ lib/                          # framework-agnostic logic; no JSX, no React imports
 │  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §7A
-│  │  ├─ validation/            [ ] # Zod schemas for Server Action inputs (ARCH §5)
+│  │  ├─ validation/            [~] # Zod schemas (ARCH §5) — settings.ts only so far
+│  │  ├─ list/                      # list view: filter/sort/slice + URL params (PR #38)
 │  │  ├─ mock/                 [tmp]# fixtures standing in for the read path
 │  │  ├─ supabase/
 │  │  │  ├─ server.ts               # session-bound server client (@supabase/ssr) — RLS applies
@@ -299,12 +299,21 @@ Read these before creating any new feature, route, action, or component.
   inbound link, and only then delete. A spec whose content has landed but whose citations
   have not is not yet deletable.
 
-  | Kind                     | Path                  | Filename                          | Lifetime                                               |
-  | ------------------------ | --------------------- | --------------------------------- | ------------------------------------------------------ |
-  | Source-of-truth document | `docs/`               | `SCREAMING-KEBAB.md`              | permanent                                              |
-  | Design spec              | `docs/specs/`         | `YYYY-MM-DD-<slug>.md`            | transient — listed in CLAUDE.md, deleted when absorbed |
-  | Advisory review          | `docs/reviews/`       | `YYYY-MM-DD-<subject>-review.md`  | permanent                                              |
-  | Pre-decision exploration | `docs/brainstorming/` | `<topic>.md`, `**Status:** Draft` | permanent, never authoritative                         |
+  **Shipping the code is a third step, and it comes first.** Between "designed" and
+  "absorbed" a spec spends time as **implemented**: the code is merged, but some of its prose
+  — usually rejected alternatives and migration seams — still has no permanent home. That
+  file moves to `docs/specs/implemented/` (see [that folder's README](specs/implemented/README.md)).
+  The move is not cosmetic: a shipped spec left in `docs/specs/` reads as pending work, and an
+  agent will build what already exists. That failure is not hypothetical — the list-sort spec
+  sat mislabelled for four days after PR #38 merged.
+
+  | Kind                     | Path                      | Filename                          | Lifetime                                                    |
+  | ------------------------ | ------------------------- | --------------------------------- | ----------------------------------------------------------- |
+  | Source-of-truth document | `docs/`                   | `SCREAMING-KEBAB.md`              | permanent                                                   |
+  | Design spec              | `docs/specs/`             | `YYYY-MM-DD-<slug>.md`            | transient — listed in CLAUDE.md, **designed but not built** |
+  | Implemented spec         | `docs/specs/implemented/` | `YYYY-MM-DD-<slug>.md`            | transient — shipped as code, deleted once fully absorbed    |
+  | Advisory review          | `docs/reviews/`           | `YYYY-MM-DD-<subject>-review.md`  | permanent                                                   |
+  | Pre-decision exploration | `docs/brainstorming/`     | `<topic>.md`, `**Status:** Draft` | permanent, never authoritative                              |
 
   Date-first in `specs/` and `reviews/` so a directory listing sorts chronologically, which is
   how both are read. `docs/superpowers/` is **gitignored**: the `superpowers` plugin hardcodes
@@ -335,6 +344,7 @@ workflow) landed.
 | `src/hooks/`                                         | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
 | Delete `src/lib/mock/` + `src/components/prototype/` | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
 | App #2 packaging decision                            | A second RedyRef app is concrete                                            |
+| Move the list-view read server-side                  | Supabase reads land in the three `(list)/page.tsx` files                    |
 
 **No E2E suite, and the gap is specific.** ARCHITECTURE's database-enforced approval gate is
 the one invariant a UI-only test can pass while the real thing is broken: a `rep` session must
@@ -347,6 +357,13 @@ path — and the config, specs, script and CI job land in one change.
 **Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
 affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).
 Both directories are quarantined so each is one `rm -r`.
+
+**The list-view move is a swap, not a rewrite.** `src/lib/list/` was built with the seam in
+place: the params object is the contract, so `page.tsx` starts reading `searchParams` and the
+filter/compare/page/size arguments become query-builder calls. The URL contract does not
+change, so no bookmark breaks. The full description — including why the client-side read costs
+these three routes their prerendered content today — is
+[docs/ARCHITECTURE.md](ARCHITECTURE.md) §4.1. Do not restate it here.
 
 **App #2 packaging — do NOT decide now.** Template repo (zero overhead, fixes don't propagate)
 vs. private shadcn registry (shadcn-native, updates re-run `shadcn add`) vs. npm workspace

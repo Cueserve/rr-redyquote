@@ -1,8 +1,18 @@
-# DB Migrate
+---
+description: Verify the hosted Supabase schema matches supabase/migrations/, regenerate types.ts, and check the RLS and trigger invariants. Does NOT apply migrations — merging to main already did that.
+allowed-tools: Read, Glob, Grep, Bash
+argument-hint: "[check]"
+---
+
+# DB Migrate — verification, not application
 
 Verify that RedyQuote's hosted Supabase schema matches `supabase/migrations/*.sql`, bring
 `src/lib/supabase/types.ts` back in sync, and prove the invariants the SQL cannot prove about
 itself.
+
+**The name is a holdover.** It stays `/db-migrate` because renaming the file renames the
+command and breaks every citation in `CLAUDE.md`, `README.md`, and `CONTRIBUTING.md`. Read the
+heading, not the slug.
 
 **This command no longer applies migrations, because merging already did.** The Supabase
 GitHub integration pushes on merge to `main` — verified 2026-08-13: `0009` reported

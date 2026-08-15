@@ -286,9 +286,16 @@ the four CI runs. A suggestion that fails lint was never a valid suggestion.
 
 ## 6. Database and migrations
 
-**Merge to `main` first, then `/db-migrate` applies it. Both steps are required.** The Supabase
-GitHub integration was **disconnected on 2026-08-15**; until then it pushed on merge and this
-section said the merge was the apply step. It is not any more. Four consequences:
+**Merge to `main` first, then `/db-migrate` applies it. Both steps are required.** The GitHub
+integration's **"Deploy to production" was switched off on 2026-08-15**; until then it applied on
+merge and this section said the merge was the apply step. It is not any more.
+
+**The integration stays connected — only auto-apply is off.** Nothing was lost by switching it
+rather than disconnecting: preview databases per pull request need branching, branching needs
+the Pro plan, and this project is on Free, so `Automatic branching` is greyed out at a branch
+limit of 0 and the `Supabase Preview` check has always reported `skipping`. Keeping the
+connection means a future move to Pro turns preview branches on with a toggle instead of a
+reconnect. Four consequences:
 
 1. **The PR review is still the only review.** Read the SQL _in the PR_. Moving the apply step
    after the merge did not move the review step with it — dev runs against a hosted project with
@@ -329,8 +336,8 @@ no repair. There is deliberately **no `npm run db:migrate`** wrapper.
 - **`npm run test`** runs the 44 unit tests under `src/lib/list/`. `vitest.config.ts` sets no
   `passWithNoTests`, so an empty suite fails rather than passing silently — a green run means
   the tests actually ran.
-- **`npm run db:push` / `db:types`** both run, and the project is linked. Since the integration
-  was disconnected, `db:push` normally **does** have something pending after a migration merges
+- **`npm run db:push` / `db:types`** both run, and the project is linked. Since auto-apply was
+  switched off, `db:push` normally **does** have something pending after a migration merges
   (see §6) — but run `/db-migrate`, never the bare script: the script skips the merge gate, the
   destructive-SQL read, the dump, and every verification step. A failed `db:types` is safe: it
   generates to a gitignored

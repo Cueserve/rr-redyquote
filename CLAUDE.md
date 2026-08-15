@@ -20,7 +20,7 @@ back. **Never derive an architecture, stack, or schema decision from memory.**
 | Adding a `ui/` primitive                      | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) + `src/components/ui/input.tsx` (the `cva` pattern) | §6           |
 | Anything that reads or writes a table         | [docs/DATABASE.md](docs/DATABASE.md) + the relevant `supabase/migrations/*.sql`                    | §5, §7       |
 | A Server Action, RLS policy, or role check    | [docs/specs/2026-07-23-authorization-matrix.md](docs/specs/2026-07-23-authorization-matrix.md)     | §4, §5       |
-| A migration                                   | [docs/DATABASE.md](docs/DATABASE.md) §5–6 + §7 below — **merging applies it**                      | §7           |
+| A migration                                   | [docs/DATABASE.md](docs/DATABASE.md) §5–6 + §7 below — **merge → then apply**                      | §7           |
 | Any pricing or margin math                    | **Stop.** PRD §7A is unsigned — see §4 "Blocked"                                                   | §4           |
 | Where does this new file go?                  | [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) §2 "Four Placement Questions"               | —            |
 | Validation for any external input             | `src/lib/validation/settings.ts` — the shape to copy                                               | —            |
@@ -286,27 +286,35 @@ the four CI runs. A suggestion that fails lint was never a valid suggestion.
 
 ## 6. Database and migrations
 
-**Merging to `main` APPLIES the migration. There is no separate apply step.** The Supabase
-GitHub integration pushes on merge — verified 2026-08-13. Three consequences:
+**Merge to `main` first, then `/db-migrate` applies it. Both steps are required.** The Supabase
+GitHub integration was **disconnected on 2026-08-15**; until then it pushed on merge and this
+section said the merge was the apply step. It is not any more. Four consequences:
 
-1. **The PR review is the only gate.** Read the SQL _in the PR_, not after. A pre-flight that
-   runs once the database has already changed protects nothing — and dev runs against a hosted
-   project with no local stack, no `db reset`, and no automated backups on the Free tier.
-2. **`db:types` is the step that actually gets skipped**, because the integration doesn't run
-   it. Run `npm run db:types` after any migration merges, and commit the result.
-3. **A migration is immutable the moment it merges**, not once someone applies it. A correction
+1. **The PR review is still the only review.** Read the SQL _in the PR_. Moving the apply step
+   after the merge did not move the review step with it — dev runs against a hosted project with
+   no local stack, no `db reset`, and no automated backups on the Free tier, so a mistake that
+   reaches `/db-migrate` has already passed the last gate that could have caught it cheaply.
+2. **A merged migration sits unapplied until a human runs `/db-migrate`.** This is the new
+   failure mode and the price of the change: `main` and the database disagree silently until
+   someone notices. `/db-migrate` Phase 8 reports it, and
+   [.github/workflows/db-drift.yml](.github/workflows/db-drift.yml) warns on it independently.
+3. **`db:types` still has nothing else behind it.** `/db-migrate` runs it as part of the apply
+   path now, but a schema that moved without its types leaves every `supabase-js` call lying
+   about its shape. That is how `types.ts` once sat 620 lines stale across two merges.
+4. **A migration is immutable the moment it merges**, not once someone applies it. A correction
    is a new file every time (`0004` → `0003`, `0009` → `0006`). `db push` compares recorded
    versions, not file contents, so editing a merged migration is skipped silently while reading
    as though it landed. **Run `git fetch` before editing any migration** — the guard hook reads
    `origin/main`, and a stale clone is its one false-allow.
 
-**`/db-migrate` no longer applies anything — the merge already did.** Its file
-([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) says so in its own opening
-line; the name is a holdover kept only because renaming it breaks every citation. What it is
-worth running for is everything _after_ the push: `db:types`, the `relrowsecurity` check on
-every new table, the both-halves trigger check, and the blocking gate. That is verification,
-not application. It carries a fallback push for the one case where the integration did not
-run, gated on reading the SQL first. There is deliberately **no `npm run db:migrate`** wrapper.
+**`/db-migrate` is the apply path.** Its file
+([.claude/commands/db-migrate.md](.claude/commands/db-migrate.md)) is the authority on the
+sequence. Phase 1 is a hard gate: it refuses to push anything not already on `origin/main` at
+identical content, which is what keeps "merge first" a rule rather than a habit. Everything
+after the push — `db:types`, the `relrowsecurity` check, the both-halves trigger check, the
+blocking gate — runs in the same command. `0001`–`0009` were applied by the integration, which
+wrote the same `supabase_migrations.schema_migrations` table the CLI reads, so the handoff needed
+no repair. There is deliberately **no `npm run db:migrate`** wrapper.
 
 **No local Supabase stack.** Docker is not installed. Never suggest `supabase start` or
 `db reset` — see [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4.
@@ -321,15 +329,18 @@ run, gated on reading the SQL first. There is deliberately **no `npm run db:migr
 - **`npm run test`** runs the 44 unit tests under `src/lib/list/`. `vitest.config.ts` sets no
   `passWithNoTests`, so an empty suite fails rather than passing silently — a green run means
   the tests actually ran.
-- **`npm run db:push` / `db:types`** both run, and the project is linked. `db:push` normally
-  has nothing pending (see §6). A failed `db:types` is safe: it generates to a gitignored
+- **`npm run db:push` / `db:types`** both run, and the project is linked. Since the integration
+  was disconnected, `db:push` normally **does** have something pending after a migration merges
+  (see §6) — but run `/db-migrate`, never the bare script: the script skips the merge gate, the
+  destructive-SQL read, the dump, and every verification step. A failed `db:types` is safe: it
+  generates to a gitignored
   `.tmp` and renames only on exit 0, so `types.ts` is left untouched. Re-run it once
   connected — never hand-edit `types.ts`.
 - **There is no end-to-end suite, by decision.** No `test:e2e`, no `playwright.config.ts`, no
   `e2e/`, and `@playwright/test` is not a dependency — an installed runner that runs nothing
   implies coverage that does not exist (TECH-STACK.md §5). The specific assertions nobody
   makes are registered in ENGINEERING-RULES.md §3.
-- **Slash commands:** `/db-migrate` (verification, see §6) and `/doc-audit` (three-pass doc
+- **Slash commands:** `/db-migrate` (apply + verify, see §6) and `/doc-audit` (three-pass doc
   audit: `align` → `drift` → `absorb`; README.md documents the arguments). Run `/doc-audit`
   after landing a spec, after a migration merges, and after any `docs/` edit.
 

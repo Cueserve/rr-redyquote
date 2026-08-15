@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — System Architecture
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-15
 **Source of truth for:** the system structure, component boundaries, and design decisions
 that satisfy docs/PRD.md.
 
@@ -132,6 +132,48 @@ price-history rows for any tier whose cost changed — all in one transaction.
 | Audit                  | `quote_status_history`, `price_history`, and `settings_history`, written in the same transaction as the change                                                                                                                                                                       | Preserves traceability for quote status, cost, and settings/branding changes                                                                                                                                                                                                |
 | Tenancy                | No `tenant_id` anywhere; single schema for REDYREF only                                                                                                                                                                                                                              | Confirmed single-tenant scope (PRODUCT.md §4); avoids speculative multi-tenant complexity for a need that doesn't exist                                                                                                                                                     |
 | Service-role key       | Not used anywhere in the app                                                                                                                                                                                                                                                         | No unauthenticated system paths exist, so every DB access is a real session under RLS — nothing needs an elevated role                                                                                                                                                      |
+| List view state        | URL query params (`q`, `sort`, `dir`, `page`, `size`); filter → sort → slice in one pure function in `src/lib/list/`; pagination always on, 50 rows per page, uniform across all three lists                                                                                         | The URL survives back and refresh, is pasteable, and is already the shape the eventual Supabase query takes — `?sort=cost&dir=desc&page=2` becomes `.order('cost', {ascending:false}).range(50,99)` with no restructuring. See §4.1                                         |
+
+### 4.1 List view — the alternatives that were rejected
+
+Recorded so they are not reopened from memory. Absorbed 2026-08-15 from the list-sort design
+spec, which shipped as PR #38; the scale they were judged against is NFR-001, "a handful of
+concurrent users, low hundreds of products/components/quotes."
+
+- **Pagination only above a row threshold.** Controls would appear once a filtered set exceeded
+  ~100 rows, leaving today's short lists untouched and preserving Ctrl+F on them. Rejected for
+  uniformity: one code path, one design, and no layout change the day the data grows. The
+  Ctrl+F objection is answered instead by the page-size selector's `All` option.
+- **Pagination on `/quotes` only.** This matches how the data actually grows — quotes accumulate
+  without bound while products and components are catalog data, bounded and pruned by
+  deactivation — and adds no dead chrome. Rejected because three list screens with two
+  behaviours is harder to explain than one uniform rule.
+- **A column-def abstraction in `data-table.tsx`.** Rejected: it contradicts that file's
+  explicit charter, and the three tables have genuinely divergent cells — badge groups,
+  two-line name cells, derived freshness. A column definition rich enough for all three stops
+  being simpler than the JSX it replaces.
+- **Server Components read `searchParams` and pass one page of rows down.** This one is
+  **deferred, not rejected — it is the migration target.** The params object is the seam: when
+  Supabase reads land, `page.tsx` reads `searchParams` instead of the client reading
+  `useSearchParams()`, and `filter` / `compare` / `page` / `size` become `.eq()` / `.ilike()` /
+  `.order()` / `.range()` on the query builder. `applyListView` is then deleted or kept purely
+  for its tests. The URL contract does not change, so no bookmark or shared link breaks, and
+  nothing in the current design has to be undone to get there. Deferred because it is a real
+  refactor of three working screens for a benefit that only lands once Supabase reads exist.
+  Trigger recorded in [docs/PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md) §6.
+
+**Reading the URL client-side bails the whole segment out of prerendering, and that is
+accepted.** `useSearchParams()` inside a table component does not make the route dynamic — it
+makes Next render the segment on the client. The route still reports `○`, but the only thing
+prerendered is `loading.tsx`, so the server response carries no heading, no toolbar, and no
+table; only the app shell from `layout.tsx` survives. This was **measured against `next start`,
+not inferred**: `/products` returns `BAILOUT_TO_CLIENT_SIDE_RENDERING` and zero `<table>`
+elements. Two candidate fixes were tried and **both failed** — `export const dynamic =
+"force-dynamic"` (route becomes `ƒ`, content still bails) and deleting `(list)/loading.tsx`
+(still bails). Accepted because RedyQuote is an internal tool behind auth, ≥768px only
+(NFR-008), a handful of concurrent users (NFR-001), with no SEO surface; the cost is a loading
+shell before first paint on three screens, and the fix is the deferred migration above, which
+has to happen then anyway. Do not re-measure this from scratch — it costs an afternoon.
 
 ## 5. Implementation Conventions
 

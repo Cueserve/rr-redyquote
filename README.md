@@ -112,9 +112,9 @@ npm run test                 # see the caveat below
 npm run build
 ```
 
-`npm run test` runs the unit suites under `src/lib/`. `vitest.config.ts` sets no
-`passWithNoTests`, so an empty suite fails rather than passing silently — a green run means the
-tests actually ran.
+`npm run test` runs the unit suites under `src/lib/list/` — 44 tests across two files, and
+currently the only tests in the repo. `vitest.config.ts` sets no `passWithNoTests`, so an empty
+suite fails rather than passing silently — a green run means the tests actually ran.
 
 Fonts are Archivo (all text) and IBM Plex Mono (tabular numerics only), self-hosted via
 [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) — no
@@ -142,10 +142,18 @@ Sources: [frontend-design](https://github.com/anthropics/claude-plugins-official
 [impeccable](https://github.com/pbakaus/impeccable) (Apache 2.0)
 
 **No plugin builds UI here — shadcn does.** This is a shadcn project ([components.json](components.json),
-`shadcn@4`), and the primitives in `src/components/ui/` are shadcn components adapted to our
+`shadcn@4`), and the 18 primitives in `src/components/ui/` are shadcn components adapted to our
 tokens. Reuse or extend one before running `npx shadcn@latest add`. The order on any UI change
-is **`/impeccable shape` → design system → shadcn → impeccable audit → `npm run lint` +
-`npm run typecheck`**; [CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority.
+is **`/impeccable shape` → design system → shadcn → impeccable audit → the four CI checks**;
+[CLAUDE.md](CLAUDE.md)'s "Building UI" section is the authority on that order.
+
+**This section is the canonical copy of the operational detail below it, and CLAUDE.md points
+here rather than repeating it.** CLAUDE.md owns the _rules_ — what is required, what is banned,
+what needs approval. The paragraphs that follow own the _mechanics_: which suppressions exist,
+what each one hides, and the exact commands. That split is deliberate. CLAUDE.md loads into
+every Claude Code session, so a page of tool archaeology in it costs context on every task,
+including the ones that never touch UI. If you change a fact in either place, change it here
+first and check that CLAUDE.md still only summarizes it.
 
 **Starting new UI-bearing work? `/impeccable shape` is required, not optional** — a new route,
 screen, or user-facing component begins with a shape brief you have explicitly confirmed.
@@ -282,4 +290,4 @@ Tracked in [DATABASE.md](docs/DATABASE.md) §6.
 
 ---
 
-> _Last updated:_ 2026-08-08 · _Owner:_ Viral Parikh
+> _Last updated:_ 2026-08-15 · _Owner:_ Viral Parikh

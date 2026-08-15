@@ -13,6 +13,23 @@
       "Bash(npx supabase db reset *)",
       "Bash(supabase db reset *)"
     ],
+    "allow": [
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run format:check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx impeccable detect:*)",
+      "Bash(npx supabase migration list:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)"
+    ],
     "ask": [
       "Bash(npm run db:push)",
       "Bash(npm run db:push *)",

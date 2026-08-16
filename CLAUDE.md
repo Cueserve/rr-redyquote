@@ -297,10 +297,15 @@ limit of 0 and the `Supabase Preview` check has always reported `skipping`. Keep
 connection means a future move to Pro turns preview branches on with a toggle instead of a
 reconnect. Four consequences:
 
-1. **The PR review is still the only review.** Read the SQL _in the PR_. Moving the apply step
-   after the merge did not move the review step with it — dev runs against a hosted project with
-   no local stack, no `db reset`, and no automated backups on the Free tier, so a mistake that
-   reaches `/db-migrate` has already passed the last gate that could have caught it cheaply.
+1. **The PR review is still the only _human_ review.** Read the SQL _in the PR_. Moving the apply
+   step after the merge did not move the review step with it — dev runs against a hosted project
+   with no local stack and no automated backups on the Free tier, so a mistake that reaches
+   `/db-migrate` has passed the last gate a person was ever going to catch it at.
+   [.github/workflows/db-replay.yml](.github/workflows/db-replay.yml) now sits alongside that
+   review and fails the PR when the migration chain does not replay from an empty database. It
+   catches a chain that will not build; it cannot catch SQL that builds and is wrong, and it
+   exercises no RLS policy and neither half of the approval gate, because `db reset` runs as the
+   superuser.
 2. **A merged migration sits unapplied until a human runs `/db-migrate`.** This is the new
    failure mode and the price of the change: `main` and the database disagree silently until
    someone notices. `/db-migrate` Phase 8 reports it, and
@@ -323,8 +328,14 @@ blocking gate — runs in the same command. `0001`–`0009` were applied by the 
 wrote the same `supabase_migrations.schema_migrations` table the CLI reads, so the handoff needed
 no repair. There is deliberately **no `npm run db:migrate`** wrapper.
 
-**No local Supabase stack.** Docker is not installed. Never suggest `supabase start` or
-`db reset` — see [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4.
+**No local Supabase stack _on this machine_.** Docker is not installed. Never suggest
+`supabase start` or `db reset` here — see [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) §4.
+
+**That rule is about this machine, not about CI.**
+[.github/workflows/db-replay.yml](.github/workflows/db-replay.yml) runs both commands on every
+pull request that touches a migration, because a GitHub runner has the Docker daemon this laptop
+lacks. Nothing about it belongs on the laptop and nothing about it changes the rule above: it
+takes no secret, never uses `--linked`, and touches no hosted project.
 
 ---
 

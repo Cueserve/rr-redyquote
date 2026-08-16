@@ -75,8 +75,10 @@ Apply top-down. The higher entry is right by construction; the lower one is the 
 2. **Migrations** (`supabase/migrations/*.sql`) — the authoritative schema per ARCHITECTURE §5,
    and the anchor for every schema claim in the corpus. Beats any prose description, including
    `docs/DATABASE.md`'s column tables. Note the merge/apply relationship: **merging to `main`
-   applies the migration** (the Supabase GitHub integration does it), so a file on `main` is
-   live, and a file only on a branch is not. There is no separate apply step to check for.
+   no longer applies the migration** — the GitHub integration's "Deploy to production" was
+   switched off on 2026-08-15 and `/db-migrate` is the apply step. So a file on `main` is merged but not
+   necessarily live, and a file only on a branch is neither. `npx supabase migration list` is
+   the only way to tell the two apart; do not infer applied-ness from `main`.
 3. **Tier 3 specs**, for the slice they explicitly amend. The authorization-matrix spec amends
    PRD-010 and ARCHITECTURE §2/§7; the base text it amends is **superseded, not authoritative**.
 4. **Tier 2 docs** among themselves, by ownership — each fact has exactly one owner:
@@ -246,7 +248,7 @@ Each probe turns a prose claim into a command. Run the probe; the output wins.
 | A named `npm run X` exists                 | read `scripts` in `package.json` — do not trust CLAUDE.md's script list                                                                                                                 |
 | Node version                               | `.nvmrc` and `engines.node` agree with every doc that names a version                                                                                                                   |
 | Migration set and numbering                | `Get-ChildItem supabase/migrations` — compare filenames and count to every doc that enumerates them                                                                                     |
-| "Applied to the linked project"            | `npx supabase migration list` — the only real answer. Merging to `main` applies automatically via the Supabase GitHub integration, so on `main` ⇒ applied, but verify rather than infer |
+| "Applied to the linked project"            | `npx supabase migration list` — the only real answer. A merge no longer applies anything — `/db-migrate` does — so on `main` means merged, and applied must be verified, never inferred |
 | `types.ts` is current                      | its table/column names cover every table the migrations create. **This is the probe most likely to fail**: nothing in the merge path runs `db:types`, so it goes stale silently         |
 | impeccable suppression list                | `.impeccable/config.json` `detector.ignoreRules` — compare the **count and the exact rule names** to every doc that describes them                                                      |
 | impeccable context is pinned               | `env.IMPECCABLE_CONTEXT_DIR` in `.claude/settings.json`                                                                                                                                 |

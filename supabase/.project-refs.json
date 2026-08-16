@@ -1,0 +1,9 @@
+{
+  "$comment": "Committed allowlist of Supabase project refs this repo may target. /db-migrate reads supabase/.temp/project-ref (local, gitignored, mutable by `supabase link`) and refuses to run unless that ref appears here. A ref absent from this file is an abort, never an assumed dev. Adding a prod entry is the only thing that makes prod reachable, and even then only via `/db-migrate prod`. Project refs are not secrets - the dev ref is already public in NEXT_PUBLIC_SUPABASE_URL.",
+  "refs": {
+    "mrxjtmdxetzprmutgrcg": {
+      "label": "dev",
+      "name": "redyquote-dev"
+    }
+  }
+}

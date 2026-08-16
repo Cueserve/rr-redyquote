@@ -1,0 +1,114 @@
+name: DB Drift
+
+# Reports when `main` holds a migration the linked Supabase project has not applied.
+#
+# The GitHub integration's "Deploy to production" was switched off on 2026-08-15, so nothing
+# applies migrations automatically any more - `/db-migrate` is the only apply path, and it is a
+# human action. This workflow exists because that leaves `main` and the database free to
+# disagree in silence. The integration stays connected; only auto-apply is off. Preview
+# databases per pull request need branching, which needs the Pro plan - this project is on Free,
+# so nothing was lost by switching it off.
+#
+# TWO BEHAVIOURS, ON PURPOSE:
+#
+#   push to main   -> WARNS, never fails. Right after a merge the database is legitimately
+#                     behind - you have not run /db-migrate yet - so failing here would paint
+#                     CI red on every single migration merge by construction, and a check that
+#                     is always red is a check nobody reads. The warning is a reminder, not a
+#                     verdict.
+#   manual dispatch -> FAILS red. You clicked it because you wanted the real answer.
+#
+# NO SCHEDULE, by decision (2026-08-15). Known cost: nothing catches a migration you merged and
+# then forgot about. The push warning fires once, at merge, and if it is missed nothing raises
+# it again. Re-enabling is a four-line change - add `schedule: - cron: "17 6 * * *"` under `on:`
+# and let the dispatch branch below handle it as a hard failure.
+#
+# THIS WORKFLOW IS READ-ONLY. `db push --dry-run` reports what would apply and applies nothing.
+# It must never gain a real push, a `migration repair`, or any other write: CI as a third writer
+# to the database is exactly the ambiguity switching off auto-apply was meant to remove.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Builds the matrix from the committed ref allowlist so that adding a prod entry to
+  # supabase/.project-refs.json needs no edit here. LABEL is upper-cased at this step because
+  # the secret names are upper-case and relying on secret-name case-insensitivity would be a
+  # silent trap.
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.refs.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: refs
+        run: |
+          matrix=$(jq -c '{include: [.refs | to_entries[] | {ref: .key, name: .value.name, label: (.value.label | ascii_upcase)}]}' supabase/.project-refs.json)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
+  drift:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false # one environment drifting must not hide another
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Check ${{ matrix.name }} for unapplied migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DB_PASSWORD: ${{ secrets[format('SUPABASE_DB_PASSWORD_{0}', matrix.label)] }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DB_PASSWORD:-}" ]; then
+            echo "::error::Secret SUPABASE_DB_PASSWORD_${{ matrix.label }} is not set."
+            exit 1
+          fi
+
+          supabase link --project-ref "${{ matrix.ref }}" --password "$DB_PASSWORD"
+
+          # Read-only. --dry-run lists what would apply and applies nothing.
+          out=$(supabase db push --linked --dry-run 2>&1) || {
+            echo "$out"
+            echo "::error::db push --dry-run failed against ${{ matrix.name }}. A paused Free-tier project looks like this."
+            exit 1
+          }
+          echo "$out"
+
+          # Matching the CLI's up-to-date line is a stability trade-off: it is a far more stable
+          # contract than parsing the `migration list` table, whose columns move between CLI
+          # versions, but it is still an English string. If a CLI upgrade ever breaks this,
+          # replace it with a psql query against supabase_migrations.schema_migrations diffed
+          # against supabase/migrations/ - more robust, more code. Do not "fix" it by relaxing
+          # the match, which would turn this into a check that always passes.
+          if echo "$out" | grep -qi "up to date"; then
+            echo "${{ matrix.name }}: no pending migrations."
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::error::${{ matrix.name }} is behind main. The migrations listed above are merged but not applied - run /db-migrate from an up-to-date main."
+            exit 1
+          fi
+
+          echo "::warning::${{ matrix.name }} is behind main. The migrations listed above just merged and are not applied yet - run /db-migrate from an up-to-date main. Not failing the build: this is expected in the window between merging and applying."
+          exit 0

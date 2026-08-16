@@ -135,6 +135,15 @@ present in LOCAL but blank in REMOTE has not been applied.
 chain is not replayable — usually a migration that assumed state created by hand, or ordering
 that only worked incrementally. Fixing that is the point of adopting local, not a setback.
 
+**Step 4 already runs in CI, and `0001`–`0009` pass it.**
+[.github/workflows/db-replay.yml](../.github/workflows/db-replay.yml) replays the chain from an
+empty database on every pull request that touches a migration, on a runner that has the Docker
+daemon this machine lacks. It went green on the full chain first time, so the friction predicted
+above has not materialised — worth knowing, because it means a future red is a real defect rather
+than a backlog of known breakage. **It does not substitute for the local stack**: it validates
+that the chain builds, and it cannot let anyone iterate, run the app, or check the approval gate
+by hand as steps 6 and 7 require.
+
 **Rollback:** `npx supabase stop` and restore the remote values in `.env.local`. Nothing in the
 application code is environment-specific — the Supabase client reads URL and key from env
 (`src/lib/config.ts`), so switching environments is a `.env.local` edit and a dev-server

@@ -278,8 +278,11 @@ state the suggested message and stop.
 - Push to a project whose ref is absent from `supabase/.project-refs.json`, or to a `prod`-labelled
   ref without the `prod` argument.
 - Push a migration that is not on `origin/main`. Phase 1 is the gate; there is no override.
-- Suggest `supabase start` or `db reset` — Docker is not installed on this machine
+- Suggest `supabase start` or `db reset` **on this machine** — Docker is not installed
   ([docs/ENVIRONMENTS.md](../../docs/ENVIRONMENTS.md) §4), and `db reset` is denied outright.
+  CI is the exception and needs no suggesting:
+  [.github/workflows/db-replay.yml](../../.github/workflows/db-replay.yml) already runs both on
+  a runner for every pull request that touches a migration.
 - Read, print, or write `.env`, `.env*.local`, or anything holding the service-role key.
 - Edit schema or RLS in the Supabase dashboard to work around a failed migration. Fix it in a
   new migration file ([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) §5).

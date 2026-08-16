@@ -6,10 +6,18 @@ committed, reviewed, and merged. Every contributor and AI tool follows these rul
 > The **tooling layer** (test/lint/build commands, hooks) is appended later, once the
 > tech stack is decided (Step-05). Only governance is defined here.
 
-RedyQuote is **solo / process-enforced**: one person holds both the Product Owner and
-Architect hats. There is **no host-enforced required-reviewer policy** — no second
-reviewer blocks a merge. The gate is the **self-review checklist** below, which the
-author completes before merging.
+RedyQuote has **one author and a host-enforced approving review**. One person holds the
+Product Owner and Architect hats and writes the code; `main` then requires **one approving
+review from someone who is not the author** before a pull request can merge. That requirement
+lives in the repository ruleset described under [Branch protection](#branch-protection), not in
+this file — GitHub enforces it, and no amount of process discipline substitutes for it.
+
+The **self-review checklist** below is therefore **preparation for that review, not a
+replacement for it**. Complete it before asking anyone to look.
+
+> This corrected a live contradiction. Until 2026-08-16 this file said there was no required
+> reviewer and that the checklist was the merge gate. The ruleset had required an approving
+> review since 2026-08-05. The ruleset was right; every merge surfaced the mismatch.
 
 ---
 
@@ -32,16 +40,21 @@ author completes before merging.
 1. Create a branch off the latest `main`.
 2. Do the work; commit using the convention below.
 3. Open a **Pull Request (PR)** targeting `main` — one PR per branch.
-4. Complete the self-review checklist.
-5. Merge to `main`. **A merged change is the only "final" change.**
+4. Complete the self-review checklist, in the PR description.
+5. **Get one approving review.** You cannot approve your own PR — GitHub refuses it — and
+   pushing to the branch after an approval dismisses that approval, so push first and ask second.
+6. Resolve every review thread. Unresolved threads block the merge.
+7. Merge to `main` with **squash or rebase**. **A merged change is the only "final" change.**
 
 Open PRs from the CLI (`gh pr create`) or the GitHub web UI.
 
 ## Self-review checklist
 
-This is the merge gate. There is no required reviewer, so this list is what stands between a
-change and `main`. Complete it against the actual diff, not against memory of what you meant to
-do.
+**This is not the merge gate — an approving review is** (see [Branch
+protection](#branch-protection)). This list is what you owe the reviewer: it is preparation, and
+it is what makes a review cheap enough to be worth asking for. Complete it against the actual
+diff, not against memory of what you meant to do, and put it in the PR description so the
+reviewer can see which boxes you actually ticked.
 
 - [ ] `git diff main...HEAD --stat` reviewed file by file. Every changed file is one I meant to
       change; nothing arrived by accident.
@@ -62,8 +75,8 @@ do.
 - [ ] Commit messages follow the convention below and describe the change, not the process that
       produced it.
 
-If a box cannot be ticked, the PR is not ready. Fix it, or say why in the PR description — an
-explicit, reasoned exception is fine; a silently unticked box is not.
+If a box cannot be ticked, the PR is not ready to ask for review. Fix it, or say why in the PR
+description — an explicit, reasoned exception is fine; a silently unticked box is not.
 
 ---
 
@@ -71,12 +84,14 @@ explicit, reasoned exception is fine; a silently unticked box is not.
 
 Initiation is complete; these are the rules for ongoing development.
 
-- **Team size:** solo. One person holds the Product Owner and Architect hats.
-- **Review model:** self-review against the checklist above. No second reviewer blocks a merge,
-  because there is no second reviewer.
+- **Team size:** one author. The Product Owner and Architect hats sit with that person; the
+  approving review comes from someone else.
+- **Review model:** self-review against the checklist above, **then** one approving review, which
+  the repository ruleset requires and GitHub enforces. The checklist prepares the review; it does
+  not stand in for it.
 - **CI gate:** `lint`, `typecheck`, `format:check`, `test`, on every PR to `main` and every push
   to `main` (`.github/workflows/ci.yml`). CI runs the checks on the real merge state; the
-  checklist is the human gate. Neither replaces the other.
+  checklist plus the approving review are the human gate. Neither side replaces the other.
 - **Release/versioning:** none. `main` is the only artifact — there are no tags, no changelog,
   and no versioned releases. `package.json` carries `0.1.0` as a placeholder, not a claim.
   If that changes, it changes here first.
@@ -130,10 +145,28 @@ in `docs/`.
 
 ## Branch protection
 
-Branch protection on `main` (block direct push / require a PR before merge) is
-**best-effort**. Enable it in GitHub repository settings if the plan allows; on free-plan
-private repos it may be unavailable. If it cannot be set, the self-review checklist above
-is the gate that matters — its absence does not weaken the process.
+`main` is protected by an **active repository ruleset**, `RepoLevelRule - Main Branch
+Protection`, applying to `main` and the default branch. It is not best-effort and it is not
+optional. Verified against the GitHub API on 2026-08-16:
+
+| Rule                              | Effect                                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| Pull request required, 1 approval | A direct push to `main` is refused. You cannot approve your own PR.                     |
+| Dismiss stale reviews on push     | Pushing after an approval **dismisses it**. Push first, then request review.            |
+| Review thread resolution required | Every conversation must be resolved before merge.                                       |
+| Code-owner review required        | **Currently inert** — there is no `CODEOWNERS` file. Adding one silently tightens this. |
+| Linear history required           | No merge commits. Squash or rebase.                                                     |
+| Deletion and non-fast-forward     | `main` cannot be deleted or force-pushed.                                               |
+
+**One bypass exists, and using it is the thing to avoid.** The `OrgOwnerTeam` team is a bypass
+actor with mode `always`, so an org owner _can_ merge without an approval. A control that its
+only user routinely bypasses is decorative. Treat the bypass as a break-glass path, and say in
+the PR why it was used.
+
+**If the review requirement is ever judged wrong, change the ruleset, not this file.** Dropping
+`required_approving_review_count` to 0 is a deliberate decision someone makes in repository
+settings. Documentation that disagrees with the host is how this section got out of step in the
+first place.
 
 ---
 
@@ -190,9 +223,9 @@ GitHub Actions runs on every PR to `main` (see `docs/TECH-STACK.md` §3). Two jo
 - **Gate (blocking):** `npm run lint`, a TypeScript type-check (`tsc --noEmit`), and
   `npm run test` (Vitest). A failure here means the PR is not ready to merge.
 
-CI is a self-discipline net: it runs the full suite on the actual merge state, catching what
-the staged-files-only pre-commit hooks miss. It complements — does not replace — the
-self-review checklist, which remains the merge gate for this solo / process-enforced repo.
+CI runs the full suite on the actual merge state, catching what the staged-files-only pre-commit
+hooks miss. It complements — does not replace — either the self-review checklist or the
+approving review: a green check says the code builds and passes, not that anyone read it.
 The workflow file (`.github/workflows/`) is added when the repository is scaffolded.
 
 ## Environment

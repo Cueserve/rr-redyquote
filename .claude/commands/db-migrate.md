@@ -15,14 +15,15 @@ is the apply path again.** Until then the integration applied on merge to `main`
 was verification only. It no longer applies anything, so **a merged migration now sits unapplied
 until a human runs this command.**
 
-The integration itself stays connected — only auto-apply is off. Nothing was lost by switching
-it: preview databases per pull request need branching, branching needs the Pro plan, and this
-project is on Free, so the `Supabase Preview` check has always reported `skipping`. If the
-project ever moves to Pro, preview branches become a toggle rather than a reconnect.
 That gap is real and is the single most likely way `main` and the database drift apart — Phase 8
 reports it explicitly, and [.github/workflows/db-drift.yml](../../.github/workflows/db-drift.yml)
 posts a warning when a migration merges. **Neither is a schedule**: there is no nightly check, so
 a migration you merge and then forget about is caught by nothing until someone looks.
+
+The integration itself stays connected — only auto-apply is off. Nothing was lost by switching
+it: preview databases per pull request need branching, branching needs the Pro plan, and this
+project is on Free, so the `Supabase Preview` check has always reported `skipping`. If the
+project ever moves to Pro, preview branches become a toggle rather than a reconnect.
 
 **This command applies. It does not review, and it does not decide.** A schema or migration
 change requires explicit human approval before it is authored at all

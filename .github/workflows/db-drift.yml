@@ -79,12 +79,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${DB_PASSWORD:-}" ]; then
-            echo "::error::Secret SUPABASE_DB_PASSWORD_${{ matrix.label }} is not set."
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Secret SUPABASE_ACCESS_TOKEN is not set."
             exit 1
           fi
 
-          supabase link --project-ref "${{ matrix.ref }}" --password "$DB_PASSWORD"
+          # The database password is optional, not forgotten. The CLI mints temporary Postgres
+          # access from the access token - it prints `Initialising login role...` before
+          # connecting - so a project password is usually unnecessary, and `--password` is an
+          # optional flag on both `link` and `db push`. Verified locally: supabase/.temp/pooler-url
+          # holds no password and every connection still succeeded.
+          #
+          # Set SUPABASE_DB_PASSWORD_<LABEL> only if a project ever refuses the token path. The
+          # branch below picks it up automatically with no edit here.
+          if [ -n "${DB_PASSWORD:-}" ]; then
+            supabase link --project-ref "${{ matrix.ref }}" --password "$DB_PASSWORD"
+          else
+            supabase link --project-ref "${{ matrix.ref }}"
+          fi
 
           # Read-only. --dry-run lists what would apply and applies nothing.
           out=$(supabase db push --linked --dry-run 2>&1) || {

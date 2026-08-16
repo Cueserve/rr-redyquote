@@ -40,11 +40,11 @@ real remote database instead of a disposable container.
 **Decision (2026-07-26): Free tier only for now. PITR is not adopted for v1.** NFR-006 was
 amended to a phased requirement — see PRD.md NFR-006 and TECH-STACK.md §7.
 
-| Plan        | Price                         | Decision                                                                                                                                                                     |
-| ----------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Free**    | $0                            | **In use now.** Pauses after **1 week of inactivity** (resume from the dashboard); limit of 2 active free projects per org. **No automated backups at all.**                 |
-| Pro         | $25/mo                        | **Required at production cutover** — the trigger is the first real customer quote being stored. Includes daily backups, 7-day retention. Also removes auto-pause.            |
-| PITR add-on | +$100/mo per 7 days retention | **Declined for v1.** Replaces daily backups with finer granularity and additionally requires a Small compute add-on. Revisit only if a stated RPO ever drops below 24 hours. |
+| Plan        | Price                         | Decision                                                                                                                                                                                                                    |
+| ----------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Free**    | $0                            | **In use now.** Pauses after **1 week of inactivity** (resume from the dashboard); limit of 2 active free projects per org. **No automated backups at all.**                                                                |
+| Pro         | $25/mo                        | **Required at production cutover** — the trigger is the first real customer quote being stored. Includes daily backups, 7-day retention. Also removes auto-pause. **Paid by the client, on their own project** — see below. |
+| PITR add-on | +$100/mo per 7 days retention | **Declined for v1.** Replaces daily backups with finer granularity and additionally requires a Small compute add-on. Revisit only if a stated RPO ever drops below 24 hours.                                                |
 
 ### What Free actually costs you
 
@@ -60,6 +60,29 @@ This is acceptable **because the database holds seed and test data only**. The m
 quotes exist, the exposure changes from "re-run the seed script" to "un-recreatable business
 data with no recovery path" — which is what NFR-006b's Pro trigger exists to prevent. Do not
 let that trigger pass silently.
+
+### Who pays, and when — decided 2026-08-16
+
+**Cueserve stays on the free tier of everything, for the whole of development.** Supabase and
+Vercel both. There is no plan to buy Pro, PITR, database branching, or a paid Vercel plan, and a
+proposal that assumes one is not a proposal for this project.
+
+**NFR-006b's Pro trigger fires on a project Cueserve does not own.** At production cutover the
+Supabase project and the Vercel project are created under **the client's own account and
+ownership**, and the Pro plan NFR-006b requires is bought there, on their billing relationship.
+NFR-006 is unchanged and remains binding on whoever runs production. Cueserve never operates a
+billed environment for this product.
+
+**So the real exposure is UAT, not production.** The window that matters is the one where the
+client is exercising the app against a Cueserve-owned free project and generating data they care
+about, before the transfer — real enough to be worth protecting, on a tier with no automated
+backups. **Before UAT starts, the `db dump` above stops being a manual habit and becomes a
+scheduled job.** Nothing automates it today, and during that window it is the only thing between
+the client's UAT data and permanent loss.
+
+**One free-tier limit to plan around rather than discover:** the org allows **2 active free
+projects**, and RedyQuote dev and CuevikSync dev already hold both slots. A third free project
+does not fit unless it lives in a different organisation.
 
 ## 3. Working Rules
 

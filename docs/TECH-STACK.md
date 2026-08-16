@@ -45,7 +45,7 @@ no external integrations in v1).
 | Service                | Purpose                                     | Notes                                                                                                        |
 | ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Vercel                 | Hosts the Next.js app                       | Region co-located with the Supabase project                                                                  |
-| Supabase Platform      | Managed Postgres, Auth, Storage             | **Free** tier for now; Pro at production cutover. No PITR (NFR-006)                                          |
+| Supabase Platform      | Managed Postgres, Auth, Storage             | **Free** tier throughout; Pro at production cutover on the client's own account. No PITR (NFR-006)           |
 | Supabase Auth (GoTrue) | Credential store and session issuance       | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                                                  |
 | GitHub Actions         | CI on every PR to `main` and push to `main` | One blocking job: `lint`, `typecheck`, `format:check`, `test`. No advisory job — there is no E2E suite (§5). |
 
@@ -103,11 +103,13 @@ this records what was chosen over what.
 - Next.js 16.x App Router only.
 - React 19.x; TypeScript 5.x with `strict` enabled.
 - Supabase Postgres 17.
-- **Supabase plan is Free for now.** PITR is NOT required for v1 (NFR-006c) — it is a $100/mo
-  add-on and is out of budget for an internal tool at this scale. Before production cutover
-  (first real customer quote stored), the project MUST move to **Pro** ($25/mo) for its
-  included daily backups (NFR-006b). Free has **no automated backups at all**, so while on
-  Free: run `supabase db dump` before any destructive migration.
+- **Supabase plan is Free, and stays Free for everything Cueserve owns.** PITR is NOT required
+  for v1 (NFR-006c) — it is a $100/mo add-on and is out of budget for an internal tool at this
+  scale. Before production cutover (first real customer quote stored), the project MUST be on
+  **Pro** ($25/mo) for its included daily backups (NFR-006b) — **on the client's own account**,
+  because the production Supabase and Vercel projects are created under their ownership at
+  cutover (docs/ENVIRONMENTS.md §2). Free has **no automated backups at all**, so while on Free:
+  run `supabase db dump` before any destructive migration, and schedule it before UAT.
 - TLS 1.2+ enforced at both the Vercel and Supabase edges; plaintext HTTP rejected
   (NFR-004).
 - No service-role key is used anywhere in this application (ARCHITECTURE §1) — there is

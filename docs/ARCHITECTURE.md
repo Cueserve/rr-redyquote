@@ -251,16 +251,16 @@ without a reviewed sanitization strategy.
 
 ## 8. Non-Functional Approach
 
-| Requirement                    | Structural response                                                                                                                                                           |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NFR-001 interactive latency    | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke                                    |
-| NFR-002 access enforcement     | RLS on every table; the two exits from Review are enforced by the `validate_quote_status_transition` trigger, not a policy — see §5                                           |
-| NFR-003 credential security    | Supabase Auth (GoTrue) bcrypt hashing, managed                                                                                                                                |
-| NFR-004 transport security     | TLS 1.2+ enforced by Vercel/Supabase                                                                                                                                          |
-| NFR-005 auditability           | `price_history` and `quote_status_history`, same-transaction writes                                                                                                           |
-| NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2       |
-| NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                                 |
-| NFR-008 supported viewports    | Tablet-and-up layouts only; the navigation rail collapses 220px → 64px at `xl` rather than resizing, and a dense table scrolls inside its own container — DESIGN-SYSTEM.md §9 |
+| Requirement                    | Structural response                                                                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-001 interactive latency    | Server Components render pre-fetched data; the quote builder's live recalc is a pure client-side function with no round trip per keystroke                                                           |
+| NFR-002 access enforcement     | RLS on every table; the two exits from Review are enforced by the `validate_quote_status_transition` trigger, not a policy — see §5                                                                  |
+| NFR-003 credential security    | Supabase Auth (GoTrue) bcrypt hashing, managed                                                                                                                                                       |
+| NFR-004 transport security     | TLS 1.2+ enforced by Vercel/Supabase                                                                                                                                                                 |
+| NFR-005 auditability           | `price_history` and `quote_status_history`, same-transaction writes                                                                                                                                  |
+| NFR-006 durability             | Phased: Free tier (no backups) pre-production; Supabase Pro daily backups at production cutover, on the client-owned project. PITR not required for v1 — see PRD NFR-006 and docs/ENVIRONMENTS.md §2 |
+| NFR-007 pricing trust boundary | Server-side canonical recompute on every save                                                                                                                                                        |
+| NFR-008 supported viewports    | Tablet-and-up layouts only; the navigation rail collapses 220px → 64px at `xl` rather than resizing, and a dense table scrolls inside its own container — DESIGN-SYSTEM.md §9                        |
 
 ## 9. Observability & Operations
 

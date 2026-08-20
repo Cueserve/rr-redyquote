@@ -340,7 +340,7 @@ Default component per category per product (PRD-005).
 | `id`                        | `uuid`        | PK                                              |
 | `product_id`                | `uuid`        | NOT NULL, FK → `products(id)` ON DELETE CASCADE |
 | `category_id`               | `uuid`        | NOT NULL, FK → `categories(id)`                 |
-| `component_id`              | `uuid`        | NOT NULL, FK → `components(id)`                 |
+| `component_id`              | `uuid`        | FK → `components(id)`, NULL allowed             |
 | `created_at` / `updated_at` | `timestamptz` | NOT NULL                                        |
 | —                           | —             | UNIQUE `(product_id, category_id)`              |
 

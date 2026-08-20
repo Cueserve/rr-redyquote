@@ -32,7 +32,18 @@ export function AdminOnly({
  */
 export function ReadOnlyNotice({ what }: { what: string }) {
   return (
-    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+    // The measure cap lives here, not only in PageHeader's `notice` slot: an
+    // editor that renders this directly (see ComponentEditor / ProductEditor)
+    // got no cap at all and ran 756px wide -- 99 characters per line, measured.
+    // `ch` resolves against this element's own font-size, so declaring text-xs
+    // here is what makes the cap resolve at 12px rather than the inherited
+    // body size; same reasoning as page-header.tsx's notice row.
+    //
+    // 57ch, not 65ch, and page-header.tsx carries the full explanation: `ch` is
+    // the width of "0", ~1.31x an average Archivo character, so 65ch rendered
+    // 85 characters per line here -- measured on /settings, well past the
+    // 65-75 measure the number was chosen to hit.
+    <p className="flex max-w-[57ch] items-center gap-2 text-xs text-muted-foreground">
       <Lock aria-hidden="true" className="size-3.5" />
       {what} is maintained by an admin. You can read it here; edits are
       admin-only and enforced by the database.

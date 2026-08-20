@@ -89,7 +89,7 @@ export function getProfile(id: string) {
 /** Display labels for the four lifecycle states (DESIGN-SYSTEM.md §11). */
 export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Draft",
-  pending_approval: "Pending Approval",
+  pending_approval: "Review",
   approved: "Approved",
   sent: "Sent",
 };

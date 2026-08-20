@@ -4,7 +4,7 @@ import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/lib/mock";
 /**
  * The quote-lifecycle → Badge mapping (PRD-010). It lives here rather than in
  * `src/components/ui/badge.tsx` on purpose: `ui/` must stay app-agnostic — it
- * knows `success` / `warning` / `info`, never "Pending approval"
+ * knows `success` / `warning` / `info`, never "Review"
  * (DESIGN-SYSTEM.md §13.4, enforced by the `ui/` boundary rule in
  * eslint.config.mjs).
  *

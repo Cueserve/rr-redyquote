@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# One in-flight run per ref. A second push to a PR cancels the first rather than
+# queueing a second full install.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run test
+# No Playwright / E2E job. There is no `e2e/`, no `playwright.config.ts`, and no
+# `test:e2e` script in either repo, by decision (docs/TECH-STACK.md §5). If E2E
+# is ever adopted, add the job here and in the sibling repo in the same change.

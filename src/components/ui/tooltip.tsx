@@ -11,7 +11,42 @@ import { cn } from "@/lib/utils";
 // surface" effect without a raw palette class.
 const TooltipProvider = TooltipPrimitive.Provider;
 const Tooltip = TooltipPrimitive.Root;
-const TooltipTrigger = TooltipPrimitive.Trigger;
+
+/**
+ * Radix renders the bare trigger as a real `<button type="button">`, and that
+ * button is the only reason the tip is reachable without a mouse (WCAG 2.1.1,
+ * Level A). Passing `asChild` with a non-focusable child -- an `svg`, a `span`,
+ * a `Badge` -- silently swaps the button away and strands the content: the icon
+ * still renders, but keyboard and screen-reader users never get its
+ * explanation.
+ *
+ * So the default styling lives here rather than at each call site: a passive
+ * hint just wraps its content in `<TooltipTrigger>` and inherits the focus
+ * ring. Reach for `asChild` only when the child is already focusable (a Button,
+ * a Link), which is why the default classes are withheld in that case -- they
+ * would fight the child's own.
+ */
+function TooltipTrigger({
+  className,
+  asChild,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      asChild={asChild}
+      className={
+        asChild
+          ? className
+          : cn(
+              "inline-flex cursor-default items-center gap-1.5 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring",
+              className,
+            )
+      }
+      {...props}
+    />
+  );
+}
 
 function TooltipContent({
   className,

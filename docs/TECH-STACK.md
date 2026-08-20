@@ -10,6 +10,16 @@ each may be used.
 
 ---
 
+## Contents
+
+- [1. Languages & Frameworks](#1-languages-frameworks)
+- [2. Datastores](#2-datastores)
+- [3. Cloud & Infrastructure Services](#3-cloud-infrastructure-services)
+- [4. Key Libraries / Tools](#4-key-libraries-tools)
+- [5. Deliberately Not Used](#5-deliberately-not-used)
+- [6. Selection Trade-offs](#6-selection-trade-offs)
+- [7. Versions & Constraints](#7-versions-constraints)
+
 ## 1. Languages & Frameworks
 
 | Technology           | Version            | Reason                                                                                                                                                                                  |
@@ -32,12 +42,12 @@ no external integrations in v1).
 
 ## 3. Cloud & Infrastructure Services
 
-| Service                | Purpose                               | Notes                                                                                |
-| ---------------------- | ------------------------------------- | ------------------------------------------------------------------------------------ |
-| Vercel                 | Hosts the Next.js app                 | Region co-located with the Supabase project                                          |
-| Supabase Platform      | Managed Postgres, Auth, Storage       | **Free** tier for now; Pro at production cutover. No PITR (NFR-006)                  |
-| Supabase Auth (GoTrue) | Credential store and session issuance | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                          |
-| GitHub Actions         | CI on every PR to `main`              | Blocking job: lint + type-check + Vitest unit. Advisory/nightly job: Playwright E2E. |
+| Service                | Purpose                                     | Notes                                                                                                        |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Vercel                 | Hosts the Next.js app                       | Region co-located with the Supabase project                                                                  |
+| Supabase Platform      | Managed Postgres, Auth, Storage             | **Free** tier throughout; Pro at production cutover on the client's own account. No PITR (NFR-006)           |
+| Supabase Auth (GoTrue) | Credential store and session issuance       | bcrypt-hashed passwords; session cookie via `@supabase/ssr`                                                  |
+| GitHub Actions         | CI on every PR to `main` and push to `main` | One blocking job: `lint`, `typecheck`, `format:check`, `test`. No advisory job — there is no E2E suite (§5). |
 
 ## 4. Key Libraries / Tools
 
@@ -50,24 +60,40 @@ no external integrations in v1).
 | `@supabase/ssr`                 | 0.x                      | Supabase Auth session handling via httpOnly cookies in Server Components/Actions                                                       |
 | Supabase CLI                    | latest                   | Database migrations (`supabase/migrations/*.sql`); schema and RLS policies are versioned as SQL, never edited by hand in the dashboard |
 | `supabase gen types typescript` | (Supabase CLI)           | Generates TypeScript types from the schema; regenerated after each migration. No ORM.                                                  |
-| Vitest                          | 3.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
-| Playwright                      | 1.x                      | E2E — quote builder flow, submit/approve gate                                                                                          |
+| Vitest                          | 4.x                      | Unit tests — the shared pricing-calc function is a pure function and gets exhaustive coverage here                                     |
 | ESLint                          | 9.x                      | Linting (flat config, `eslint.config.mjs`)                                                                                             |
 | Prettier                        | 3.x                      | Formatting                                                                                                                             |
 | Husky                           | 9.x                      | Git hooks (pre-commit)                                                                                                                 |
-| lint-staged                     | 16.x                     | Runs Prettier/ESLint on staged files at commit time                                                                                    |
+| lint-staged                     | 17.x                     | Runs Prettier/ESLint on staged files at commit time                                                                                    |
 
 ## 5. Deliberately Not Used
 
-| Not used                                   | Why not                                                                                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TanStack Query                             | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework                                              |
-| Sentry                                     | Confirmed cut for v1 — revisit if production error visibility becomes a real problem                                                                                  |
-| PostHog                                    | No onboarding funnel or product-analytics need for a single internal tool                                                                                             |
-| Resend, `@react-pdf/renderer`              | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model. |
-| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                       |
+| Not used                                   | Why not                                                                                                                                                                                                                                                     |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TanStack Query                             | Needed for an SPA/JSON-API split; with Server Actions + `revalidatePath`, cache invalidation is handled by the framework                                                                                                                                    |
+| Sentry                                     | Confirmed cut for v1 — revisit if production error visibility becomes a real problem                                                                                                                                                                        |
+| PostHog                                    | No onboarding funnel or product-analytics need for a single internal tool                                                                                                                                                                                   |
+| Resend, `@react-pdf/renderer`              | No email or PDF delivery in v1 scope (PRODUCT.md §4). Adding either later slots in behind the existing Server Action pattern without touching the access/audit model.                                                                                       |
+| `pgmq`, `pg_cron`, Supabase Edge Functions | No unauthenticated capture pipeline exists in RedyQuote's scope                                                                                                                                                                                             |
+| Playwright / any E2E framework             | Cut. `@playwright/test` sat in devDependencies with no config, no `e2e/`, and no `test:e2e` script — an installed runner that runs nothing implies coverage that does not exist. Removed. Re-adopting means config, specs, script and CI job in one change. |
 
-## 6. Versions & Constraints
+## 6. Selection Trade-offs
+
+Why each choice beat the alternative that was actually considered. §5 records what was rejected;
+this records what was chosen over what.
+
+| Choice                                                 | Alternatives rejected                                                    | Why                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Server Components for reads, Server Actions for writes | SPA + JSON API layer; a REST or tRPC surface                             | RedyQuote has no external API consumer and no mobile client. A JSON layer would exist only to serve our own screens, and every mutation would need its own auth check instead of inheriting the session. `revalidatePath` replaces the client cache that split would have forced (§5).                                                                                         |
+| Supabase managed platform                              | Self-hosted Postgres with hand-rolled auth and storage; Firebase         | One managed vendor covers Postgres, Auth and Storage for a single internal tool. Firebase's document model was rejected outright — the domain is a relational graph with a strict quote lifecycle, which is exactly what a document store makes awkward.                                                                                                                       |
+| Supabase Auth as-is (JWT, bcrypt)                      | Roll-own session auth; an external Identity Provider                     | Reuse the managed auth already in the platform. An external IdP adds an integration and a failure mode for a fixed, internal user set.                                                                                                                                                                                                                                         |
+| Database-enforced approval gate (a trigger)            | An RLS policy; a Server Action guard; a UI check                         | An RLS `WITH CHECK` cannot see the old row, so it cannot express a _transition_ — only a resulting state. A Server Action guard is bypassable by anything that talks to Postgres directly. The trigger is the only mechanism that sees both old and new and cannot be routed around (`supabase/migrations/0007_quotes.sql`; docs/DATABASE.md §5.5 for why it is two triggers). |
+| Atomic multi-row writes via a Postgres RPC             | Sequential client-driven writes; a transaction held open across requests | A quote is a header plus line items; a product is tiers plus defaults plus price history. Partial writes are the failure this product exists to prevent, and only a single server-side transaction rules them out.                                                                                                                                                             |
+| Append-only `price_history`                            | Updating the component cost in place                                     | An in-place update silently rewrites what past quotes were priced against. Appending keeps every quote's basis reconstructible.                                                                                                                                                                                                                                                |
+| Single-tenant, no `tenant_id`                          | Row-level tenancy carried "just in case"                                 | There is one customer: REDYREF. A `tenant_id` on every table and in every policy is real complexity paid for a second tenant that is not on any roadmap. Adding it later is a migration, not a rewrite.                                                                                                                                                                        |
+| Free Supabase tier now, Pro at cutover                 | Pro from the start                                                       | Nothing but a seeded settings row exists yet. The Pro spend starts when there is data worth backing up — which §7 makes a hard prerequisite for production cutover, not a later optimization.                                                                                                                                                                                  |
+
+## 7. Versions & Constraints
 
 - Node.js MUST be on the **Active LTS** line — currently **24.x** (Vercel runtime). Pinned in
   `.nvmrc` and enforced by `engines.node` in `package.json`. The policy is "track Active LTS,"
@@ -77,11 +103,13 @@ no external integrations in v1).
 - Next.js 16.x App Router only.
 - React 19.x; TypeScript 5.x with `strict` enabled.
 - Supabase Postgres 17.
-- **Supabase plan is Free for now.** PITR is NOT required for v1 (NFR-006c) — it is a $100/mo
-  add-on and is out of budget for an internal tool at this scale. Before production cutover
-  (first real customer quote stored), the project MUST move to **Pro** ($25/mo) for its
-  included daily backups (NFR-006b). Free has **no automated backups at all**, so while on
-  Free: run `supabase db dump` before any destructive migration.
+- **Supabase plan is Free, and stays Free for everything Cueserve owns.** PITR is NOT required
+  for v1 (NFR-006c) — it is a $100/mo add-on and is out of budget for an internal tool at this
+  scale. Before production cutover (first real customer quote stored), the project MUST be on
+  **Pro** ($25/mo) for its included daily backups (NFR-006b) — **on the client's own account**,
+  because the production Supabase and Vercel projects are created under their ownership at
+  cutover (docs/ENVIRONMENTS.md §2). Free has **no automated backups at all**, so while on Free:
+  run `supabase db dump` before any destructive migration, and schedule it before UAT.
 - TLS 1.2+ enforced at both the Vercel and Supabase edges; plaintext HTTP rejected
   (NFR-004).
 - No service-role key is used anywhere in this application (ARCHITECTURE §1) — there is

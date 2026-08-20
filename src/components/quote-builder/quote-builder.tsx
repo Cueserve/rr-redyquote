@@ -26,7 +26,7 @@ import type {
   QuoteStatusHistoryRow,
   Settings,
 } from "@/lib/mock";
-import { formatMoney } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 
 import { LifecycleBar } from "./lifecycle-bar";
 import { LineItems } from "./line-items";
@@ -42,7 +42,7 @@ import { SummaryPanel } from "./summary-panel";
  * In the finished app this is where live recalculation happens on every
  * keystroke, using the same `src/lib/pricing/` module the Server Action calls,
  * so the preview and the persisted value agree. Neither the module nor the
- * action exists yet (PRD §2A), so this pass builds the structure that will hold
+ * action exists yet (PRD §7A), so this pass builds the structure that will hold
  * them: the state shape, the editable-vs-calculated split, the fixed-category
  * layout, and the lifecycle affordances.
  *
@@ -106,7 +106,7 @@ export function QuoteBuilder({
   const nextLineId = React.useRef(0);
   const makeLineId = () => `new-${(nextLineId.current += 1)}`;
 
-  // Only a draft is editable (PRD-010). Sent is terminal; Pending approval and
+  // Only a draft is editable (PRD-010). Sent is terminal; Review and
   // Approved are locked while they wait on someone.
   const readOnly = quote !== null && quote.status !== "draft";
 
@@ -280,8 +280,8 @@ export function QuoteBuilder({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="flex min-w-0 flex-col gap-6">
+    <div className="grid grid-cols-1 gap-6 xl:flex xl:items-start">
+      <div className="flex min-w-0 flex-col gap-6 xl:flex-1">
         <Card className="flex flex-col gap-5">
           <h2 className="text-md font-semibold tracking-tight">
             Quote Details
@@ -347,16 +347,19 @@ export function QuoteBuilder({
                   ))}
                 </SelectContent>
               </Select>
+              {/* The quoted date is visible here, unlike the tables, because
+                  this is the one place a freshness badge has no dated column
+                  beside it — and "Aging" is not actionable without knowing
+                  aging since when. It used to hide inside the badge's `title`,
+                  which only a mouse could reach. */}
               {selectedTier ? (
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   Fab cost{" "}
                   <span className="font-mono tabular-nums">
                     {formatMoney(selectedTier.cost)}
                   </span>
-                  <FreshnessBadge
-                    freshness={selectedTier.freshness}
-                    quotedDate={selectedTier.quoted_date}
-                  />
+                  · quoted {formatDate(selectedTier.quoted_date)}
+                  <FreshnessBadge freshness={selectedTier.freshness} />
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
@@ -373,7 +376,7 @@ export function QuoteBuilder({
                 onValueChange={(value) =>
                   setEnvironment(value as QuoteEnvironment)
                 }
-                className="flex items-center gap-6 py-2.5"
+                className="flex items-center gap-4 py-2.5"
               >
                 {ENVIRONMENTS.map((option) => (
                   <div key={option.value} className="flex items-center gap-2">
@@ -399,9 +402,13 @@ export function QuoteBuilder({
         </Card>
 
         <Card className="flex flex-col gap-4" padding="compact">
-          <div className="flex flex-col gap-1 px-2 pt-2">
+          <div className="flex flex-col gap-1 px-3 pt-2">
             <h2 className="text-md font-semibold tracking-tight">Line Items</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* 70ch, matching PageHeader's page-level description. Uncapped
+                this ran 660px = 118 characters per line at 1440, well past the
+                65-75ch measure. A Card constrains a section's width on some
+                screens and not others, so the cap has to be on the prose. */}
+            <p className="max-w-[70ch] text-sm text-muted-foreground">
               One line per category, plus any misc lines this job needs. Amber
               fields are typed; plain figures are computed on save.
             </p>
@@ -421,7 +428,7 @@ export function QuoteBuilder({
         </Card>
       </div>
 
-      <div className="flex flex-col gap-6 xl:sticky xl:top-0 xl:self-start">
+      <div className="flex flex-col gap-6 xl:w-88 xl:shrink-0 xl:sticky xl:top-0 xl:self-start">
         <SummaryPanel quote={quote} settings={settings} isDirty={isDirty} />
         <LifecycleBar
           quote={quote}

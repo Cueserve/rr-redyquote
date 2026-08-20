@@ -11,3 +11,9 @@ supabase/.temp
 # .claude/settings.json and .claude/commands/ are committed source and stay
 # formatted. See README "Claude Code Setup".
 .claude/skills
+
+# graphify output. graph.json/graph.html/GRAPH_REPORT.md are committed as
+# versioned documentation of the codebase graph, but they are tool-generated —
+# reformatting them would produce a diff on every regeneration and would fight
+# the generator. Committed does not mean ours to format.
+graphify-out

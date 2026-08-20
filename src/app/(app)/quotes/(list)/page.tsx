@@ -41,10 +41,10 @@ export default function QuotesPage() {
       />
 
       <Card padding="compact">
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <KpiStat label="Total quotes" value={QUOTES.length} />
           <KpiStat
-            label="Pending approval"
+            label="Review"
             value={pendingApproval}
             tone={pendingApproval > 0 ? "warning" : "neutral"}
           />

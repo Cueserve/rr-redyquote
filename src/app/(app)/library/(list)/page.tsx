@@ -21,10 +21,18 @@ export default function LibraryPage() {
         title="Component Library"
         description="Reusable components by category, with a full price history behind every cost change."
         actions={
-          <AdminOnly fallback={<ReadOnlyNotice what="The component library" />}>
+          <AdminOnly>
             <Button asChild>
               <Link href="/library/new">New component</Link>
             </Button>
+          </AdminOnly>
+        }
+        // Split from `actions` on purpose: the action slot is shrink-0 and
+        // cannot carry a sentence (see page-header.tsx). Admins get the button
+        // and no notice; reps get the notice and no button.
+        notice={
+          <AdminOnly fallback={<ReadOnlyNotice what="The component library" />}>
+            {null}
           </AdminOnly>
         }
       />

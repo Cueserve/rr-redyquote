@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
  * `(app)/layout.tsx` has no session gate yet.
  *
  * This file previously held a design-token reference surface, kept only until
- * the first real route existed (docs/TODO.md §C.1). That trigger has now fired.
+ * the first real route existed. That trigger fired on 2026-07-31.
  */
 export default function RootPage() {
   redirect("/quotes");

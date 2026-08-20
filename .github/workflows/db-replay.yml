@@ -1,0 +1,125 @@
+name: DB Replay
+
+# Rebuilds the schema from an empty database on every pull request that changes a migration.
+#
+# WHY THIS EXISTS. There is no local Supabase stack here - CLAUDE.md section 6 and
+# docs/ENVIRONMENTS.md section 1 both say Docker is not installed - and `/db-migrate` Phase 1
+# refuses to push anything not already on `origin/main` at identical content. Put those two facts
+# together and the first time a migration touches a real Postgres is AFTER it has merged and
+# become immutable. The merge gate did not create that risk, but it did make it structural. CI
+# runners have Docker even though the development machine does not, so the check that cannot run
+# locally runs here instead.
+#
+# THIS DOES NOT CONTRADICT "never suggest `supabase start` or `db reset`" (CLAUDE.md section 6,
+# and the outright deny on `supabase db reset` in .claude/settings.json). That rule is about the
+# development machine, where there is no Docker daemon for either command to talk to. It is not a
+# judgement about the commands themselves - docs/ENVIRONMENTS.md section 4 step 4 makes
+# `db reset` the payoff of adopting a local stack. A GitHub runner has the daemon the laptop
+# lacks, which is the entire reason this file exists.
+#
+# HARD FAIL, unlike db-drift.yml. A red there can be the legitimate window between merging a
+# migration and applying it. A red here is always a real defect: the migration chain does not
+# build. Do not soften this into a warning - a check that cannot fail is a check nobody reads.
+#
+# WHAT `db reset` CATCHES THAT `db push` CANNOT. `db push` sends a long-lived remote only what it
+# has not already seen, so ordering that worked once incrementally, and a migration that quietly
+# assumed state someone created by hand in the dashboard, both keep passing it forever. Replaying
+# from empty is the only thing that asks whether the chain as committed builds the schema it
+# claims to. docs/ENVIRONMENTS.md section 4 step 4 already predicted this job's most likely first
+# result, and calls it correctly: a chain that will not replay is a finding, not a setback.
+#
+# NO SECRETS, NO NETWORK, NO HOSTED PROJECT. There is no `--linked` here and there must never be
+# one. Everything runs against a Postgres container on the runner, which keeps the job safe on a
+# pull request from a fork and keeps CI from ever becoming a writer to a real database - the same
+# rule db-drift.yml carries at the top of its own file. db-drift.yml needs SUPABASE_ACCESS_TOKEN
+# only because the CLI mints temporary Postgres access from it to reach the hosted project; this
+# job reaches nothing, so it needs nothing.
+#
+# WHAT A GREEN RUN DOES NOT PROVE. Two limits, both deliberate, so nobody over-trusts the badge:
+#   1. It proves the chain replays from empty. It does not prove the new migration applies to the
+#      hosted project, which already holds `0001`-`0009` - a statement that is fine against an
+#      empty database can still fail against real state. `/db-migrate` and db-drift.yml own that
+#      half.
+#   2. `db reset` runs as the superuser. RLS policies, `auth.uid()`, and both halves of the
+#      approval gate - `validate_quote_status_transition` and `enforce_quote_created_in_draft` -
+#      are never exercised. This job validates DDL; it makes none of the six assertions registered
+#      as missing in docs/ENGINEERING-RULES.md section 3, and adding it does not close that gap.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      # This workflow itself. A change to the replay job is only verifiable by running it, and
+      # without this line the pull request that adds or edits it can never exercise it - the job
+      # would first run on some later migration, which is the worst moment to discover it is
+      # broken.
+      - ".github/workflows/db-replay.yml"
+
+concurrency:
+  # Keyed by pull request rather than by workflow as db-drift.yml is: two pull requests replaying
+  # at the same time are independent and must not cancel each other, but a second push to the
+  # same branch makes the first replay obsolete.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          # Tracks latest, matching db-drift.yml and the CLI a developer gets from
+          # `npx supabase`. The trade-off is real - a CLI release can turn this job red on a day
+          # nobody touched a migration - but a pin trades that for silently diverging from the
+          # CLI actually in use, which is worse: the job's verdict would then describe a CLI
+          # nobody runs.
+          version: latest
+
+      # `supabase db start` is the lighter half of `supabase start`. Measured on this runner it
+      # pulls and boots four containers - postgres, gotrue, realtime, storage-api, the last three
+      # only so their own schema migrations exist before ours run, which is what makes
+      # `auth.users` available to 0002. It does NOT boot Studio, Kong, PostgREST, the edge
+      # runtime, the mail catcher, Supavisor, or analytics - and `[analytics]` is enabled in
+      # supabase/config.toml, so the full `supabase start` would boot the flakiest container in
+      # the stack for nothing. Verified present in CLI 2.114.0: `supabase db start --help` ->
+      # "Starts local Postgres database".
+      #
+      # IT ALSO APPLIES THE MIGRATION CHAIN, which is not obvious from that help text and is why
+      # this step carries the same error annotation as the replay step below. A broken chain
+      # fails HERE, exiting 1 after "Stopping containers..."; the reset step never gets to run.
+      # Confirmed by the acceptance probe on run 31955310195, which failed at this step with
+      # `relation "public.replay_probe_missing" does not exist (SQLSTATE 42P01)`. Do not read a
+      # red here as infrastructure trouble.
+      - name: Start local Postgres, applying the chain once as it builds the database
+        run: |
+          set -euo pipefail
+          supabase db start || {
+            echo "::error::The migration chain does not build from an empty database. The start command applies every migration while creating it, so this is a schema defect, not a container problem - see the SQL error above. Fix it with a NEW migration; never by editing a migration already on main, which is immutable and would be skipped silently on the next push."
+            exit 1
+          }
+
+      # `db reset` drops the database, recreates it, and applies every file in
+      # supabase/migrations/ in order. Migrations here are numbered NNNN_ rather than with the
+      # CLI's 14-digit UTC timestamp; the CLI reads both, which is why `db push` has always seen
+      # `0001`-`0009`, and the run log above names each one as it applies. There is no
+      # supabase/seed.sql in this repo, so this is a pure replay - if one is ever added, reset
+      # will exercise it here too, which is correct.
+      #
+      # KEPT EVEN THOUGH THE STEP ABOVE ALREADY REPLAYED THE CHAIN, for two reasons. `db reset`
+      # is the command the docs and the CLI both define as "replay from empty" - it is the
+      # guarantee this job exists to make, and leaving it implicit in a side effect of `db start`
+      # would make the job depend on CLI behaviour nobody documented. And it costs seconds: the
+      # containers are already up and the images are already pulled.
+      - name: Replay every migration from empty
+        run: |
+          set -euo pipefail
+          supabase db reset --local || {
+            echo "::error::The migration chain does not replay from an empty database. This is a real defect, not CI noise. The failing statement above depends on something no earlier file in supabase/migrations/ creates - usually ordering that only ever worked incrementally against the hosted project, or an object created by hand in the dashboard. Fix it with a NEW migration; never by editing a migration already on main, which is immutable and would be skipped silently on the next push."
+            exit 1
+          }

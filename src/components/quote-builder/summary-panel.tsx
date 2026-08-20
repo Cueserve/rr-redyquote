@@ -3,6 +3,7 @@
 import { Info, TriangleAlert } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { EmptyValue } from "@/components/ui/empty-state";
 import type { Quote, Settings } from "@/lib/mock";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 
@@ -11,7 +12,7 @@ import { cn, formatMoney, formatPercent } from "@/lib/utils";
  * pattern — except it does not calculate, and says so.
  *
  * This is the one place the open pricing decision is visible rather than
- * hidden. PRD §2A leaves the calculation order, the rounding points, and which
+ * hidden. PRD §7A leaves the calculation order, the rounding points, and which
  * fields are canonical all undefined, and PRODUCT.md §3A forbids inventing any
  * of them. So:
  *
@@ -74,7 +75,9 @@ export function SummaryPanel({
 }) {
   // Stored values are shown only while they still describe what is on screen.
   const stored = quote && !isDirty ? quote : null;
-  const dash = <span className="text-muted-foreground">—</span>;
+  // Not "pending calculation" -- these are genuinely absent until the quote is
+  // saved, which is a different statement from line-items' PendingValue.
+  const dash = <EmptyValue label="Not calculated until saved" />;
   const money = (value: number | undefined) =>
     value === undefined ? dash : formatMoney(value);
 
@@ -82,7 +85,7 @@ export function SummaryPanel({
     <Card className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-md font-semibold tracking-tight">Cost Breakdown</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-[70ch] text-sm text-muted-foreground">
           Recomputed server-side at save time from the saved line items and
           estimating defaults in effect then.
         </p>
@@ -146,9 +149,9 @@ export function SummaryPanel({
         </div>
       ) : null}
 
-      {/* Prototype note. Delete with the fixtures once PRD §2A is signed off. */}
+      {/* Prototype note. Delete with the fixtures once PRD §7A is signed off. */}
       <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-        Design prototype: the pricing formula is an open decision (PRD §2A), so
+        Design prototype: the pricing formula is an open decision (PRD §7A), so
         nothing on this panel recalculates. The figures shown are the last saved
         values.
       </p>

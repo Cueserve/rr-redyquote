@@ -150,7 +150,7 @@ export function ProductEditor({
       </Card>
 
       <Card className="flex flex-col gap-4" padding="compact">
-        <div className="flex items-start justify-between gap-4 px-2 pt-2">
+        <div className="flex items-start justify-between gap-4 px-3 pt-2">
           <div className="flex flex-col gap-1">
             <h2 className="text-md font-semibold tracking-tight">
               Quantity-Tier Fab Pricing
@@ -173,7 +173,7 @@ export function ProductEditor({
             </p>
           </EmptyState>
         ) : (
-          <Table>
+          <Table caption="Fabrication pricing tiers for this product">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-32 text-right">Qty tier</TableHead>
@@ -228,10 +228,7 @@ export function ProductEditor({
                     />
                   </TableCell>
                   <TableCell>
-                    <FreshnessBadge
-                      freshness={tier.freshness}
-                      quotedDate={tier.quoted_date}
-                    />
+                    <FreshnessBadge freshness={tier.freshness} />
                   </TableCell>
                   <TableCell>
                     <Button

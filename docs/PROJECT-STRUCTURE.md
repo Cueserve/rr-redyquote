@@ -1,7 +1,7 @@
 # PROJECT-STRUCTURE.md — Directory Layout & File Placement
 
 **Owner:** Viral Parikh
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-15
 **Source of truth for:** where each kind of file lives and the rules for placing new code —
 so features and components land in the right place and don't break the invariants in
 docs/ARCHITECTURE.md.
@@ -11,10 +11,9 @@ docs/ARCHITECTURE.md.
 
 ---
 
-> **Mostly built, as of 2026-08-01.** `src/app/` (all routes), `src/components/`, `src/lib/`,
+> **Mostly built, as of 2026-08-15.** `src/app/` (all routes), `src/components/`, `src/lib/`,
 > `src/proxy.ts`, `supabase/`, `docs/`, and root config all exist. `supabase/migrations/`
-> now holds `0001`–`0004`; `0005` onward — categories, products, quotes, RPCs — is
-> untranscribed. **Which of those files have reached the remote is tracked in CLAUDE.md's
+> holds `0001`–`0009`. **Which of those files have reached the remote is tracked in CLAUDE.md's
 > "Project state", not here.** This file describes layout; push state restated in a second
 > place has already drifted once.
 > Still missing: **`src/server/`** — no Server Action has been written, so the app's entire
@@ -82,7 +81,7 @@ redyquote/
 │  │  │  │  ├─ _components/         # route-private UI (ComponentTable, ComponentEditor)
 │  │  │  │  ├─ new/page.tsx         # new component    (admin-gated; no history panel)
 │  │  │  │  └─ [id]/page.tsx        # component detail (editor + append-only history)
-│  │  │  └─ settings/               # rates, markups, branding, audit    (admin-only edit)
+│  │  │  └─ settings/               # rates, markups, branding, change history (admin-only)
 │  │  ├─ layout.tsx                 # root layout — html/body shell, fonts
 │  │  ├─ page.tsx                   # entry (redirect to /quotes or /login)
 │  │  └─ globals.css                # Tailwind entry + the three-tier token layer
@@ -95,8 +94,9 @@ redyquote/
 │  │  ├─ quote-status-badge.tsx     # lifecycle → Badge; app-specific, so not in ui/
 │  │  └─ freshness-badge.tsx        # PRD-009 Current/Aging/Re-quote + Deactivated
 │  ├─ lib/                          # framework-agnostic logic; no JSX, no React imports
-│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §2A
-│  │  ├─ validation/            [ ] # Zod schemas for Server Action inputs (ARCH §5)
+│  │  ├─ pricing/               [ ] # shared cost/margin calc — blocked on PRD §7A
+│  │  ├─ validation/            [~] # Zod schemas (ARCH §5) — settings.ts only so far
+│  │  ├─ list/                      # list view: filter/sort/slice + URL params (PR #38)
 │  │  ├─ mock/                 [tmp]# fixtures standing in for the read path
 │  │  ├─ supabase/
 │  │  │  ├─ server.ts               # session-bound server client (@supabase/ssr) — RLS applies
@@ -112,14 +112,12 @@ redyquote/
 │        ├─ library.ts              # save library component
 │        └─ settings.ts             # save settings, upload favicon
 ├─ supabase/                        # Supabase CLI project — must stay at repo root
-│  ├─ migrations/               [~] # *.sql — 0001–0004; 0005+ categories/products/quotes/RPCs TBD
+│  ├─ migrations/                   # *.sql — 0001–0009, all applied. THE schema (ARCHITECTURE §5)
 │  └─ config.toml                   # local stack config
-├─ e2e/                         [ ] # Playwright — quote flow, submit/approve gate
 ├─ docs/                            # source-of-truth docs (this file lives here)
-│  ├─ DATABASE.md                   #   the data model — permanent
-│  ├─ DATABASE-SQL.md          [tmp]#   its DDL — deleted once migrations are authored
+│  ├─ DATABASE.md                   #   the data model — permanent; the DDL lives in migrations/
 │  ├─ …                             #   PRODUCT, PRD, ARCHITECTURE, TECH-STACK, DESIGN-SYSTEM,
-│  │                                #   ENVIRONMENTS, TODO — all permanent
+│  │                                #   ENVIRONMENTS — all permanent
 │  └─ superpowers/                  # tool-owned path — the `superpowers` Claude Code plugin
 │     ├─ specs/                     #   writes design specs here (YYYY-MM-DD-<topic>-design.md)
 │     └─ plans/                 [ ] #   and implementation plans here, when first used
@@ -144,7 +142,7 @@ exists to contain that one file and nothing else, so **add both together or neit
 dead weight. `settings/` is a single page with no detail route, so neither applies to it.
 
 **`public/` holds the REDYREF brand imagery and nothing else.** The five `create-next-app`
-SVGs were deleted on 2026-07-31 (docs/TODO.md §C.1); the folder then sat empty — and therefore
+SVGs were deleted on 2026-07-31; the folder then sat empty — and therefore
 absent from a fresh clone, since git does not track empty directories — until the logo landed
 on 2026-08-01. The favicon is _not_ here: it lives at `src/app/favicon.ico`, the Next App
 Router convention. Keep this folder to assets the browser fetches by URL; anything a component
@@ -184,8 +182,8 @@ type-check globs one unambiguous anchor for "code we wrote." Next 16 supports `s
 `@/server/actions/quotes`, `@/components/ui/button`.
 
 Unit tests (Vitest) are **co-located** as `*.test.ts` next to the module under test — the
-`src/lib/pricing/` calc function especially gets exhaustive coverage there. Playwright E2E
-specs live in `e2e/`, separate from unit tests.
+`src/lib/pricing/` calc function especially gets exhaustive coverage there. There is no E2E
+suite (docs/TECH-STACK.md §5).
 
 ## 2. The Four Placement Questions
 
@@ -211,22 +209,22 @@ Consequences worth stating outright:
 
 ## 3. What Lives Where
 
-| Concern                       | Location                                              | Why                                                                                                                                        |
-| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page/route reads              | `src/app/(app)/**/page.tsx` (Server Components)       | Read path; session-bound Supabase reads so RLS applies (ARCH §1)                                                                           |
-| Writes of any kind            | `src/server/actions/*.ts` (Server Actions)            | Sole mutation path — no direct browser→Postgres writes (ARCH §5)                                                                           |
-| Route-private UI              | `src/app/**/_components/`                             | Underscore keeps it out of the router; UI used by one route stays next to it                                                               |
-| Shared pricing calc           | `src/lib/pricing/`                                    | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5)                                           |
-| Input validation              | `src/lib/validation/` (Zod)                           | Single validation tool of record (ARCH §5, TECH-STACK §4)                                                                                  |
-| Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                          |
-| Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                                 |
-| Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                          |
-| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §6)                                                          |
-| Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                                         |
-| The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                                       |
-| App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be                      |
-| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Pending approval" (DESIGN-SYSTEM §13.4) |
-| Prototype scaffolding         | `src/lib/mock/`, `src/components/prototype/`          | Quarantined in named folders so the delete is one `rm -r` each, not a hunt. Nothing outside them may assume they exist                     |
+| Concern                       | Location                                              | Why                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Page/route reads              | `src/app/(app)/**/page.tsx` (Server Components)       | Read path; session-bound Supabase reads so RLS applies (ARCH §1)                                                                 |
+| Writes of any kind            | `src/server/actions/*.ts` (Server Actions)            | Sole mutation path — no direct browser→Postgres writes (ARCH §5)                                                                 |
+| Route-private UI              | `src/app/**/_components/`                             | Underscore keeps it out of the router; UI used by one route stays next to it                                                     |
+| Shared pricing calc           | `src/lib/pricing/`                                    | One canonical formula imported by both the client preview and the server recompute (ARCH §1, §5)                                 |
+| Input validation              | `src/lib/validation/` (Zod)                           | Single validation tool of record (ARCH §5, TECH-STACK §4)                                                                        |
+| Supabase access               | `src/lib/supabase/`                                   | Session-bound clients via `@supabase/ssr`; no service-role key anywhere (ARCH §1)                                                |
+| Generated DB types            | `src/lib/supabase/types.ts`                           | `supabase gen types typescript`; regenerated after each migration — no ORM (TECH-STACK §4)                                       |
+| Session refresh               | `src/proxy.ts` + `src/lib/supabase/update-session.ts` | Next 16 names the middleware entry `proxy.ts`; the reusable logic stays in `lib/`                                                |
+| Schema / RLS / RPC / sequence | `supabase/migrations/*.sql`                           | Authoritative schema; never hand-edited in the dashboard (ARCH §5, TECH-STACK §7)                                                |
+| Reusable UI                   | `src/components/` (`ui/` for shadcn)                  | Not route-specific                                                                                                               |
+| The live quote builder        | `src/components/quote-builder/`                       | Used by both `quotes/new` and `quotes/[id]`, and the only rich client component in the app (ARCH §1)                             |
+| App chrome                    | `src/components/layout/`                              | Sidebar, Topbar, PageHeader/PageBody — global shell, and allowed to be app-aware in a way `ui/` structurally can't be            |
+| Domain → UI mappings          | `src/components/*.tsx` (top level)                    | `quote-status-badge`, `freshness-badge`. `ui/` must stay app-agnostic — it knows `warning`, never "Review" (DESIGN-SYSTEM §13.4) |
+| Prototype scaffolding         | `src/lib/mock/`, `src/components/prototype/`          | Quarantined in named folders so the delete is one `rm -r` each, not a hunt. Nothing outside them may assume they exist           |
 
 ## 4. File Placement Rules
 
@@ -245,7 +243,7 @@ Read these before creating any new feature, route, action, or component.
    atomic RPC transactions — never sequential client-driven writes (ARCH §3, §5).
 5. **Schema, RLS, the quote-number sequence, and RPC functions are SQL migration files only.**
    Add a new `supabase/migrations/*.sql`; regenerate `src/lib/supabase/types.ts` after. Never
-   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §6).
+   edit schema or RLS in the Supabase dashboard (ARCH §5, TECH-STACK §7).
 6. **Default to a Server Component.** Add `"use client"` only where genuine interactivity needs
    it — realistically just `src/components/quote-builder/`. A new client component is a
    decision to justify, not a default (ARCH §1).
@@ -278,30 +276,50 @@ Read these before creating any new feature, route, action, or component.
 - **Middleware** — the entry file is `src/proxy.ts`, Next 16's name for it. Next 16.2 still
   accepts `middleware.ts`; use `proxy.ts` so the repo has one name for one thing, and keep the
   reusable session logic in `src/lib/supabase/update-session.ts`.
-- **Tests** — `*.test.ts` co-located for Vitest units; `*.spec.ts` under `e2e/` for Playwright.
+- **Tests** — `*.test.ts` co-located for Vitest units. There is no E2E suite; if one is ever
+  adopted, its specs are `*.spec.ts` under `e2e/` so the Vitest include glob never picks
+  them up.
 - **Docs** — top-level `docs/*.md`, named by content in SCREAMING-KEBAB
   (`ARCHITECTURE.md`, `TECH-STACK.md`). Two things about this folder are worth stating
   precisely, because they are easy to conflate:
 
   **Permanent vs. transient is a property of the file, not its folder.** Almost everything in
   `docs/` is a permanent source-of-truth doc. A few files are **specs**: authoritative for
-  what they cover, but deleted once their content lands in whatever they feed.
-  `DATABASE-SQL.md` is one — it holds the DDL for `DATABASE.md`'s model and goes away when
-  `supabase/migrations/*.sql` is authored, because ARCHITECTURE §5 makes the migrations the
-  authoritative schema and a second copy of the same SQL would drift. Every transient file
-  declares it in its own header **and** is listed in CLAUDE.md's "Approved design specs"
-  block. Don't add one without doing both; don't assume a `docs/*.md` is permanent without
-  checking that list.
+  what they cover, but deleted once their content lands in whatever they feed. The
+  branding-assets and list-sort specs in `docs/specs/` are the current examples. Every
+  transient file declares it in its own header **and** is listed in CLAUDE.md's "Approved
+  design specs" block. Don't add one without doing both; don't assume a `docs/*.md` is
+  permanent without checking that list.
 
-  **`docs/superpowers/**` is named after the tool, not the content** — the `superpowers`
-  Claude Code plugin hardcodes that path (`specs/` from its brainstorming skill, `plans/`
-  from writing-plans). Deliberately left alone: renaming it would just make the plugin
-  recreate the folder and split specs across two places. That is a reason to leave **plugin
-  output** there, and not a reason to put hand-authored files there — the futility argument
-  only applies to files something else would recreate. So
-  `2026-07-23-authorization-matrix-design.md` stays (the plugin wrote it) while
-  `DATABASE-SQL.md` sits beside the `DATABASE.md` it implements. Neither placement affects
-  authority; CLAUDE.md's list does.
+  **Retiring a spec takes two steps, and skipping the second is the usual failure.**
+  `DATABASE-SQL.md` was the worked example: it held the DDL for `DATABASE.md`'s model until
+  `0001`–`0009` covered it. Its content was fully absorbed well before it could be deleted,
+  because roughly twenty citations across eight files still pointed at it and three pieces of
+  its prose had no migration to live in. So: absorb the content, **then** repoint every
+  inbound link, and only then delete. A spec whose content has landed but whose citations
+  have not is not yet deletable.
+
+  **Shipping the code is a third step, and it comes first.** Between "designed" and
+  "absorbed" a spec spends time as **implemented**: the code is merged, but some of its prose
+  — usually rejected alternatives and migration seams — still has no permanent home. That
+  file moves to `docs/specs/implemented/` (see [that folder's README](specs/implemented/README.md)).
+  The move is not cosmetic: a shipped spec left in `docs/specs/` reads as pending work, and an
+  agent will build what already exists. That failure is not hypothetical — the list-sort spec
+  sat mislabelled for four days after PR #38 merged.
+
+  | Kind                     | Path                      | Filename                          | Lifetime                                                    |
+  | ------------------------ | ------------------------- | --------------------------------- | ----------------------------------------------------------- |
+  | Source-of-truth document | `docs/`                   | `SCREAMING-KEBAB.md`              | permanent                                                   |
+  | Design spec              | `docs/specs/`             | `YYYY-MM-DD-<slug>.md`            | transient — listed in CLAUDE.md, **designed but not built** |
+  | Implemented spec         | `docs/specs/implemented/` | `YYYY-MM-DD-<slug>.md`            | transient — shipped as code, deleted once fully absorbed    |
+  | Advisory review          | `docs/reviews/`           | `YYYY-MM-DD-<subject>-review.md`  | permanent                                                   |
+  | Pre-decision exploration | `docs/brainstorming/`     | `<topic>.md`, `**Status:** Draft` | permanent, never authoritative                              |
+
+  Date-first in `specs/` and `reviews/` so a directory listing sorts chronologically, which is
+  how both are read. `docs/superpowers/` is **gitignored**: the `superpowers` plugin hardcodes
+  that path and will recreate it, but what it leaves there is scratch — the same class as
+  `.superpowers/`, which was already ignored. An approved spec moves to `docs/specs/` and is
+  listed in CLAUDE.md; that list, not the folder, is what confers authority.
 
 ## 6. Keeping This File Honest
 
@@ -313,6 +331,44 @@ and the two `[tmp]` directories are on a delete-when path. When you create real 
   same change** and note why — a stale structure doc is worse than none.
 - Editing this file is a deliberate decision, like any `docs/` change (CLAUDE.md): call it out,
   don't fold a structural change silently into unrelated feature work.
+
+### Deferred structural work — triggers, not a checklist
+
+These have a **trigger**, not a due date. Do each when its trigger fires, not before, and
+update [§1](#1-directory-tree) in the same change. Absorbed here on 2026-08-08 from
+`docs/TODO.md`, which was deleted once its two open tooling items (Vitest config, CI
+workflow) landed.
+
+| Item                                                 | Trigger                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/hooks/`                                         | shadcn auto-creates it when a component ships a hook (e.g. sidebar)         |
+| Delete `src/lib/mock/` + `src/components/prototype/` | Server Components read real data and Supabase Auth gates `(app)/layout.tsx` |
+| App #2 packaging decision                            | A second RedyRef app is concrete                                            |
+| Move the list-view read server-side                  | Supabase reads land in the three `(list)/page.tsx` files                    |
+
+**No E2E suite, and the gap is specific.** ARCHITECTURE's database-enforced approval gate is
+the one invariant a UI-only test can pass while the real thing is broken: a `rep` session must
+not be able to move a quote out of `Review` even when the request bypasses the UI. Nothing
+automated asserts that today. `@playwright/test` used to sit in devDependencies with no
+config and no specs, which implied coverage that did not exist; it was removed
+(docs/TECH-STACK.md §5). If E2E is adopted, that assertion is the first spec — not a happy
+path — and the config, specs, script and CI job land in one change.
+
+**Prototype removal — the role switch is the urgent half.** `src/components/prototype/` is an
+affordance toggle that must never be mistaken for authorization, which is RLS's job (NFR-002).
+Both directories are quarantined so each is one `rm -r`.
+
+**The list-view move is a swap, not a rewrite.** `src/lib/list/` was built with the seam in
+place: the params object is the contract, so `page.tsx` starts reading `searchParams` and the
+filter/compare/page/size arguments become query-builder calls. The URL contract does not
+change, so no bookmark breaks. The full description — including why the client-side read costs
+these three routes their prerendered content today — is
+[docs/ARCHITECTURE.md](ARCHITECTURE.md) §4.1. Do not restate it here.
+
+**App #2 packaging — do NOT decide now.** Template repo (zero overhead, fixes don't propagate)
+vs. private shadcn registry (shadcn-native, updates re-run `shadcn add`) vs. npm workspace
+monorepo (true single-version sharing, highest daily complexity). The `ui/` import-boundary
+rule in `eslint.config.mjs` keeps all three cheap, which is what buys the right to defer.
 
 **This file went stale once already**, and it is worth knowing how: the §1 banner still
 described a bare `create-next-app` scaffold after `src/components/`, `src/lib/`,

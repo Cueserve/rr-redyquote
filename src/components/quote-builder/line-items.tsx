@@ -5,6 +5,7 @@ import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { DeactivatedBadge, FreshnessBadge } from "@/components/freshness-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyValue } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -50,7 +51,7 @@ import { cn, formatHours, formatMoney } from "@/lib/utils";
  *   - Calculated — labor cost. No tint, no border, plain text.
  * A calculated cell on an edited row renders as an em dash rather than a stale
  * figure, because the trusted value is the one the server recomputes at save
- * (NFR-007) and this prototype has no formula to preview with (PRD §2A).
+ * (NFR-007) and this prototype has no formula to preview with (PRD §7A).
  */
 
 const ENVIRONMENT_LABEL: Record<string, string> = {
@@ -62,8 +63,12 @@ const ENVIRONMENT_LABEL: Record<string, string> = {
 function PendingValue() {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="text-muted-foreground">—</span>
+      {/* Labelled, because the dash alone tells a screen reader nothing. */}
+      <TooltipTrigger
+        aria-label="Pending calculation"
+        className="text-muted-foreground"
+      >
+        —
       </TooltipTrigger>
       <TooltipContent>
         Recomputed server-side when the quote is saved.
@@ -86,7 +91,7 @@ function LineFlags({
         // blocked: the rep may have a reason, and the docs never call it an
         // error.
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <Badge variant="destructive" className="cursor-default">
               <TriangleAlert aria-hidden="true" />
               Environment
@@ -138,7 +143,7 @@ export function LineItems({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table>
+      <Table caption="Line items on this quote">
         <TableHeader>
           <TableRow>
             <TableHead className="w-40">Category</TableHead>
@@ -217,7 +222,7 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 
@@ -235,14 +240,14 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 
                 {/* Calculated — no tint, no border (DESIGN-SYSTEM.md §7). */}
                 <TableCell numeric className="text-right">
                   {!line ? (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   ) : isEdited ? (
                     <PendingValue />
                   ) : (
@@ -268,7 +273,7 @@ export function LineItems({
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <EmptyValue label="No line on this quote" />
                   )}
                 </TableCell>
 

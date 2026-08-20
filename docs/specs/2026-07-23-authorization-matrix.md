@@ -3,7 +3,7 @@
 **Owner:** Viral Parikh
 **Date:** 2026-07-23
 **Status:** Approved (design); source-of-truth doc edits pending (see §7)
-**Resolves:** PRD §2A "Real Authorization Model", PRD-012, PRD-013
+**Resolves:** PRD §7A "Real Authorization Model", PRD-012, PRD-013
 **Amends:** PRD-010 (Mark Sent), ARCHITECTURE §7 security posture, ARCHITECTURE §2 data design
 
 ---
@@ -12,7 +12,7 @@
 
 RedyQuote v1 had exactly one confirmed non-flat authorization rule — the admin-only
 approval gate (PRD-010) — with every other write left as an unresolved "flat model" (PRD
-§2A, PRD-012, PRD-013). This spec finalizes the complete authorization model so the RLS
+§7A, PRD-012, PRD-013). This spec finalizes the complete authorization model so the RLS
 policies, Server Action guards, and quote-builder UI can be implemented without further
 product decisions.
 
@@ -34,15 +34,15 @@ two roles — `rep` (default, PRD-002) and `admin`.
 
 ### 3.1 Quotes
 
-| Action                                    | rep      | admin    | Enforcement                                                      |
-| ----------------------------------------- | -------- | -------- | ---------------------------------------------------------------- |
-| View any quote / dashboard                | ✅       | ✅       | RLS: any authenticated (flat read)                               |
-| Create quote                              | ✅       | ✅       | RLS insert; `owner` set to `auth.uid()`                          |
-| Edit/delete **own** Draft/Pending quote   | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'`                      |
-| Edit/delete **another user's** quote      | ❌       | ✅       | RLS                                                              |
-| Submit `Draft → Pending Approval`         | ✅ (own) | ✅       | Transition validation + RLS                                      |
-| **Approve** `Pending Approval → Approved` | ❌       | ✅       | **RLS (structural invariant, PRD-010, NFR-002)**                 |
-| Mark `Approved → Sent`                    | ✅ (own) | ✅       | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010** |
+| Action                                  | rep      | admin    | Enforcement                                                                               |
+| --------------------------------------- | -------- | -------- | ----------------------------------------------------------------------------------------- |
+| View any quote / dashboard              | ✅       | ✅       | RLS: any authenticated (flat read)                                                        |
+| Create quote                            | ✅       | ✅       | RLS insert; `owner` set to `auth.uid()`                                                   |
+| Edit/delete **own** Draft/Pending quote | ✅ (own) | ✅ (any) | RLS: `owner = auth.uid() OR role = 'admin'`                                               |
+| Edit/delete **another user's** quote    | ❌       | ✅       | RLS                                                                                       |
+| Submit `Draft → Review`                 | ✅ (own) | ✅       | Transition validation + RLS                                                               |
+| **Approve** `Review → Approved`         | ❌       | ✅       | **Trigger — `validate_quote_status_transition` (structural invariant, PRD-010, NFR-002)** |
+| Mark `Approved → Sent`                  | ✅ (own) | ✅       | RLS: `owner = auth.uid() OR role = 'admin'` — **amends PRD-010**                          |
 
 ### 3.2 Master data — admin owns
 
@@ -59,7 +59,7 @@ two roles — `rep` (default, PRD-002) and `admin`.
 | Action                                                                                             | rep | admin | Enforcement                              |
 | -------------------------------------------------------------------------------------------------- | --- | ----- | ---------------------------------------- |
 | Edit settings (labor rate, markups, cushion %, commission %, margin floor %, freshness thresholds) | ❌  | ✅    | RLS: `role = 'admin'` (resolves PRD-012) |
-| Upload / apply branding favicon                                                                    | ❌  | ✅    | RLS: `role = 'admin'` (resolves PRD-013) |
+| Upload / apply branding assets (logo, favicon)                                                     | ❌  | ✅    | RLS: `role = 'admin'` (resolves PRD-013) |
 
 ### 3.4 Out-of-band (explicitly NOT in-app for v1)
 
@@ -81,8 +81,9 @@ ARCHITECTURE's existing invariants, rather than a UI convention.
 **RLS policy surface (new/changed):**
 
 - `quotes` — insert (any auth); select (any auth); update/delete (`owner = auth.uid() OR
-admin`); the `Pending Approval → Approved` update additionally gated to `admin` (existing
-  invariant).
+admin`); the `Review → Approved` update additionally gated to `admin` by the
+  `validate_quote_status_transition` trigger, **not by a policy** — `WITH CHECK` cannot see
+  the old row, so RLS cannot express a transition at all (existing invariant).
 - `quote_lines` — writes allowed only when the parent quote is writable by the caller
   (owner or admin).
 - `products`, `fab_tiers`, `product_defaults`, `components` — select (any auth);
@@ -92,7 +93,7 @@ admin`); the `Pending Approval → Approved` update additionally gated to `admin
 - `price_history`, `quote_status_history`, `settings_history` — insert only, via the RPC
   transactions that write them (append-only; no direct client writes, no updates/deletes).
 
-## 5. Deactivation behavior (PRD §2A open item)
+## 5. Deactivation behavior (PRD §7A open item)
 
 Deactivating a product or component is a soft state, not a delete:
 
@@ -106,7 +107,7 @@ Deactivating a product or component is a soft state, not a delete:
 This preserves historical quote pricing integrity while stopping stale items from spreading
 onto new work.
 
-## 6. Audit expansion (PRD §2A open item — confirmed yes)
+## 6. Audit expansion (PRD §7A open item — confirmed yes)
 
 Beyond the existing `price_history` (cost changes) and `quote_status_history` (status
 changes), **settings and branding changes are now audited.**
@@ -130,8 +131,8 @@ separately:
    to "The quote's owner or an admin can mark an Approved quote Sent."
 2. **PRD-012 / PRD-013** — replace "pending product decision" with: settings and branding
    edits are **admin-only**.
-3. **PRD §2A "Real Authorization Model"** — mark resolved; reference this spec.
-4. **PRD §2A audit bullet** — settings/branding changes audited via `settings_history`.
+3. **PRD §7A "Real Authorization Model"** — mark resolved; reference this spec.
+4. **PRD §7A audit bullet** — settings/branding changes audited via `settings_history`.
 5. **PRD §3 / PRODUCT §4** — note the deactivation-behavior rule (§5 above).
 6. **ARCHITECTURE §2** — add the `settings_history` table to the data-design table.
 7. **ARCHITECTURE §4 / §5 / §7** — update the "flat model" language and the approval-gate

@@ -9,9 +9,9 @@ export function cn(...inputs: ClassValue[]) {
 //
 // Presentation only. These format a number that has already been decided
 // elsewhere; none of them brings a value into existence. Rounding rules for
-// *persisted* pricing fields are an open placeholder (PRD §2A) and are
-// deliberately not implied here — `formatMoney` rounds for display the way
-// Intl.NumberFormat always has, which is not a pricing decision.
+// *persisted* numeric fields are a product decision and are deliberately not
+// implied here — `formatMoney` rounds for display the way Intl.NumberFormat
+// always has, which is not a business rule.
 //
 // `en-US` is pinned rather than left to the runtime locale so a server render
 // and a client hydration produce identical strings. Money and quantities are

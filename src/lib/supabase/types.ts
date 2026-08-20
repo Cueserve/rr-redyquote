@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,6 +7,11 @@
   | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.15";
+  };
   graphql_public: {
     Tables: {
       [_ in never]: never;
@@ -219,7 +224,7 @@ export type Database = {
       product_defaults: {
         Row: {
           category_id: string;
-          component_id: string | null;
+          component_id: string;
           created_at: string;
           id: string;
           product_id: string;
@@ -227,7 +232,7 @@ export type Database = {
         };
         Insert: {
           category_id: string;
-          component_id?: string | null;
+          component_id: string;
           created_at?: string;
           id?: string;
           product_id: string;
@@ -235,7 +240,7 @@ export type Database = {
         };
         Update: {
           category_id?: string;
-          component_id?: string | null;
+          component_id?: string;
           created_at?: string;
           id?: string;
           product_id?: string;
@@ -415,33 +420,33 @@ export type Database = {
       };
       quote_status_history: {
         Row: {
+          actor: string;
           changed_at: string;
-          changed_by: string;
+          from_status: string | null;
           id: string;
-          new_status: Database["public"]["Enums"]["quote_status"];
-          old_status: Database["public"]["Enums"]["quote_status"] | null;
           quote_id: string;
+          to_status: string;
         };
         Insert: {
+          actor: string;
           changed_at?: string;
-          changed_by: string;
+          from_status?: string | null;
           id?: string;
-          new_status: Database["public"]["Enums"]["quote_status"];
-          old_status?: Database["public"]["Enums"]["quote_status"] | null;
           quote_id: string;
+          to_status: string;
         };
         Update: {
+          actor?: string;
           changed_at?: string;
-          changed_by?: string;
+          from_status?: string | null;
           id?: string;
-          new_status?: Database["public"]["Enums"]["quote_status"];
-          old_status?: Database["public"]["Enums"]["quote_status"] | null;
           quote_id?: string;
+          to_status?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "quote_status_history_changed_by_fkey";
-            columns: ["changed_by"];
+            foreignKeyName: "quote_status_history_actor_fkey";
+            columns: ["actor"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];

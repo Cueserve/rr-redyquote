@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // use the exported values as-is.
 //
 // This component stays app-agnostic on purpose -- it knows about success /
-// warning / info, not about "Pending Approval" or "Sent". The quote-lifecycle
+// warning / info, not about "Review" or "Sent". The quote-lifecycle
 // mapping belongs in src/components/ once the quote routes exist, per
 // PROJECT-STRUCTURE.md §2.
 const badgeVariants = cva(

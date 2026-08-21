@@ -4,8 +4,8 @@ import { Info, TriangleAlert } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { EmptyValue } from "@/components/ui/empty-state";
-import type { Quote, Settings } from "@/lib/mock";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
+import type { DbQuote, DbSettings } from "./quote-builder";
 
 /**
  * The "live-calculated summary panel" half of DESIGN-SYSTEM.md §9's form
@@ -69,8 +69,8 @@ export function SummaryPanel({
   settings,
   isDirty,
 }: {
-  quote: Quote | null;
-  settings: Settings;
+  quote: DbQuote | null;
+  settings: DbSettings;
   isDirty: boolean;
 }) {
   // Stored values are shown only while they still describe what is on screen.

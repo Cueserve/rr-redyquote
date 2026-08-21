@@ -28,11 +28,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type {
-  Category,
-  LibraryComponent,
+  DbCategory,
+  DbComponent,
+  DbQuoteLine,
   QuoteEnvironment,
-  QuoteLine,
-} from "@/lib/mock";
+} from "./quote-builder";
 import { cn, formatHours, formatMoney } from "@/lib/utils";
 
 /**
@@ -81,7 +81,7 @@ function LineFlags({
   line,
   environment,
 }: {
-  line: QuoteLine;
+  line: DbQuoteLine;
   environment: QuoteEnvironment;
 }) {
   return (
@@ -109,9 +109,9 @@ function LineFlags({
 }
 
 export interface LineItemsProps {
-  categories: Category[];
-  components: LibraryComponent[];
-  lines: QuoteLine[];
+  categories: DbCategory[];
+  components: DbComponent[];
+  lines: DbQuoteLine[];
   environment: QuoteEnvironment;
   editedLineIds: Set<string>;
   readOnly: boolean;

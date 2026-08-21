@@ -14,19 +14,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FreshnessBadge } from "@/components/freshness-badge";
-import type {
-  Category,
-  FabTier,
-  LibraryComponent,
-  Product,
-  ProductDefault,
-  Quote,
-  QuoteEnvironment,
-  QuoteLine,
-  QuoteStatusHistoryRow,
-  Settings,
-} from "@/lib/mock";
+import type { Database } from "@/lib/supabase/types";
 import { formatDate, formatMoney } from "@/lib/utils";
+
+export type DbQuote = Database["public"]["Tables"]["quotes"]["Row"] & {
+  product_name: string;
+  owner_name: string;
+  approved_by_name: string | null;
+  stale_line_count: number;
+  qty_tier: number;
+};
+
+export type DbQuoteLine = Database["public"]["Tables"]["quote_lines"]["Row"] & {
+  freshness: "current" | "aging" | "requote";
+  component_deactivated: boolean;
+};
+
+export type DbQuoteHistory =
+  Database["public"]["Tables"]["quote_status_history"]["Row"] & {
+    actor_name: string;
+  };
+
+export type DbProduct = Database["public"]["Tables"]["products"]["Row"];
+export type DbFabTier = Database["public"]["Tables"]["fab_tiers"]["Row"] & {
+  freshness: "current" | "aging" | "requote";
+};
+export type DbCategory = Database["public"]["Tables"]["categories"]["Row"];
+export type DbComponent = Database["public"]["Tables"]["components"]["Row"] & {
+  freshness: "current" | "aging" | "requote";
+};
+export type DbProductDefault =
+  Database["public"]["Tables"]["product_defaults"]["Row"];
+export type DbSettings = Database["public"]["Tables"]["settings"]["Row"];
 
 import { LifecycleBar } from "./lifecycle-bar";
 import { LineItems } from "./line-items";
@@ -51,17 +70,19 @@ import { SummaryPanel } from "./summary-panel";
  * files, not in here.
  */
 
+export type QuoteEnvironment = Database["public"]["Enums"]["quote_environment"];
+
 export interface QuoteBuilderProps {
   /** null for a new quote. */
-  quote: Quote | null;
-  lines: QuoteLine[];
-  history: QuoteStatusHistoryRow[];
-  products: Product[];
-  fabTiers: FabTier[];
-  categories: Category[];
-  components: LibraryComponent[];
-  productDefaults: Record<string, ProductDefault[]>;
-  settings: Settings;
+  quote: DbQuote | null;
+  lines: DbQuoteLine[];
+  history: DbQuoteHistory[];
+  products: DbProduct[];
+  fabTiers: DbFabTier[];
+  categories: DbCategory[];
+  components: DbComponent[];
+  productDefaults: Record<string, DbProductDefault[]>;
+  settings: DbSettings;
   currentUserId: string;
 }
 
@@ -96,7 +117,7 @@ export function QuoteBuilder({
   const [environment, setEnvironment] = React.useState<QuoteEnvironment>(
     quote?.environment ?? "indoor",
   );
-  const [lines, setLines] = React.useState<QuoteLine[]>(initialLines);
+  const [lines, setLines] = React.useState<DbQuoteLine[]>(initialLines);
   const [editedLineIds, setEditedLineIds] = React.useState<Set<string>>(
     () => new Set(),
   );
@@ -141,7 +162,7 @@ export function QuoteBuilder({
     setFabTierId(tiers[0]?.id ?? "");
 
     const defaults = productDefaults[nextProductId] ?? [];
-    const prefilled: QuoteLine[] = [];
+    const prefilled: DbQuoteLine[] = [];
     const edited = new Set<string>();
 
     for (const category of categories) {
@@ -172,6 +193,8 @@ export function QuoteBuilder({
         sort_order: category.sort_order,
         freshness: component.freshness,
         component_deactivated: !component.active,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
     }
 
@@ -226,6 +249,8 @@ export function QuoteBuilder({
           sort_order: category.sort_order,
           freshness: component.freshness,
           component_deactivated: !component.active,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ];
     });
@@ -253,25 +278,25 @@ export function QuoteBuilder({
   function handleAddMisc() {
     const id = makeLineId();
     markEdited(id);
-    setLines((previous) => [
-      ...previous,
-      {
-        id,
-        quote_id: quote?.id ?? "new",
-        category_id: null,
-        component_id: null,
-        description: "",
-        is_misc: true,
-        hard_cost: 0,
-        labor_hours: 0,
-        labor_cost: 0,
-        markup_percent: 0,
-        environment_mismatch: false,
-        sort_order: 100 + previous.filter((line) => line.is_misc).length,
-        freshness: "current",
-        component_deactivated: false,
-      },
-    ]);
+    const newline: DbQuoteLine = {
+      id,
+      quote_id: quote?.id ?? "new",
+      category_id: null,
+      component_id: null,
+      description: "",
+      is_misc: true,
+      hard_cost: 0,
+      labor_hours: 0,
+      labor_cost: 0,
+      markup_percent: 0,
+      environment_mismatch: false,
+      sort_order: 100 + lines.filter((line) => line.is_misc).length,
+      freshness: "current",
+      component_deactivated: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setLines((previous) => [...previous, newline]);
   }
 
   function handleRemoveMisc(lineId: string) {

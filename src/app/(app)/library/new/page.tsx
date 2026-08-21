@@ -1,6 +1,6 @@
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { AdminOnly, ReadOnlyNotice } from "@/components/prototype/admin-only";
-import { CATEGORIES } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
 
 import { ComponentEditor } from "../_components/ComponentEditor";
 
@@ -15,7 +15,10 @@ import { ComponentEditor } from "../_components/ComponentEditor";
  * than no form. `AdminOnly` answers "should this be offered?" — the real guard
  * is the Server Action and RLS (NFR-002).
  */
-export default function NewComponentPage() {
+export default async function NewComponentPage() {
+  const supabase = await createClient();
+  const { data: categories } = await supabase.from("categories").select("*");
+
   return (
     <PageBody>
       <PageHeader
@@ -24,7 +27,7 @@ export default function NewComponentPage() {
       />
 
       <AdminOnly fallback={<ReadOnlyNotice what="The component library" />}>
-        <ComponentEditor component={null} categories={CATEGORIES} />
+        <ComponentEditor component={null} categories={categories ?? []} />
       </AdminOnly>
     </PageBody>
   );

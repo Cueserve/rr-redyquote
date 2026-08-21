@@ -1,7 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { QUOTE_STATUS_LABEL, type QuoteStatusHistoryRow } from "@/lib/mock";
+import { QUOTE_STATUS_LABEL } from "@/lib/mock";
+import type { Database } from "@/lib/supabase/types";
 import { formatDateTime } from "@/lib/utils";
+import type { DbQuoteHistory } from "./quote-builder";
+
+type QuoteStatus = Database["public"]["Enums"]["quote_status"];
 
 /**
  * PRD-017 / NFR-005 — the append-only `quote_status_history` trail, surfaced.
@@ -15,7 +19,7 @@ import { formatDateTime } from "@/lib/utils";
  * Holds no state and imports nothing server-only, so it renders correctly
  * whether a Server Component or the client-side builder is what mounts it.
  */
-export function StatusHistory({ rows }: { rows: QuoteStatusHistoryRow[] }) {
+export function StatusHistory({ rows }: { rows: DbQuoteHistory[] }) {
   const ordered = [...rows].sort((a, b) =>
     b.changed_at.localeCompare(a.changed_at),
   );
@@ -39,8 +43,8 @@ export function StatusHistory({ rows }: { rows: QuoteStatusHistoryRow[] }) {
             <li key={row.id} className="flex flex-col gap-0.5 text-sm">
               <span className="font-medium">
                 {row.from_status
-                  ? `${QUOTE_STATUS_LABEL[row.from_status]} → ${QUOTE_STATUS_LABEL[row.to_status]}`
-                  : `Created as ${QUOTE_STATUS_LABEL[row.to_status]}`}
+                  ? `${QUOTE_STATUS_LABEL[row.from_status as QuoteStatus]} → ${QUOTE_STATUS_LABEL[row.to_status as QuoteStatus]}`
+                  : `Created as ${QUOTE_STATUS_LABEL[row.to_status as QuoteStatus]}`}
               </span>
               <span className="text-xs text-muted-foreground">
                 {row.actor_name} · {formatDateTime(row.changed_at)}

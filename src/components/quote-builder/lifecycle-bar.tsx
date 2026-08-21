@@ -16,7 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Quote, QuoteStatus, Settings } from "@/lib/mock";
+import { type QuoteStatus } from "@/lib/mock";
+import type { DbQuote, DbSettings } from "./quote-builder";
 import { formatPercent } from "@/lib/utils";
 
 /**
@@ -87,8 +88,8 @@ export function LifecycleBar({
   isAdmin,
   isDirty,
 }: {
-  quote: Quote | null;
-  settings: Settings;
+  quote: DbQuote | null;
+  settings: DbSettings;
   isOwner: boolean;
   isAdmin: boolean;
   isDirty: boolean;

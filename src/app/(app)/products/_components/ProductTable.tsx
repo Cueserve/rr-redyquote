@@ -18,7 +18,19 @@ import {
 } from "@/components/ui/data-table";
 import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import { LinkPending } from "@/components/ui/link-pending";
-import type { Product } from "@/lib/mock";
+import type { Freshness } from "@/lib/freshness";
+
+export type ProductRow = {
+  id: string;
+  name: string;
+  sku: string;
+  vendor: string | null;
+  est_labor_hours: number;
+  active: boolean;
+  updated_at: string;
+  tier_count: number;
+  worst_tier_freshness: Freshness | "unquoted";
+};
 import { formatDate, formatHours } from "@/lib/utils";
 import {
   applyListView,
@@ -47,16 +59,18 @@ type ProductSortKey =
 // is fragile enough that a refactor can silently produce `any`.
 const SORTS: Record<
   ProductSortKey,
-  (dir: "asc" | "desc") => (a: Product, b: Product) => number
+  (dir: "asc" | "desc") => (a: ProductRow, b: ProductRow) => number
 > = {
-  name: (dir) => byField((row: Product) => row.name, compareText, dir),
-  sku: (dir) => byField((row: Product) => row.sku, compareText, dir),
-  vendor: (dir) => byField((row: Product) => row.vendor, compareText, dir),
+  name: (dir) => byField((row: ProductRow) => row.name, compareText, dir),
+  sku: (dir) => byField((row: ProductRow) => row.sku, compareText, dir),
+  vendor: (dir) => byField((row: ProductRow) => row.vendor, compareText, dir),
   assembly_hours: (dir) =>
-    byField((row: Product) => row.est_labor_hours, compareNumber, dir),
-  tiers: (dir) => byField((row: Product) => row.tier_count, compareNumber, dir),
+    byField((row: ProductRow) => row.est_labor_hours, compareNumber, dir),
+  tiers: (dir) =>
+    byField((row: ProductRow) => row.tier_count, compareNumber, dir),
   // `updated_at` is an ISO string, so lexical order IS chronological order.
-  updated: (dir) => byField((row: Product) => row.updated_at, compareText, dir),
+  updated: (dir) =>
+    byField((row: ProductRow) => row.updated_at, compareText, dir),
 };
 
 // Hoisted to module scope, not built inline: `useListParams` memoises on it,
@@ -69,7 +83,7 @@ const LIST_CONFIG: ListParamsConfig<ProductSortKey> = {
   filterDefaults: { deactivated: "0" },
 };
 
-export function ProductTable({ products }: { products: Product[] }) {
+export function ProductTable({ products }: { products: ProductRow[] }) {
   const list = useListParams(LIST_CONFIG);
   const { params } = list;
   const showDeactivated = list.filter("deactivated", "0") === "1";
@@ -254,7 +268,11 @@ export function ProductTable({ products }: { products: Product[] }) {
                 <TableCell>
                   {/* Worst freshness across the product's tiers — one glance
                       tells an admin whether anything here needs re-quoting. */}
-                  <FreshnessBadge freshness={product.worst_tier_freshness} />
+                  {product.worst_tier_freshness === "unquoted" ? (
+                    <EmptyValue label="Unquoted" />
+                  ) : (
+                    <FreshnessBadge freshness={product.worst_tier_freshness} />
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(product.updated_at)}

@@ -12,13 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/data-table";
-import {
-  CATEGORIES,
-  getCategory,
-  getComponent,
-  getPriceHistory,
-} from "@/lib/mock";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
+import { deriveFreshness } from "@/lib/freshness";
 
 import { ComponentEditor } from "../_components/ComponentEditor";
 
@@ -28,11 +24,36 @@ export default async function ComponentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const component = getComponent(id);
-  if (!component) notFound();
+  const supabase = await createClient();
 
-  const history = getPriceHistory(component.id);
-  const category = getCategory(component.category_id);
+  const [componentRes, historyRes, categoriesRes, settingsRes] =
+    await Promise.all([
+      supabase.from("components").select("*").eq("id", id).single(),
+      supabase
+        .from("price_history")
+        .select("*, profiles!price_history_changed_by_fkey(full_name)")
+        .eq("component_id", id)
+        .order("created_at", { ascending: false }),
+      supabase.from("categories").select("*").order("sort_order"),
+      supabase
+        .from("settings")
+        .select("freshness_warning_months, freshness_requote_months")
+        .single(),
+    ]);
+
+  if (componentRes.error || !componentRes.data) notFound();
+
+  const componentRaw = componentRes.data;
+  const freshness = deriveFreshness(
+    componentRaw.quoted_date,
+    settingsRes.data?.freshness_warning_months ?? 3,
+    settingsRes.data?.freshness_requote_months ?? 6,
+  );
+
+  const component = { ...componentRaw, freshness };
+  const history = historyRes.data ?? [];
+  const categories = categoriesRes.data ?? [];
+  const category = categories.find((c) => c.id === component.category_id);
 
   return (
     <PageBody>
@@ -48,7 +69,7 @@ export default async function ComponentDetailPage({
 
       <div className="grid grid-cols-1 gap-6 xl:flex xl:items-start">
         <div className="min-w-0 xl:flex-1">
-          <ComponentEditor component={component} categories={CATEGORIES} />
+          <ComponentEditor component={component} categories={categories} />
         </div>
 
         {/* NFR-005 — `price_history` is append-only and written in the same
@@ -107,7 +128,7 @@ export default async function ComponentDetailPage({
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(row.created_at)}
                       <br />
-                      {row.changed_by_name}
+                      {row.profiles?.full_name ?? "Unknown User"}
                     </TableCell>
                   </TableRow>
                 ))}

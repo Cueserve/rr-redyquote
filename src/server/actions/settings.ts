@@ -6,6 +6,7 @@ import type {
   SettingsValues,
   SettingsValidation,
 } from "@/lib/validation/settings";
+import { parseDbError } from "@/lib/supabase/error";
 
 export async function saveSettings(
   values: SettingsValues,
@@ -45,14 +46,7 @@ export async function saveSettings(
     .eq("id", true);
 
   if (error) {
-    if (error.code === "42501") {
-      return {
-        ok: false,
-        values: null,
-        errors: { labor_rate: "You must be an admin to update settings." },
-      };
-    }
-    return { ok: false, values: null, errors: { labor_rate: error.message } };
+    return { ok: false, values: null, errors: { root: parseDbError(error) } };
   }
 
   // Revalidate everything because settings dictate global pricing calculation

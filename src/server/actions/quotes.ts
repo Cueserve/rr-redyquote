@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { quoteSchema, type QuoteInput } from "@/lib/validation/quote";
 import { calculateQuote } from "@/lib/pricing";
+import { parseDbError } from "@/lib/supabase/error";
 
 export async function saveQuote(data: QuoteInput) {
   const supabase = await createClient();
@@ -83,7 +84,7 @@ export async function saveQuote(data: QuoteInput) {
   };
 
   const rpcArgs = {
-    p_quote_id: id ?? null,
+    p_quote_id: id ?? "",
     p_customer_name: customer_name,
     p_product_id: product_id,
     p_fab_tier_id: fab_tier_id,
@@ -100,7 +101,7 @@ export async function saveQuote(data: QuoteInput) {
 
   if (error) {
     console.error("Save quote error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: parseDbError(error) };
   }
 
   revalidatePath("/quotes");
@@ -118,7 +119,7 @@ export async function requestChanges(quoteId: string) {
     p_to_status: "draft",
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: parseDbError(error) };
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);
@@ -132,7 +133,7 @@ export async function submitForReview(quoteId: string) {
     p_to_status: "pending_approval",
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: parseDbError(error) };
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);
@@ -146,7 +147,7 @@ export async function approveQuote(quoteId: string) {
     p_to_status: "approved",
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: parseDbError(error) };
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);
@@ -160,7 +161,7 @@ export async function markQuoteSent(quoteId: string) {
     p_to_status: "sent",
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: parseDbError(error) };
 
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${quoteId}`);

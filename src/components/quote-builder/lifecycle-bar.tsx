@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { type QuoteStatus } from "@/lib/mock";
+import { type QuoteStatus } from "@/lib/types/quote";
 import type { DbQuote, DbSettings } from "./quote-builder";
 import { formatPercent } from "@/lib/utils";
 

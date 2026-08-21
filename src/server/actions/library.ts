@@ -6,6 +6,7 @@ import {
   componentSchema,
   type ComponentInput,
 } from "@/lib/validation/component";
+import { parseDbError } from "@/lib/supabase/error";
 
 export type SaveComponentResult =
   | { ok: true; id: string }
@@ -73,7 +74,7 @@ export async function saveComponent(
         errors: { sku: "A component with this SKU already exists." },
       };
     }
-    return { ok: false, errors: { root: error.message } };
+    return { ok: false, errors: { root: parseDbError(error) } };
   }
 
   revalidatePath("/library", "layout");

@@ -55,11 +55,6 @@ export default async function ProductDetailPage({
     freshness: deriveFreshness(tier.quoted_date, warn, requote),
   }));
 
-  // Note: the mock Product type didn't have worst_tier_freshness in this context,
-  // ProductEditor doesn't need worst_tier_freshness or tier_count on the product
-  // object itself, but let's safely pass what it expects.
-  // Wait, ProductEditor imports Product from @/lib/mock. Let's provide what we have.
-
   return (
     <PageBody>
       <PageHeader

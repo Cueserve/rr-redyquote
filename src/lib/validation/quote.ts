@@ -23,7 +23,7 @@ export const quoteSchema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
   product_id: z.string().uuid(),
   fab_tier_id: z.string().uuid(),
-  environment: z.enum(["any", "indoor", "outdoor"]),
+  environment: z.enum(["indoor", "outdoor"]),
   lines: z.array(quoteLineSchema).default([]),
 });
 

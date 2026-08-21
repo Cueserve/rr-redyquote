@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import { ReadOnlyNotice } from "@/components/prototype/admin-only";
-import { useIsAdmin } from "@/components/prototype/role-context";
+import { ReadOnlyNotice } from "@/components/layout/admin-only";
+import { useIsAdmin } from "@/components/layout/role-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Category, EnvironmentType, LibraryComponent } from "@/lib/mock";
+import type { Database } from "@/lib/supabase/types";
+type Category = Database["public"]["Tables"]["categories"]["Row"];
+type EnvironmentType = Database["public"]["Enums"]["environment_type"];
+type LibraryComponent = Database["public"]["Tables"]["components"]["Row"];
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { saveComponent } from "@/server/actions/library";
 import {
   componentSchema,
@@ -105,7 +109,9 @@ export function ComponentEditor({
       const result = await saveComponent(parsed.data);
       if (!result.ok) {
         setErrors(result.errors);
+        toast.error(result.errors.root || "Please fix the errors in the form.");
       } else {
+        toast.success(component ? "Component saved" : "Component created");
         router.push("/library");
       }
     });

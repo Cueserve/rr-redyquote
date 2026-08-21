@@ -3,10 +3,11 @@
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { FreshnessBadge } from "@/components/freshness-badge";
-import { useIsAdmin } from "@/components/prototype/role-context";
-import { ReadOnlyNotice } from "@/components/prototype/admin-only";
+import { useIsAdmin } from "@/components/layout/role-context";
+import { ReadOnlyNotice } from "@/components/layout/admin-only";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -86,7 +87,7 @@ export function ProductEditor({
       ...localTiers,
       {
         internalId: crypto.randomUUID(),
-        id: undefined,
+        id: "",
         qty_tier: "" as unknown as number,
         cost: "" as unknown as number,
         quoted_date: new Date().toISOString().split("T")[0],
@@ -164,11 +165,14 @@ export function ProductEditor({
             fieldErrors[key] = (issues as string[])[0];
           }
           setErrors(fieldErrors);
+          toast.error("Please fix the errors in the form.");
         }
         if (result.message) {
           setErrors({ root: result.message });
+          toast.error(result.message);
         }
       } else {
+        toast.success(product ? "Product saved" : "Product created");
         router.push("/products");
       }
     });

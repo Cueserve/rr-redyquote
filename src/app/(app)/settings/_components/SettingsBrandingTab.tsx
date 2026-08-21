@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { ReadOnlyNotice } from "@/components/prototype/admin-only";
+import { ReadOnlyNotice } from "@/components/layout/admin-only";
 import { Card } from "@/components/ui/card";
 
 // Neither preview carries `priority`. Radix does not mount an inactive

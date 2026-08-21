@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useIsAdmin } from "@/components/prototype/role-context";
+import { useIsAdmin } from "@/components/layout/role-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/lib/supabase/types";
 type Settings = Tables<"settings">;
@@ -18,6 +18,7 @@ import { SettingsBrandingTab } from "./SettingsBrandingTab";
 import { SettingsDefaultsTab, settingFieldId } from "./SettingsDefaultsTab";
 import { SettingsHistoryTab } from "./SettingsHistoryTab";
 import { saveSettings } from "@/server/actions/settings";
+import { toast } from "sonner";
 
 /**
  * PRD-012 (estimating defaults), PRD-013 (branding), PRD-018A (audit).
@@ -113,6 +114,9 @@ export function SettingsTabs({
       const response = await saveSettings(result.values);
       if (!response.ok) {
         setErrors(response.errors);
+        toast.error(response.errors.root || "Failed to save settings");
+      } else {
+        toast.success("Settings saved");
       }
     });
   }

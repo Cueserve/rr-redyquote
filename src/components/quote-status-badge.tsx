@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/lib/mock";
+import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/lib/types/quote";
 
 /**
  * The quote-lifecycle → Badge mapping (PRD-010). It lives here rather than in

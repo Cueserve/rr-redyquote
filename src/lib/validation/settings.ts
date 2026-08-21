@@ -105,7 +105,9 @@ export const settingsDraftSchema = z
 /** The parsed row, ready for the Server Action. */
 export type SettingsValues = z.infer<typeof settingsDraftSchema>;
 
-export type SettingsFieldErrors = Partial<Record<NumericSettingKey, string>>;
+export type SettingsFieldErrors = Partial<
+  Record<NumericSettingKey | "root", string>
+>;
 
 export type SettingsValidation =
   | { ok: true; values: SettingsValues; errors: SettingsFieldErrors }

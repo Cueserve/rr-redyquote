@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { PageBody, PageHeader } from "@/components/layout/page-header";
-import { AdminOnly, ReadOnlyNotice } from "@/components/prototype/admin-only";
+import { AdminOnly, ReadOnlyNotice } from "@/components/layout/admin-only";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { deriveFreshness, type Freshness } from "@/lib/freshness";

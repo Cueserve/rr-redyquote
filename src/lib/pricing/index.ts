@@ -39,15 +39,14 @@ export function calculateQuote(
   const fabHardCost = fabTier?.cost || 0;
   const totalHardCost = lineHardCost + fabHardCost;
 
-  // Placeholder labor rate (this may need to be a setting or user input later)
-  const LABOR_RATE = 75;
+  const laborRate = settings.labor_rate;
 
   const lineLaborHours = lines.reduce(
     (acc, line) => acc + (line.labor_hours || 0),
     0,
   );
   const productLaborHours = product?.est_labor_hours || 0;
-  const totalLaborCost = (lineLaborHours + productLaborHours) * LABOR_RATE;
+  const totalLaborCost = (lineLaborHours + productLaborHours) * laborRate;
 
   const baseCost = totalHardCost + totalLaborCost;
 

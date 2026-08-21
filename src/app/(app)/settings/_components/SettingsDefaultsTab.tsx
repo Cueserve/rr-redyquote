@@ -1,4 +1,4 @@
-import { ReadOnlyNotice } from "@/components/prototype/admin-only";
+import { ReadOnlyNotice } from "@/components/layout/admin-only";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

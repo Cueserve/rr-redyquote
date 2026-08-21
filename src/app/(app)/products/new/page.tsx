@@ -1,5 +1,5 @@
 import { PageBody, PageHeader } from "@/components/layout/page-header";
-import { AdminOnly, ReadOnlyNotice } from "@/components/prototype/admin-only";
+import { AdminOnly, ReadOnlyNotice } from "@/components/layout/admin-only";
 import { createClient } from "@/lib/supabase/server";
 
 import { ProductEditor } from "../_components/ProductEditor";

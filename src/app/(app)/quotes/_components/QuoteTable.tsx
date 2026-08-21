@@ -26,7 +26,7 @@ import {
   QUOTE_STATUS_LABEL,
   QUOTE_STATUS_ORDER,
   type QuoteStatus,
-} from "@/lib/mock";
+} from "@/lib/types/quote";
 import { cn, formatDate, formatMoney, formatPercent } from "@/lib/utils";
 import {
   applyListView,

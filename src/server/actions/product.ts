@@ -6,6 +6,7 @@ import {
   createProductSchema,
   type CreateProductInput,
 } from "@/lib/validation/product";
+import { parseDbError } from "@/lib/supabase/error";
 
 export async function saveProduct(input: CreateProductInput) {
   const supabase = await createClient();
@@ -40,11 +41,11 @@ export async function saveProduct(input: CreateProductInput) {
       })) || [];
 
   const payload = {
-    p_product_id: validData.id || null,
+    p_product_id: validData.id || "",
     p_name: validData.name,
     p_sku: validData.sku,
-    p_description: validData.description || null,
-    p_vendor: validData.vendor || null,
+    p_description: validData.description || "",
+    p_vendor: validData.vendor || "",
     p_est_labor_hours: validData.est_labor_hours,
     p_active: validData.active,
     p_fab_tiers: tiersJson,
@@ -61,7 +62,7 @@ export async function saveProduct(input: CreateProductInput) {
     }
     return {
       success: false,
-      message: error.message || "Failed to save product",
+      message: parseDbError(error),
     };
   }
 

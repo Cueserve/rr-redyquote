@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { QUOTE_STATUS_LABEL } from "@/lib/mock";
+import { QUOTE_STATUS_LABEL } from "@/lib/types/quote";
 import type { Database } from "@/lib/supabase/types";
 import { formatDateTime } from "@/lib/utils";
 import type { DbQuoteHistory } from "./quote-builder";

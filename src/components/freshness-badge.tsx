@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { Freshness } from "@/lib/mock";
+import type { Freshness } from "@/lib/freshness";
 
 /**
  * PRD-009's Current / Aging / Re-quote badge, applied to any cost carrying a

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useRole } from "@/components/prototype/role-context";
+import { useRole } from "@/components/layout/role-context";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";

@@ -7,10 +7,9 @@ import { Boxes, FileText, Package, SlidersHorizontal } from "lucide-react";
 import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar";
 import { Topbar, type Crumb } from "@/components/layout/topbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getComponent, getProduct, getQuote } from "@/lib/mock";
 import { UserMenu } from "@/components/layout/user-menu";
 import { signOut } from "@/server/actions/auth";
-import { RoleProvider } from "@/components/prototype/role-context";
+import { RoleProvider } from "@/components/layout/role-context";
 
 const NAV: SidebarNavItem[] = [
   { label: "Quotes", href: "/quotes", icon: <FileText className="size-4" /> },
@@ -48,9 +47,9 @@ function leafLabel(section: string, id: string) {
       }[section] ?? "New"
     );
   }
-  if (section === "quotes") return getQuote(id)?.quote_number ?? "Quote";
-  if (section === "products") return getProduct(id)?.name ?? "Product";
-  if (section === "library") return getComponent(id)?.name ?? "Component";
+  if (section === "quotes") return "Quote Detail";
+  if (section === "products") return "Product Detail";
+  if (section === "library") return "Component Detail";
   return id;
 }
 
@@ -80,7 +79,7 @@ export function AppChrome({
   const activeHref = `/${pathname.split("/").filter(Boolean)[0] ?? ""}`;
 
   return (
-    <RoleProvider initialRole={roleLabel === "Administrator" ? "admin" : "rep"}>
+    <RoleProvider role={roleLabel === "Administrator" ? "admin" : "rep"}>
       <TooltipProvider delayDuration={200}>
         <div className="relative flex h-dvh overflow-hidden">
           <a

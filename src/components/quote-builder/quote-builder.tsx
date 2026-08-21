@@ -51,6 +51,15 @@ import { LifecycleBar } from "./lifecycle-bar";
 import { LineItems } from "./line-items";
 import { StatusHistory } from "./status-history";
 import { SummaryPanel } from "./summary-panel";
+import {
+  saveQuote,
+  submitForReview,
+  approveQuote,
+  markQuoteSent,
+  requestChanges,
+} from "@/server/actions/quotes";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 /**
  * The one rich client component in the app (ARCHITECTURE.md §1,
@@ -122,10 +131,8 @@ export function QuoteBuilder({
     () => new Set(),
   );
 
-  // Counter rather than a random id: a stable sequence keeps server and client
-  // markup identical and makes the state legible while debugging.
-  const nextLineId = React.useRef(0);
-  const makeLineId = () => `new-${(nextLineId.current += 1)}`;
+  // Generate a valid UUID so new lines pass strict Zod validation.
+  const makeLineId = () => crypto.randomUUID();
 
   // Only a draft is editable (PRD-010). Sent is terminal; Review and
   // Approved are locked while they wait on someone.
@@ -144,8 +151,54 @@ export function QuoteBuilder({
     .sort((a, b) => a.qty_tier - b.qty_tier);
   const selectedTier = tiersForProduct.find((tier) => tier.id === fabTierId);
 
+  const [isPending, startTransition] = React.useTransition();
+  const router = useRouter();
+
   const markEdited = (lineId: string) =>
     setEditedLineIds((previous) => new Set(previous).add(lineId));
+
+  const handleSave = () => {
+    if (!customerName || !productId || !fabTierId) {
+      toast.error("Missing required fields (Customer, Product, Quantity tier)");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await saveQuote({
+        id: quote?.id, // undefined means new
+        customer_name: customerName,
+        product_id: productId,
+        fab_tier_id: fabTierId,
+        environment,
+        lines,
+      });
+
+      if (result.success) {
+        toast.success(quote ? "Quote saved" : "Draft created");
+        setEditedLineIds(new Set());
+        if (!quote && result.data?.id) {
+          router.push(`/quotes/${result.data.id}`);
+        }
+      } else {
+        toast.error(result.error ?? "Failed to save quote");
+      }
+    });
+  };
+
+  const handleAction = (
+    actionFn: (id: string) => Promise<{ success: boolean; error?: string }>,
+    successMessage: string,
+  ) => {
+    if (!quote?.id) return;
+    startTransition(async () => {
+      const result = await actionFn(quote.id);
+      if (result.success) {
+        toast.success(successMessage);
+      } else {
+        toast.error(result.error ?? "Action failed");
+      }
+    });
+  };
 
   /**
    * PRD-005 — picking a product pre-fills the default component for each
@@ -461,6 +514,16 @@ export function QuoteBuilder({
           isOwner={isOwner}
           isAdmin={isAdmin}
           isDirty={isDirty}
+          isLoading={isPending}
+          onSave={handleSave}
+          onSubmit={() =>
+            handleAction(submitForReview, "Submitted for approval")
+          }
+          onApprove={() => handleAction(approveQuote, "Quote approved")}
+          onRequestChanges={() =>
+            handleAction(requestChanges, "Sent back to Draft")
+          }
+          onMarkSent={() => handleAction(markQuoteSent, "Marked as sent")}
         />
         <StatusHistory rows={history} />
       </div>

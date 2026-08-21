@@ -87,12 +87,24 @@ export function LifecycleBar({
   isOwner,
   isAdmin,
   isDirty,
+  isLoading,
+  onSave,
+  onSubmit,
+  onApprove,
+  onRequestChanges,
+  onMarkSent,
 }: {
   quote: DbQuote | null;
   settings: DbSettings;
   isOwner: boolean;
   isAdmin: boolean;
   isDirty: boolean;
+  isLoading?: boolean;
+  onSave?: () => void;
+  onSubmit?: () => void;
+  onApprove?: () => void;
+  onRequestChanges?: () => void;
+  onMarkSent?: () => void;
 }) {
   // One slot, not one boolean per dialog: the two confirmations are mutually
   // exclusive by definition and a pair of booleans can represent a state that
@@ -113,18 +125,25 @@ export function LifecycleBar({
       <div className="flex flex-col gap-2">
         {/* One filled-primary action per screen (DESIGN-SYSTEM.md §6): on the
             builder it is Save, which is the action a rep takes most. */}
-        <Button disabled={!actions.canEdit && quote !== null}>
+        <Button
+          disabled={(!actions.canEdit && quote !== null) || isLoading}
+          onClick={onSave}
+        >
           {quote ? "Save quote" : "Save draft"}
         </Button>
 
         {actions.canSubmit ? (
-          <Button variant="secondary" onClick={() => setDialog("submit")}>
+          <Button
+            variant="secondary"
+            onClick={() => setDialog("submit")}
+            disabled={isLoading}
+          >
             Submit for approval
           </Button>
         ) : null}
 
         {actions.canApprove ? (
-          <Button variant="secondary">
+          <Button variant="secondary" onClick={onApprove} disabled={isLoading}>
             <Check />
             Approve
           </Button>
@@ -138,6 +157,7 @@ export function LifecycleBar({
           <Button
             variant="outline"
             onClick={() => setDialog("request-changes")}
+            disabled={isLoading}
           >
             <Undo2 />
             Request changes
@@ -145,7 +165,7 @@ export function LifecycleBar({
         ) : null}
 
         {actions.canMarkSent ? (
-          <Button variant="secondary">
+          <Button variant="secondary" onClick={onMarkSent} disabled={isLoading}>
             <Send />
             Mark as sent
           </Button>
@@ -211,9 +231,13 @@ export function LifecycleBar({
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isLoading}>
+                Cancel
+              </Button>
             </DialogClose>
-            <Button>Submit for approval</Button>
+            <Button onClick={onSubmit} disabled={isLoading}>
+              Submit for approval
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -256,9 +280,13 @@ export function LifecycleBar({
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isLoading}>
+                Cancel
+              </Button>
             </DialogClose>
-            <Button>Send back to Draft</Button>
+            <Button onClick={onRequestChanges} disabled={isLoading}>
+              Send back to Draft
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

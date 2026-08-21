@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { FreshnessBadge } from "@/components/freshness-badge";
 import { useIsAdmin } from "@/components/prototype/role-context";
@@ -28,6 +29,8 @@ import {
 } from "@/components/ui/data-table";
 import type { Freshness } from "@/lib/freshness";
 import type { Database } from "@/lib/supabase/types";
+import { createProductSchema } from "@/lib/validation/product";
+import { saveProduct } from "@/server/actions/product";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 type FabTier = Database["public"]["Tables"]["fab_tiers"]["Row"] & {
@@ -37,24 +40,6 @@ type ProductDefault = Database["public"]["Tables"]["product_defaults"]["Row"];
 type Category = Database["public"]["Tables"]["categories"]["Row"];
 type LibraryComponent = Database["public"]["Tables"]["components"]["Row"];
 
-/**
- * Product editor — PRD-003 (product fields), PRD-004 (quantity-tier fab
- * pricing), PRD-005 (a default component per category).
- *
- * All three save together. PRD-015 makes the product row, its tiers, its
- * defaults, and the `price_history` rows for any changed tier cost a single
- * atomic write, which is why this is one form with one Save button rather than
- * three independently-savable cards. The design has to make that atomicity
- * legible — a per-card save button would imply partial writes the architecture
- * specifically forbids (ARCHITECTURE.md §3, PRODUCT.md §6).
- *
- * Cost and quoted-date fields carry the editable treatment (amber tint + border
- * + mono digits, DESIGN-SYSTEM.md §7); everything the system derives does not.
- *
- * `product === null` is create mode, mirroring `quote={null}` in the quote
- * builder. Numeric fields start blank rather than at 0 — a pre-filled zero for
- * assembly hours would save as a real "no labor" value if left alone.
- */
 export function ProductEditor({
   product,
   tiers,
@@ -71,39 +56,169 @@ export function ProductEditor({
   const isAdmin = useIsAdmin();
   const readOnly = !isAdmin;
   const isNew = product === null;
+  const router = useRouter();
 
   const [active, setActive] = React.useState(product?.active ?? true);
+  const [isPending, startTransition] = React.useTransition();
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+
+  const [localTiers, setLocalTiers] = React.useState(
+    tiers.map((t) => ({ ...t, internalId: t.id })),
+  );
+
+  const [localDefaults, setLocalDefaults] = React.useState<
+    Record<string, string>
+  >(
+    categories.reduce(
+      (acc, cat) => {
+        const def = defaults.find((d) => d.category_id === cat.id);
+        if (def?.component_id) {
+          acc[cat.id] = def.component_id;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  );
+
+  const addTier = () => {
+    setLocalTiers([
+      ...localTiers,
+      {
+        internalId: crypto.randomUUID(),
+        id: undefined,
+        qty_tier: "" as unknown as number,
+        cost: "" as unknown as number,
+        quoted_date: new Date().toISOString().split("T")[0],
+        vendor: null,
+        freshness: "current" as Freshness,
+        product_id: product?.id || "",
+        created_at: "",
+        updated_at: "",
+      },
+    ]);
+  };
+
+  const removeTier = (internalId: string) => {
+    setLocalTiers(localTiers.filter((t) => t.internalId !== internalId));
+  };
+
+  const updateTier = (internalId: string, field: string, value: unknown) => {
+    setLocalTiers(
+      localTiers.map((t) =>
+        t.internalId === internalId ? { ...t, [field]: value } : t,
+      ),
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (readOnly) return;
+
+    setErrors({});
+    const formData = new FormData(e.currentTarget);
+    const estLabor = formData.get("est_labor_hours") as string;
+
+    const values = {
+      id: product?.id,
+      name: formData.get("name") as string,
+      sku: formData.get("sku") as string,
+      description: (formData.get("description") as string) || null,
+      vendor: (formData.get("vendor") as string) || null,
+      est_labor_hours: estLabor ? parseFloat(estLabor) : 0,
+      active,
+      fab_tiers: localTiers.map((t) => ({
+        id: t.id,
+        qty_tier:
+          typeof t.qty_tier === "number"
+            ? t.qty_tier
+            : parseInt(t.qty_tier) || 0,
+        cost: typeof t.cost === "number" ? t.cost : parseFloat(t.cost) || 0,
+        quoted_date: t.quoted_date,
+        vendor: t.vendor || null,
+      })),
+      product_defaults: Object.entries(localDefaults).map(
+        ([categoryId, componentId]) => ({
+          category_id: categoryId,
+          component_id: componentId === "none" ? null : componentId,
+        }),
+      ),
+    };
+
+    const parsed = createProductSchema.safeParse(values);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        fieldErrors[issue.path.join(".")] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await saveProduct(parsed.data);
+      if (!result.success) {
+        if (result.errors) {
+          const fieldErrors: Record<string, string> = {};
+          for (const [key, issues] of Object.entries(result.errors)) {
+            fieldErrors[key] = (issues as string[])[0];
+          }
+          setErrors(fieldErrors);
+        }
+        if (result.message) {
+          setErrors({ root: result.message });
+        }
+      } else {
+        router.push("/products");
+      }
+    });
+  };
 
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {readOnly ? <ReadOnlyNotice what="The product catalog" /> : null}
+
+      {errors.root && (
+        <div className="rounded bg-destructive/10 p-3 text-sm text-destructive font-semibold">
+          {errors.root}
+        </div>
+      )}
 
       <Card className="flex flex-col gap-5">
         <h2 className="text-md font-semibold tracking-tight">Product</h2>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label="Name" htmlFor="product-name">
+          <Field label="Name" htmlFor="product-name" error={errors["name"]}>
             <Input
               id="product-name"
+              name="name"
               defaultValue={product?.name ?? ""}
-              disabled={readOnly}
+              disabled={readOnly || isPending}
+              required
             />
           </Field>
 
-          <Field label="SKU" htmlFor="product-sku">
+          <Field label="SKU" htmlFor="product-sku" error={errors["sku"]}>
             <Input
               id="product-sku"
+              name="sku"
               defaultValue={product?.sku ?? ""}
-              disabled={readOnly}
+              disabled={readOnly || isPending}
               className="font-mono"
+              required
             />
           </Field>
 
-          <Field label="Vendor" htmlFor="product-vendor">
+          <Field
+            label="Vendor"
+            htmlFor="product-vendor"
+            error={errors["vendor"]}
+          >
             <Input
               id="product-vendor"
+              name="vendor"
               defaultValue={product?.vendor ?? ""}
-              disabled={readOnly}
+              disabled={readOnly || isPending}
             />
           </Field>
 
@@ -111,13 +226,15 @@ export function ProductEditor({
             label="Estimated assembly hours"
             htmlFor="product-hours"
             help="Applied to the quote in addition to per-line labor hours."
+            error={errors["est_labor_hours"]}
           >
             <Input
               id="product-hours"
+              name="est_labor_hours"
               variant="editable"
               inputMode="decimal"
               defaultValue={product?.est_labor_hours ?? ""}
-              disabled={readOnly}
+              disabled={readOnly || isPending}
             />
           </Field>
 
@@ -125,11 +242,13 @@ export function ProductEditor({
             label="Description"
             htmlFor="product-description"
             className="md:col-span-2"
+            error={errors["description"]}
           >
             <Input
               id="product-description"
+              name="description"
               defaultValue={product?.description ?? ""}
-              disabled={readOnly}
+              disabled={readOnly || isPending}
             />
           </Field>
         </div>
@@ -146,7 +265,7 @@ export function ProductEditor({
           <Switch
             checked={active}
             onCheckedChange={setActive}
-            disabled={readOnly}
+            disabled={readOnly || isPending}
             aria-label="Product active"
           />
         </div>
@@ -165,10 +284,7 @@ export function ProductEditor({
           </div>
         </div>
 
-        {tiers.length === 0 ? (
-          // Reached on /products/new, and on any product whose tiers were never
-          // filled in. The table header alone reads as a rendering bug, so say
-          // what is true and point at the one control that resolves it.
+        {localTiers.length === 0 ? (
           <EmptyState size="sm">
             <p>
               No fab pricing tiers yet. Add one below — a product with no tiers
@@ -190,14 +306,17 @@ export function ProductEditor({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tiers.map((tier) => (
-                <TableRow key={tier.id}>
+              {localTiers.map((tier) => (
+                <TableRow key={tier.internalId}>
                   <TableCell numeric className="text-right">
                     <Input
                       variant="editable"
                       inputMode="numeric"
-                      defaultValue={tier.qty_tier}
-                      disabled={readOnly}
+                      value={tier.qty_tier}
+                      onChange={(e) =>
+                        updateTier(tier.internalId, "qty_tier", e.target.value)
+                      }
+                      disabled={readOnly || isPending}
                       aria-label="Quantity tier"
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
@@ -206,8 +325,11 @@ export function ProductEditor({
                     <Input
                       variant="editable"
                       inputMode="decimal"
-                      defaultValue={tier.cost}
-                      disabled={readOnly}
+                      value={tier.cost}
+                      onChange={(e) =>
+                        updateTier(tier.internalId, "cost", e.target.value)
+                      }
+                      disabled={readOnly || isPending}
                       aria-label="Tier cost"
                       className="h-8 w-full px-2 py-1 text-right text-sm"
                     />
@@ -216,16 +338,26 @@ export function ProductEditor({
                     <Input
                       variant="editable"
                       type="date"
-                      defaultValue={tier.quoted_date}
-                      disabled={readOnly}
+                      value={tier.quoted_date}
+                      onChange={(e) =>
+                        updateTier(
+                          tier.internalId,
+                          "quoted_date",
+                          e.target.value,
+                        )
+                      }
+                      disabled={readOnly || isPending}
                       aria-label="Quoted date"
                       className="h-8 w-full px-2 py-1 text-sm"
                     />
                   </TableCell>
                   <TableCell>
                     <Input
-                      defaultValue={tier.vendor ?? ""}
-                      disabled={readOnly}
+                      value={tier.vendor ?? ""}
+                      onChange={(e) =>
+                        updateTier(tier.internalId, "vendor", e.target.value)
+                      }
+                      disabled={readOnly || isPending}
                       aria-label="Tier vendor"
                       className="h-8 w-full px-2 py-1 text-sm"
                     />
@@ -235,9 +367,11 @@ export function ProductEditor({
                   </TableCell>
                   <TableCell>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon-sm"
-                      disabled={readOnly}
+                      onClick={() => removeTier(tier.internalId)}
+                      disabled={readOnly || isPending}
                       aria-label="Remove tier"
                     >
                       <Trash2 />
@@ -250,7 +384,13 @@ export function ProductEditor({
         )}
 
         <div className="px-2 pb-2">
-          <Button variant="outline" size="sm" disabled={readOnly}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addTier}
+            disabled={readOnly || isPending}
+          >
             <Plus />
             Add tier
           </Button>
@@ -270,9 +410,7 @@ export function ProductEditor({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {categories.map((category) => {
-            const current =
-              defaults.find((entry) => entry.category_id === category.id)
-                ?.component_id ?? "none";
+            const current = localDefaults[category.id] ?? "none";
             const options = components.filter(
               (component) =>
                 component.category_id === category.id &&
@@ -282,7 +420,13 @@ export function ProductEditor({
             return (
               <div key={category.id} className="flex flex-col gap-1.5">
                 <span className="text-sm font-semibold">{category.name}</span>
-                <Select defaultValue={current} disabled={readOnly}>
+                <Select
+                  value={current}
+                  onValueChange={(val) =>
+                    setLocalDefaults({ ...localDefaults, [category.id]: val })
+                  }
+                  disabled={readOnly || isPending}
+                >
                   <SelectTrigger
                     className="w-full"
                     aria-label={`${category.name} default component`}
@@ -306,14 +450,20 @@ export function ProductEditor({
 
       {isAdmin ? (
         <div className="flex items-center gap-3">
-          <Button>{isNew ? "Create product" : "Save product"}</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending
+              ? "Saving..."
+              : isNew
+                ? "Create product"
+                : "Save product"}
+          </Button>
           <p className="text-xs text-muted-foreground">
             Product, tiers, defaults, and any price-history rows are written in
             one transaction — all of it saves, or none of it does.
           </p>
         </div>
       ) : null}
-    </div>
+    </form>
   );
 }
 
@@ -322,12 +472,14 @@ function Field({
   htmlFor,
   help,
   className,
+  error,
   children,
 }: {
   label: string;
   htmlFor: string;
   help?: string;
   className?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -337,9 +489,11 @@ function Field({
           {label}
         </label>
         {children}
-        {/* One calm sentence under the control, never a tooltip standing in for
-            real labelling (DESIGN-SYSTEM.md §11). */}
-        {help ? (
+        {error ? (
+          <span className="text-xs font-semibold text-destructive">
+            {error}
+          </span>
+        ) : help ? (
           <span className="text-xs text-muted-foreground">{help}</span>
         ) : null}
       </div>

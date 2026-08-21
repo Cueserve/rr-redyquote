@@ -5,15 +5,15 @@ import * as React from "react";
 import type { UserRole } from "@/lib/mock";
 
 /**
- * PROTOTYPE ONLY — delete when Supabase Auth wiring lands.
+ * PROTOTYPE ONLY - delete when Supabase Auth wiring lands.
  *
  * A client-side role switch so both halves of the two-role model (PRD-019) can
  * be reviewed without provisioning two accounts. It exists to make the DESIGN
  * legible, and it is not, at any point, an authorization mechanism:
  *
  *   - The real role comes from `profiles.role`, read server-side.
- *   - The real enforcement is Postgres RLS (ARCHITECTURE.md §5, NFR-002).
- *     Hiding a button is not access control — PRODUCT.md §6 names this as an
+ *   - The real enforcement is Postgres RLS (ARCHITECTURE.md A 5, NFR-002).
+ *     Hiding a button is not access control - PRODUCT.md A 6 names this as an
  *     anti-pattern by name.
  *
  * So everything downstream of this context is presentation: which affordances
@@ -36,21 +36,22 @@ export function RoleProvider({
   children: React.ReactNode;
   initialRole?: UserRole;
 }) {
-  const [role, setRole] = React.useState<UserRole>(initialRole);
-  const value = React.useMemo(() => ({ role, setRole }), [role]);
+  const value = React.useMemo(
+    () => ({ role: initialRole, setRole: () => {} }),
+    [initialRole],
+  );
 
-  return <RoleContext value={value}>{children}</RoleContext>;
+  return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 }
 
 export function useRole() {
-  const context = React.use(RoleContext);
+  const context = React.useContext(RoleContext);
   if (!context) {
-    throw new Error("useRole must be used inside a RoleProvider.");
+    throw new Error("useRole must be used within a RoleProvider");
   }
-  return context;
+  return context.role;
 }
 
-/** True when the prototype is currently rendering as an admin. */
 export function useIsAdmin() {
-  return useRole().role === "admin";
+  return useRole() === "admin";
 }

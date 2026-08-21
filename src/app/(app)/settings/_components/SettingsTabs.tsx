@@ -17,6 +17,7 @@ import {
 import { SettingsBrandingTab } from "./SettingsBrandingTab";
 import { SettingsDefaultsTab, settingFieldId } from "./SettingsDefaultsTab";
 import { SettingsHistoryTab } from "./SettingsHistoryTab";
+import { saveSettings } from "@/server/actions/settings";
 
 /**
  * PRD-012 (estimating defaults), PRD-013 (branding), PRD-018A (audit).
@@ -75,6 +76,7 @@ export function SettingsTabs({
    * field, which only a full re-check can do.
    */
   const [validateWhileTyping, setValidateWhileTyping] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
 
   function handleFieldChange(key: NumericSettingKey, value: string) {
     // Computed outside the updater on purpose: the re-validation below is a
@@ -107,11 +109,12 @@ export function SettingsTabs({
       return;
     }
 
-    // The Server Action goes here, and nothing stands in for it: PRD §7A is
-    // unsigned and docs/DATABASE.md §6 blocks wiring the save RPC until it is.
-    // `result.values` is the parsed row it will take. A fake success toast
-    // would make an unwired screen read as a working one — the login form
-    // reserves its error slot the same way rather than pretending.
+    startTransition(async () => {
+      const response = await saveSettings(result.values);
+      if (!response.ok) {
+        setErrors(response.errors);
+      }
+    });
   }
 
   return (
@@ -127,6 +130,7 @@ export function SettingsTabs({
           draft={draft}
           errors={errors}
           readOnly={readOnly}
+          isPending={isPending}
           onFieldChange={handleFieldChange}
           onSubmit={handleSubmit}
         />

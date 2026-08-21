@@ -17,6 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Category, EnvironmentType, LibraryComponent } from "@/lib/mock";
+import { useRouter } from "next/navigation";
+import { saveComponent } from "@/server/actions/library";
+import {
+  componentSchema,
+  type ComponentInput,
+} from "@/lib/validation/component";
 
 /**
  * Component editor — PRD-006.
@@ -57,8 +63,56 @@ export function ComponentEditor({
     component?.environment ?? "any",
   );
 
+  const router = useRouter();
+  const [isPending, startTransition] = React.useTransition();
+  const [errors, setErrors] = React.useState<
+    Partial<Record<keyof ComponentInput | "root", string>>
+  >({});
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (readOnly) return;
+
+    setErrors({});
+    const formData = new FormData(e.currentTarget);
+    const costStr = formData.get("cost") as string;
+    const hoursStr = formData.get("default_labor_hours") as string;
+
+    const values = {
+      id: component?.id,
+      name: formData.get("name") as string,
+      sku: formData.get("sku") as string,
+      category_id: formData.get("category_id") as string,
+      vendor: formData.get("vendor") as string,
+      environment,
+      cost: costStr ? parseFloat(costStr) : 0,
+      default_labor_hours: hoursStr ? parseFloat(hoursStr) : 0,
+      quoted_date: formData.get("quoted_date") as string,
+      active,
+    };
+
+    const parsed = componentSchema.safeParse(values);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        fieldErrors[issue.path[0] as string] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await saveComponent(parsed.data);
+      if (!result.ok) {
+        setErrors(result.errors);
+      } else {
+        router.push("/library");
+      }
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {readOnly ? <ReadOnlyNotice what="The component library" /> : null}
 
       <Card className="flex flex-col gap-5">
@@ -71,6 +125,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-name"
+              name="name"
               defaultValue={component?.name ?? ""}
               disabled={readOnly}
             />
@@ -82,6 +137,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-sku"
+              name="sku"
               defaultValue={component?.sku ?? ""}
               disabled={readOnly}
               className="font-mono"
@@ -90,7 +146,11 @@ export function ComponentEditor({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-semibold">Category</span>
-            <Select defaultValue={component?.category_id} disabled={readOnly}>
+            <Select
+              name="category_id"
+              defaultValue={component?.category_id}
+              disabled={readOnly}
+            >
               <SelectTrigger className="w-full" aria-label="Category">
                 {/* Placeholder matters only in create mode — with no
                     `defaultValue` there is nothing for `SelectValue` to render,
@@ -113,6 +173,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-vendor"
+              name="vendor"
               defaultValue={component?.vendor ?? ""}
               disabled={readOnly}
             />
@@ -124,6 +185,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-cost"
+              name="cost"
               variant="editable"
               inputMode="decimal"
               defaultValue={component?.cost ?? ""}
@@ -140,6 +202,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-date"
+              name="quoted_date"
               variant="editable"
               type="date"
               defaultValue={component?.quoted_date ?? ""}
@@ -157,6 +220,7 @@ export function ComponentEditor({
             </label>
             <Input
               id="component-hours"
+              name="default_labor_hours"
               variant="editable"
               inputMode="decimal"
               defaultValue={component?.default_labor_hours ?? ""}
@@ -219,9 +283,18 @@ export function ComponentEditor({
 
       {isAdmin ? (
         <div>
-          <Button>{isNew ? "Create component" : "Save component"}</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending
+              ? "Saving..."
+              : isNew
+                ? "Create component"
+                : "Save component"}
+          </Button>
+          {errors.root && (
+            <p className="text-sm text-destructive mt-2">{errors.root}</p>
+          )}
         </div>
       ) : null}
-    </div>
+    </form>
   );
 }

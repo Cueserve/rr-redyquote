@@ -154,12 +154,14 @@ export function SettingsDefaultsTab({
   draft,
   errors,
   readOnly,
+  isPending,
   onFieldChange,
   onSubmit,
 }: {
   draft: SettingsDraft;
   errors: SettingsFieldErrors;
   readOnly: boolean;
+  isPending?: boolean;
   onFieldChange: (key: NumericSettingKey, value: string) => void;
   onSubmit: () => void;
 }) {
@@ -243,7 +245,9 @@ export function SettingsDefaultsTab({
 
         {readOnly ? null : (
           <div className="flex items-center gap-3">
-            <Button type="submit">Save settings</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving..." : "Save settings"}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Each changed field writes an audit row in the same transaction.
             </p>

@@ -12,6 +12,7 @@ export const componentSchema = z.object({
     .number()
     .min(0, "Labor hours must be positive")
     .default(0),
+  quoted_date: z.string().min(1, "Quoted date is required"),
   active: z.boolean().default(true),
 });
 

@@ -1,6 +1,6 @@
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { AdminOnly, ReadOnlyNotice } from "@/components/prototype/admin-only";
-import { CATEGORIES, COMPONENTS } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
 
 import { ProductEditor } from "../_components/ProductEditor";
 
@@ -15,7 +15,17 @@ import { ProductEditor } from "../_components/ProductEditor";
  * rejects input is worse than no form. `AdminOnly` answers "should this be
  * offered?" — the real guard is the Server Action and RLS (NFR-002).
  */
-export default function NewProductPage() {
+export default async function NewProductPage() {
+  const supabase = await createClient();
+
+  const [categoriesRes, componentsRes] = await Promise.all([
+    supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("components").select("*").order("name"),
+  ]);
+
+  const categories = categoriesRes.data ?? [];
+  const components = componentsRes.data ?? [];
+
   return (
     <PageBody>
       <PageHeader
@@ -28,8 +38,8 @@ export default function NewProductPage() {
           product={null}
           tiers={[]}
           defaults={[]}
-          categories={CATEGORIES}
-          components={COMPONENTS}
+          categories={categories}
+          components={components}
         />
       </AdminOnly>
     </PageBody>

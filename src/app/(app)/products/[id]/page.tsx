@@ -2,13 +2,8 @@ import { notFound } from "next/navigation";
 
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { DeactivatedBadge } from "@/components/freshness-badge";
-import {
-  CATEGORIES,
-  COMPONENTS,
-  getFabTiers,
-  getProduct,
-  getProductDefaults,
-} from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { deriveFreshness } from "@/lib/freshness";
 
 import { ProductEditor } from "../_components/ProductEditor";
 
@@ -18,27 +13,71 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = getProduct(id);
-  if (!product) notFound();
+  const supabase = await createClient();
+
+  const [
+    productRes,
+    tiersRes,
+    defaultsRes,
+    categoriesRes,
+    componentsRes,
+    settingsRes,
+  ] = await Promise.all([
+    supabase.from("products").select("*").eq("id", id).single(),
+    supabase
+      .from("fab_tiers")
+      .select("*")
+      .eq("product_id", id)
+      .order("qty_tier"),
+    supabase.from("product_defaults").select("*").eq("product_id", id),
+    supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("components").select("*").order("name"),
+    supabase
+      .from("settings")
+      .select("freshness_warning_months, freshness_requote_months")
+      .single(),
+  ]);
+
+  if (productRes.error || !productRes.data) notFound();
+
+  const productRaw = productRes.data;
+  const tiersRaw = tiersRes.data ?? [];
+  const defaults = defaultsRes.data ?? [];
+  const categories = categoriesRes.data ?? [];
+  const components = componentsRes.data ?? [];
+
+  const warn = settingsRes.data?.freshness_warning_months ?? 3;
+  const requote = settingsRes.data?.freshness_requote_months ?? 6;
+
+  // Apply freshness calculation to each tier so the badge renders correctly
+  const tiers = tiersRaw.map((tier) => ({
+    ...tier,
+    freshness: deriveFreshness(tier.quoted_date, warn, requote),
+  }));
+
+  // Note: the mock Product type didn't have worst_tier_freshness in this context,
+  // ProductEditor doesn't need worst_tier_freshness or tier_count on the product
+  // object itself, but let's safely pass what it expects.
+  // Wait, ProductEditor imports Product from @/lib/mock. Let's provide what we have.
 
   return (
     <PageBody>
       <PageHeader
         title={
           <span className="flex items-center gap-3">
-            {product.name}
-            {!product.active ? <DeactivatedBadge /> : null}
+            {productRaw.name}
+            {!productRaw.active ? <DeactivatedBadge /> : null}
           </span>
         }
-        description={product.description ?? "No description."}
+        description={productRaw.description ?? "No description."}
       />
 
       <ProductEditor
-        product={product}
-        tiers={getFabTiers(product.id)}
-        defaults={getProductDefaults(product.id)}
-        categories={CATEGORIES}
-        components={COMPONENTS}
+        product={productRaw}
+        tiers={tiers}
+        defaults={defaults}
+        categories={categories}
+        components={components}
       />
     </PageBody>
   );

@@ -26,13 +26,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/data-table";
-import type {
-  Category,
-  FabTier,
-  LibraryComponent,
-  Product,
-  ProductDefault,
-} from "@/lib/mock";
+import type { Freshness } from "@/lib/freshness";
+import type { Database } from "@/lib/supabase/types";
+
+type Product = Database["public"]["Tables"]["products"]["Row"];
+type FabTier = Database["public"]["Tables"]["fab_tiers"]["Row"] & {
+  freshness: Freshness;
+};
+type ProductDefault = Database["public"]["Tables"]["product_defaults"]["Row"];
+type Category = Database["public"]["Tables"]["categories"]["Row"];
+type LibraryComponent = Database["public"]["Tables"]["components"]["Row"];
 
 /**
  * Product editor — PRD-003 (product fields), PRD-004 (quantity-tier fab

@@ -6,7 +6,7 @@ import { useIsAdmin } from "@/components/prototype/role-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/lib/supabase/types";
 type Settings = Tables<"settings">;
-type SettingsHistoryRow = Tables<"settings_history">;
+import type { SettingsHistoryRow } from "./SettingsHistoryTab";
 import {
   NUMERIC_SETTING_KEYS,
   validateSettingsDraft,

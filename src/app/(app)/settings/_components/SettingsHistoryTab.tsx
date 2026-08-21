@@ -7,7 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/data-table";
-import type { SettingsHistoryRow } from "@/lib/mock";
+import type { Tables } from "@/lib/supabase/types";
+
+export type SettingsHistoryRow = Tables<"settings_history"> & {
+  actor_name: string;
+};
 import { formatDateTime } from "@/lib/utils";
 
 export function SettingsHistoryTab({

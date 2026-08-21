@@ -10,7 +10,7 @@ export default async function SettingsPage() {
     supabase.from("settings").select("*").single(),
     supabase
       .from("settings_history")
-      .select("*")
+      .select("*, profiles(full_name)")
       .order("changed_at", { ascending: false }),
   ]);
 
@@ -24,7 +24,13 @@ export default async function SettingsPage() {
         description="One global row of estimating defaults, plus org-wide branding. Every change is audited."
       />
 
-      <SettingsTabs settings={settingsRes.data} history={historyRes.data} />
+      <SettingsTabs
+        settings={settingsRes.data}
+        history={historyRes.data.map((row) => ({
+          ...row,
+          actor_name: row.profiles?.full_name ?? "Unknown",
+        }))}
+      />
     </PageBody>
   );
 }

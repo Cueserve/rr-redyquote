@@ -4,29 +4,70 @@ import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { KpiStat } from "@/components/ui/kpi-stat";
-import { COMPONENTS, QUOTES, SETTINGS } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { deriveFreshness } from "@/lib/freshness";
 
-import { QuoteTable } from "../_components/QuoteTable";
+import { QuoteTable, type DbQuoteRow } from "../_components/QuoteTable";
 
 // The "toolbar + KPI strip + table" pattern from DESIGN-SYSTEM.md §9.
 //
-// A Server Component: the read path. Once wiring lands, the three constants
-// below become session-bound Supabase selects so RLS applies to every read
-// (ARCHITECTURE.md §1); nothing else on this page changes.
+// A Server Component: the read path.
 
-export default function QuotesPage() {
-  const pendingApproval = QUOTES.filter(
+export default async function QuotesPage() {
+  const supabase = await createClient();
+
+  const [quotesRes, componentsRes, settingsRes] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select(
+        `
+        *,
+        products ( name ),
+        fab_tiers ( qty_tier ),
+        owner:profiles!quotes_owner_id_fkey ( full_name )
+      `,
+      )
+      .order("updated_at", { ascending: false }),
+    supabase.from("components").select("id, active, quoted_date"),
+    supabase
+      .from("settings")
+      .select(
+        "margin_floor_percent, freshness_warning_months, freshness_requote_months",
+      )
+      .single(),
+  ]);
+
+  const rawQuotes = quotesRes.data ?? [];
+
+  const quotes: DbQuoteRow[] = rawQuotes.map((q) => ({
+    id: q.id,
+    quote_number: q.quote_number,
+    customer_name: q.customer_name,
+    product_name: q.products?.name ?? "Unknown Product",
+    qty_tier: q.fab_tiers?.qty_tier ?? 0,
+    status: q.status,
+    final_price_each: q.final_price_each,
+    gp_percent: q.gp_percent,
+    below_margin_floor: q.below_margin_floor,
+    owner_name: q.owner?.full_name ?? "Unknown Owner",
+    updated_at: q.updated_at,
+  }));
+
+  const components = componentsRes.data ?? [];
+  const settings = settingsRes.data ?? { margin_floor_percent: 40 };
+  const warn = settingsRes.data?.freshness_warning_months ?? 3;
+  const requote = settingsRes.data?.freshness_requote_months ?? 6;
+
+  const pendingApproval = quotes.filter(
     (q) => q.status === "pending_approval",
   ).length;
-  const belowFloor = QUOTES.filter((q) => q.below_margin_floor).length;
+  const belowFloor = quotes.filter((q) => q.below_margin_floor).length;
 
-  // PRD-009's stale-priced component count. Reading a literal `freshness` field
-  // off each fixture row rather than deriving it: the requirement is that the
-  // badge and this count come from the same configured thresholds, which means
-  // one shared module owns the derivation — and that module isn't written yet.
-  const staleComponents = COMPONENTS.filter(
-    (c) => c.active && c.freshness !== "current",
-  ).length;
+  const staleComponents = components.filter((c) => {
+    if (!c.active) return false;
+    const freshness = deriveFreshness(c.quoted_date, warn, requote);
+    return freshness !== "current";
+  }).length;
 
   return (
     <PageBody>
@@ -42,14 +83,14 @@ export default function QuotesPage() {
 
       <Card padding="compact">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <KpiStat label="Total quotes" value={QUOTES.length} />
+          <KpiStat label="Total quotes" value={quotes.length} />
           <KpiStat
             label="Review"
             value={pendingApproval}
             tone={pendingApproval > 0 ? "warning" : "neutral"}
           />
           <KpiStat
-            label={`Below ${SETTINGS.margin_floor_percent.toFixed(1)}% margin floor`}
+            label={`Below ${settings.margin_floor_percent.toFixed(1)}% margin floor`}
             value={belowFloor}
             tone={belowFloor > 0 ? "destructive" : "neutral"}
           />
@@ -61,7 +102,7 @@ export default function QuotesPage() {
         </div>
       </Card>
 
-      <QuoteTable quotes={QUOTES} />
+      <QuoteTable quotes={quotes} />
     </PageBody>
   );
 }

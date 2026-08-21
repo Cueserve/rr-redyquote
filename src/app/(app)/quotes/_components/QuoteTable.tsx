@@ -25,7 +25,6 @@ import {
 import {
   QUOTE_STATUS_LABEL,
   QUOTE_STATUS_ORDER,
-  type Quote,
   type QuoteStatus,
 } from "@/lib/mock";
 import { cn, formatDate, formatMoney, formatPercent } from "@/lib/utils";
@@ -39,6 +38,21 @@ import {
 import type { ListParamsConfig } from "@/lib/list/list-params";
 import { useListParams } from "@/lib/list/use-list-params";
 import { Pagination } from "@/components/ui/pagination";
+
+// The quote row structure we map from the nested Supabase response
+export type DbQuoteRow = {
+  id: string;
+  quote_number: string;
+  customer_name: string;
+  product_name: string;
+  qty_tier: number;
+  status: QuoteStatus;
+  final_price_each: number;
+  gp_percent: number;
+  below_margin_floor: boolean;
+  owner_name: string;
+  updated_at: string;
+};
 
 // Client component for search, the status filter, sorting, and pagination.
 // The rows themselves are still rendered from props the Server Component
@@ -64,24 +78,32 @@ type QuoteSortKey =
 
 const SORTS: Record<
   QuoteSortKey,
-  (dir: "asc" | "desc") => (a: Quote, b: Quote) => number
+  (dir: "asc" | "desc") => (a: DbQuoteRow, b: DbQuoteRow) => number
 > = {
-  quote: (dir) => byField((row: Quote) => row.quote_number, compareText, dir),
+  quote: (dir) =>
+    byField((row: DbQuoteRow) => row.quote_number, compareText, dir),
   customer: (dir) =>
-    byField((row: Quote) => row.customer_name, compareText, dir),
-  product: (dir) => byField((row: Quote) => row.product_name, compareText, dir),
-  tier: (dir) => byField((row: Quote) => row.qty_tier, compareNumber, dir),
+    byField((row: DbQuoteRow) => row.customer_name, compareText, dir),
+  product: (dir) =>
+    byField((row: DbQuoteRow) => row.product_name, compareText, dir),
+  tier: (dir) => byField((row: DbQuoteRow) => row.qty_tier, compareNumber, dir),
   // Lifecycle order, reusing the same constant the tab row is built from, so
   // the two can never disagree. Alphabetical would give approved, draft,
   // review, sent — which conveys nothing about where a quote sits.
   status: (dir) =>
-    byField((row: Quote) => row.status, compareRank(QUOTE_STATUS_ORDER), dir),
+    byField(
+      (row: DbQuoteRow) => row.status,
+      compareRank(QUOTE_STATUS_ORDER),
+      dir,
+    ),
   price: (dir) =>
-    byField((row: Quote) => row.final_price_each, compareNumber, dir),
-  gp: (dir) => byField((row: Quote) => row.gp_percent, compareNumber, dir),
-  owner: (dir) => byField((row: Quote) => row.owner_name, compareText, dir),
+    byField((row: DbQuoteRow) => row.final_price_each, compareNumber, dir),
+  gp: (dir) => byField((row: DbQuoteRow) => row.gp_percent, compareNumber, dir),
+  owner: (dir) =>
+    byField((row: DbQuoteRow) => row.owner_name, compareText, dir),
   // `updated_at` is an ISO timestamp, so lexical order is chronological.
-  updated: (dir) => byField((row: Quote) => row.updated_at, compareText, dir),
+  updated: (dir) =>
+    byField((row: DbQuoteRow) => row.updated_at, compareText, dir),
 };
 
 const LIST_CONFIG: ListParamsConfig<QuoteSortKey> = {
@@ -93,7 +115,7 @@ const LIST_CONFIG: ListParamsConfig<QuoteSortKey> = {
   filterDefaults: { status: "all" },
 };
 
-export function QuoteTable({ quotes }: { quotes: Quote[] }) {
+export function QuoteTable({ quotes }: { quotes: DbQuoteRow[] }) {
   const list = useListParams(LIST_CONFIG);
   const { params } = list;
   const rawStatus = list.filter("status", "all");

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { PageBody, PageHeader } from "@/components/layout/page-header";
 import { AdminOnly, ReadOnlyNotice } from "@/components/prototype/admin-only";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES, COMPONENTS } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { deriveFreshness } from "@/lib/freshness";
 
 import { ComponentTable } from "../_components/ComponentTable";
 
@@ -14,7 +15,31 @@ import { ComponentTable } from "../_components/ComponentTable";
 // In the `(list)` group so the `loading.tsx` beside it covers /library only —
 // see PROJECT-STRUCTURE.md §1, "List loading boundary rule".
 
-export default function LibraryPage() {
+export default async function LibraryPage() {
+  const supabase = await createClient();
+
+  const [categoriesRes, componentsRes, settingsRes] = await Promise.all([
+    supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("components").select("*").order("name"),
+    supabase
+      .from("settings")
+      .select("freshness_warning_months, freshness_requote_months")
+      .single(),
+  ]);
+
+  if (categoriesRes.error) throw categoriesRes.error;
+  if (componentsRes.error) throw componentsRes.error;
+  if (settingsRes.error) throw settingsRes.error;
+
+  const components = componentsRes.data.map((c) => ({
+    ...c,
+    freshness: deriveFreshness(
+      c.quoted_date,
+      settingsRes.data.freshness_warning_months,
+      settingsRes.data.freshness_requote_months,
+    ),
+  }));
+
   return (
     <PageBody>
       <PageHeader
@@ -37,7 +62,7 @@ export default function LibraryPage() {
         }
       />
 
-      <ComponentTable components={COMPONENTS} categories={CATEGORIES} />
+      <ComponentTable components={components} categories={categoriesRes.data} />
     </PageBody>
   );
 }

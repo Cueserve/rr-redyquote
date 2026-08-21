@@ -49,9 +49,9 @@ export function useRole() {
   if (!context) {
     throw new Error("useRole must be used within a RoleProvider");
   }
-  return context.role;
+  return context;
 }
 
 export function useIsAdmin() {
-  return useRole() === "admin";
+  return useRole().role === "admin";
 }

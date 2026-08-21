@@ -25,7 +25,12 @@ import {
 } from "@/components/ui/data-table";
 import { EmptyState, EmptyValue } from "@/components/ui/empty-state";
 import { LinkPending } from "@/components/ui/link-pending";
-import type { Category, LibraryComponent } from "@/lib/mock";
+import type { Tables } from "@/lib/supabase/types";
+import type { Freshness } from "@/lib/freshness";
+
+export type LibraryComponentRow = Tables<"components"> & {
+  freshness: Freshness;
+};
 import { formatDate, formatHours, formatMoney } from "@/lib/utils";
 import {
   applyListView,
@@ -43,7 +48,7 @@ import { Pagination } from "@/components/ui/pagination";
 // mismatch a flag on the quote rather than an error, so catching it here is
 // cheaper than catching it there.
 const ENVIRONMENT: Record<
-  LibraryComponent["environment"],
+  LibraryComponentRow["environment"],
   { label: string; variant: "secondary" | "info" | "warning" }
 > = {
   any: { label: "Any", variant: "secondary" },
@@ -73,33 +78,35 @@ function sortsFor(
   categoryName: Map<string, string>,
 ): Record<
   ComponentSortKey,
-  (dir: "asc" | "desc") => (a: LibraryComponent, b: LibraryComponent) => number
+  (
+    dir: "asc" | "desc",
+  ) => (a: LibraryComponentRow, b: LibraryComponentRow) => number
 > {
   return {
     name: (dir) =>
-      byField((row: LibraryComponent) => row.name, compareText, dir),
+      byField((row: LibraryComponentRow) => row.name, compareText, dir),
     category: (dir) =>
       byField(
-        (row: LibraryComponent) => categoryName.get(row.category_id),
+        (row: LibraryComponentRow) => categoryName.get(row.category_id),
         compareText,
         dir,
       ),
     vendor: (dir) =>
-      byField((row: LibraryComponent) => row.vendor, compareText, dir),
+      byField((row: LibraryComponentRow) => row.vendor, compareText, dir),
     cost: (dir) =>
-      byField((row: LibraryComponent) => row.cost, compareNumber, dir),
+      byField((row: LibraryComponentRow) => row.cost, compareNumber, dir),
     labor_hours: (dir) =>
       byField(
-        (row: LibraryComponent) => row.default_labor_hours,
+        (row: LibraryComponentRow) => row.default_labor_hours,
         compareNumber,
         dir,
       ),
     // `quoted_date` is an ISO date string, so lexical order is chronological.
     quoted: (dir) =>
-      byField((row: LibraryComponent) => row.quoted_date, compareText, dir),
+      byField((row: LibraryComponentRow) => row.quoted_date, compareText, dir),
     freshness: (dir) =>
       byField(
-        (row: LibraryComponent) => row.freshness,
+        (row: LibraryComponentRow) => row.freshness,
         compareRank(FRESHNESS_ORDER),
         dir,
       ),
@@ -127,8 +134,8 @@ export function ComponentTable({
   components,
   categories,
 }: {
-  components: LibraryComponent[];
-  categories: Category[];
+  components: LibraryComponentRow[];
+  categories: Tables<"categories">[];
 }) {
   const list = useListParams(LIST_CONFIG);
   const { params } = list;

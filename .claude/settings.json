@@ -13,6 +13,17 @@
       "Bash(npx supabase db reset *)",
       "Bash(supabase db reset *)"
     ],
+    "ask": [
+      "Bash(npm run db:push)",
+      "Bash(npm run db:push *)",
+      "Bash(npx supabase db push)",
+      "Bash(npx supabase db push *)",
+      "Bash(supabase db push)",
+      "Bash(supabase db push *)",
+      "Bash(npx supabase functions deploy *)",
+      "Bash(supabase functions deploy *)",
+      "Bash(git push *)"
+    ],
     "allow": [
       "Bash(npm run lint:*)",
       "Bash(npm run typecheck:*)",
@@ -29,17 +40,6 @@
       "Bash(git show:*)",
       "Bash(git branch:*)",
       "Bash(git fetch:*)"
-    ],
-    "ask": [
-      "Bash(npm run db:push)",
-      "Bash(npm run db:push *)",
-      "Bash(npx supabase db push)",
-      "Bash(npx supabase db push *)",
-      "Bash(supabase db push)",
-      "Bash(supabase db push *)",
-      "Bash(npx supabase functions deploy *)",
-      "Bash(supabase functions deploy *)",
-      "Bash(git push *)"
     ]
   },
   "hooks": {

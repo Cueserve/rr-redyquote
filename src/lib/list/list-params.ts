@@ -25,13 +25,16 @@ export function readListParams<K extends string>(
   const q = (params.get("q") ?? "").trim();
 
   const rawSort = params.get("sort") ?? "";
-  const validSort = config.sortKeys.includes(rawSort as K);
-  const sort = validSort ? (rawSort as K) : config.defaultSort;
+  const isExplicitSortValid = config.sortKeys.includes(rawSort as K);
+  const sort = isExplicitSortValid ? (rawSort as K) : config.defaultSort;
 
   const rawDir = params.get("dir") ?? "";
-  // Direction belongs to the sort in effect; an invalid sort key discards its dir.
+  // Direction belongs to the sort in effect. If the URL provides an invalid sort
+  // key, we discard its direction. If the URL omits the sort key (rawSort === ""),
+  // the default sort is in effect, so we honor the provided direction.
+  const isSortValid = rawSort === "" || isExplicitSortValid;
   const dir: SortDir =
-    validSort && (rawDir === "asc" || rawDir === "desc")
+    isSortValid && (rawDir === "asc" || rawDir === "desc")
       ? rawDir
       : config.defaultDir;
 

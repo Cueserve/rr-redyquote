@@ -235,7 +235,13 @@ export function LifecycleBar({
                 Cancel
               </Button>
             </DialogClose>
-            <Button onClick={onSubmit} disabled={isLoading}>
+            <Button
+              onClick={() => {
+                onSubmit?.();
+                setDialog(null);
+              }}
+              disabled={isLoading}
+            >
               Submit for approval
             </Button>
           </DialogFooter>
@@ -284,7 +290,13 @@ export function LifecycleBar({
                 Cancel
               </Button>
             </DialogClose>
-            <Button onClick={onRequestChanges} disabled={isLoading}>
+            <Button
+              onClick={() => {
+                onRequestChanges?.();
+                setDialog(null);
+              }}
+              disabled={isLoading}
+            >
               Send back to Draft
             </Button>
           </DialogFooter>

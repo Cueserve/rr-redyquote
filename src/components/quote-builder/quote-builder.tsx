@@ -205,6 +205,44 @@ export function QuoteBuilder({
     });
   };
 
+  const handleSubmit = () => {
+    if (!customerName || !productId || !fabTierId) {
+      toast.error("Missing required fields (Customer, Product, Quantity tier)");
+      return;
+    }
+
+    startTransition(async () => {
+      const saveResult = await saveQuote({
+        id: quote?.id,
+        customer_name: customerName,
+        product_id: productId,
+        fab_tier_id: fabTierId,
+        environment,
+        lines,
+      });
+
+      if (!saveResult.success || !saveResult.data?.id) {
+        toast.error(
+          saveResult.error ?? "Failed to save quote before submitting",
+        );
+        return;
+      }
+
+      setEditedLineIds(new Set());
+      const quoteId = saveResult.data.id;
+
+      const submitResult = await submitForReview(quoteId);
+      if (submitResult.success) {
+        toast.success("Submitted for approval");
+        if (!quote) {
+          router.push(`/quotes/${quoteId}`);
+        }
+      } else {
+        toast.error(submitResult.error ?? "Failed to submit quote");
+      }
+    });
+  };
+
   /**
    * PRD-005 — picking a product pre-fills the default component for each
    * category. This copies catalog values onto the new lines; it does not price
@@ -262,6 +300,36 @@ export function QuoteBuilder({
       ...previous.filter((l) => l.is_misc),
     ]);
     setEditedLineIds(edited);
+  }
+
+  function handleEnvironmentChange(nextEnvironment: QuoteEnvironment) {
+    setEnvironment(nextEnvironment);
+
+    const changedIds: string[] = [];
+    const nextLines = lines.map((line) => {
+      if (!line.component_id) return line;
+      const component = components.find((c) => c.id === line.component_id);
+      if (!component) return line;
+
+      const mismatch =
+        component.environment !== "any" &&
+        component.environment !== nextEnvironment;
+
+      if (line.environment_mismatch !== mismatch) {
+        changedIds.push(line.id);
+        return { ...line, environment_mismatch: mismatch };
+      }
+      return line;
+    });
+
+    if (changedIds.length > 0) {
+      setLines(nextLines);
+      setEditedLineIds((prev) => {
+        const next = new Set(prev);
+        changedIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
   }
 
   function handleSelectComponent(
@@ -465,7 +533,7 @@ export function QuoteBuilder({
                 value={environment}
                 disabled={readOnly}
                 onValueChange={(value) =>
-                  setEnvironment(value as QuoteEnvironment)
+                  handleEnvironmentChange(value as QuoteEnvironment)
                 }
                 className="flex items-center gap-4 py-2.5"
               >
@@ -537,9 +605,7 @@ export function QuoteBuilder({
           isDirty={isDirty}
           isLoading={isPending}
           onSave={handleSave}
-          onSubmit={() =>
-            handleAction(submitForReview, "Submitted for approval")
-          }
+          onSubmit={handleSubmit}
           onApprove={() => handleAction(approveQuote, "Quote approved")}
           onRequestChanges={() =>
             handleAction(requestChanges, "Sent back to Draft")

@@ -135,6 +135,9 @@ export function ComponentEditor({
               defaultValue={component?.name ?? ""}
               disabled={readOnly}
             />
+            {errors.name && (
+              <span className="text-xs text-destructive">{errors.name}</span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -148,6 +151,9 @@ export function ComponentEditor({
               disabled={readOnly}
               className="font-mono"
             />
+            {errors.sku && (
+              <span className="text-xs text-destructive">{errors.sku}</span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -171,6 +177,11 @@ export function ComponentEditor({
                 ))}
               </SelectContent>
             </Select>
+            {errors.category_id && (
+              <span className="text-xs text-destructive">
+                {errors.category_id}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -183,6 +194,9 @@ export function ComponentEditor({
               defaultValue={component?.vendor ?? ""}
               disabled={readOnly}
             />
+            {errors.vendor && (
+              <span className="text-xs text-destructive">{errors.vendor}</span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -200,6 +214,9 @@ export function ComponentEditor({
             <span className="text-xs text-muted-foreground">
               Changing this appends a price-history row in the same transaction.
             </span>
+            {errors.cost && (
+              <span className="text-xs text-destructive">{errors.cost}</span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -218,6 +235,11 @@ export function ComponentEditor({
               Freshness is measured from this date against the thresholds in
               settings.
             </span>
+            {errors.quoted_date && (
+              <span className="text-xs text-destructive">
+                {errors.quoted_date}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -235,6 +257,11 @@ export function ComponentEditor({
             <span className="text-xs text-muted-foreground">
               Pre-filled on a quote line; a rep can override it per quote.
             </span>
+            {errors.default_labor_hours && (
+              <span className="text-xs text-destructive">
+                {errors.default_labor_hours}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

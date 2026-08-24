@@ -24,7 +24,26 @@ export const quoteSchema = z.object({
   product_id: z.string().uuid(),
   fab_tier_id: z.string().uuid(),
   environment: z.enum(["indoor", "outdoor"]),
-  lines: z.array(quoteLineSchema).default([]),
+  lines: z
+    .array(quoteLineSchema)
+    .default([])
+    .refine(
+      (lines) => {
+        const categoryIds = new Set<string>();
+        for (const line of lines) {
+          if (!line.is_misc && line.category_id) {
+            if (categoryIds.has(line.category_id)) {
+              return false;
+            }
+            categoryIds.add(line.category_id);
+          }
+        }
+        return true;
+      },
+      {
+        message: "A quote may contain at most one non-misc line per category",
+      },
+    ),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;

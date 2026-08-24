@@ -129,7 +129,7 @@ export function ProductEditor({
       est_labor_hours: estLabor ? parseFloat(estLabor) : 0,
       active,
       fab_tiers: localTiers.map((t) => ({
-        id: t.id,
+        id: t.id || undefined,
         qty_tier:
           typeof t.qty_tier === "number"
             ? t.qty_tier
@@ -153,6 +153,7 @@ export function ProductEditor({
         fieldErrors[issue.path.join(".")] = issue.message;
       }
       setErrors(fieldErrors);
+      toast.error("Please fix the validation errors.");
       return;
     }
 
@@ -181,12 +182,6 @@ export function ProductEditor({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {readOnly ? <ReadOnlyNotice what="The product catalog" /> : null}
-
-      {errors.root && (
-        <div className="rounded bg-destructive/10 p-3 text-sm text-destructive font-semibold">
-          {errors.root}
-        </div>
-      )}
 
       <Card className="flex flex-col gap-5">
         <h2 className="text-md font-semibold tracking-tight">Product</h2>
@@ -310,38 +305,52 @@ export function ProductEditor({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {localTiers.map((tier) => (
+              {localTiers.map((tier, index) => (
                 <TableRow key={tier.internalId}>
                   <TableCell numeric className="text-right">
                     <Input
                       variant="editable"
-                      inputMode="numeric"
+                      type="number"
+                      min="1"
+                      required
                       value={tier.qty_tier}
                       onChange={(e) =>
                         updateTier(tier.internalId, "qty_tier", e.target.value)
                       }
                       disabled={readOnly || isPending}
                       aria-label="Quantity tier"
-                      className="h-8 w-full px-2 py-1 text-right text-sm"
+                      className={`h-8 w-full px-2 py-1 text-right text-sm ${
+                        errors[`fab_tiers.${index}.qty_tier`]
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                     />
                   </TableCell>
                   <TableCell numeric className="text-right">
                     <Input
                       variant="editable"
-                      inputMode="decimal"
+                      type="number"
+                      min="0"
+                      step="any"
+                      required
                       value={tier.cost}
                       onChange={(e) =>
                         updateTier(tier.internalId, "cost", e.target.value)
                       }
                       disabled={readOnly || isPending}
                       aria-label="Tier cost"
-                      className="h-8 w-full px-2 py-1 text-right text-sm"
+                      className={`h-8 w-full px-2 py-1 text-right text-sm ${
+                        errors[`fab_tiers.${index}.cost`]
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                     />
                   </TableCell>
                   <TableCell>
                     <Input
                       variant="editable"
                       type="date"
+                      required
                       value={tier.quoted_date}
                       onChange={(e) =>
                         updateTier(
@@ -352,7 +361,11 @@ export function ProductEditor({
                       }
                       disabled={readOnly || isPending}
                       aria-label="Quoted date"
-                      className="h-8 w-full px-2 py-1 text-sm"
+                      className={`h-8 w-full px-2 py-1 text-sm ${
+                        errors[`fab_tiers.${index}.quoted_date`]
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                     />
                   </TableCell>
                   <TableCell>
@@ -363,7 +376,11 @@ export function ProductEditor({
                       }
                       disabled={readOnly || isPending}
                       aria-label="Tier vendor"
-                      className="h-8 w-full px-2 py-1 text-sm"
+                      className={`h-8 w-full px-2 py-1 text-sm ${
+                        errors[`fab_tiers.${index}.vendor`]
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                     />
                   </TableCell>
                   <TableCell>

@@ -41,7 +41,7 @@ export async function saveProduct(input: CreateProductInput) {
       })) || [];
 
   const payload = {
-    p_product_id: validData.id || "",
+    p_product_id: validData.id || null,
     p_name: validData.name,
     p_sku: validData.sku,
     p_description: validData.description || "",

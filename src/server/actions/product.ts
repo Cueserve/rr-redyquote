@@ -41,7 +41,7 @@ export async function saveProduct(input: CreateProductInput) {
       })) || [];
 
   const payload = {
-    p_product_id: validData.id || null,
+    p_product_id: (validData.id || null) as string,
     p_name: validData.name,
     p_sku: validData.sku,
     p_description: validData.description || "",
@@ -58,7 +58,10 @@ export async function saveProduct(input: CreateProductInput) {
     console.error("Failed to save product:", error);
     // Return friendly error if constraint violation occurs
     if (error.message.includes("Cannot remove a quantity tier")) {
-      return { success: false, message: error.message };
+      return {
+        success: false,
+        message: error.message.replace(" (PRD-018)", ""),
+      };
     }
     return {
       success: false,

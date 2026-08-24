@@ -151,6 +151,11 @@ export function QuoteBuilder({
     .sort((a, b) => a.qty_tier - b.qty_tier);
   const selectedTier = tiersForProduct.find((tier) => tier.id === fabTierId);
 
+  const isSavedTier = readOnly && quote?.fab_tier_id === selectedTier?.id;
+  const activeFabCost = isSavedTier
+    ? quote.fab_cost_snapshot
+    : (selectedTier?.cost ?? 0);
+
   const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
 
@@ -418,11 +423,19 @@ export function QuoteBuilder({
                   <SelectValue placeholder="Select a tier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tiersForProduct.map((tier) => (
-                    <SelectItem key={tier.id} value={tier.id}>
-                      {tier.qty_tier}+ units · {formatMoney(tier.cost)} fab
-                    </SelectItem>
-                  ))}
+                  {tiersForProduct.map((tier) => {
+                    const isTierSnapshot =
+                      readOnly && quote?.fab_tier_id === tier.id;
+                    const costToDisplay = isTierSnapshot
+                      ? quote.fab_cost_snapshot
+                      : tier.cost;
+                    return (
+                      <SelectItem key={tier.id} value={tier.id}>
+                        {tier.qty_tier}+ units · {formatMoney(costToDisplay)}{" "}
+                        fab
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {/* The quoted date is visible here, unlike the tables, because
@@ -434,7 +447,7 @@ export function QuoteBuilder({
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   Fab cost{" "}
                   <span className="font-mono tabular-nums">
-                    {formatMoney(selectedTier.cost)}
+                    {formatMoney(activeFabCost)}
                   </span>
                   · quoted {formatDate(selectedTier.quoted_date)}
                   <FreshnessBadge freshness={selectedTier.freshness} />
@@ -507,7 +520,15 @@ export function QuoteBuilder({
       </div>
 
       <div className="flex flex-col gap-6 xl:w-88 xl:shrink-0 xl:sticky xl:top-0 xl:self-start">
-        <SummaryPanel quote={quote} settings={settings} isDirty={isDirty} />
+        <SummaryPanel
+          quote={quote}
+          settings={settings}
+          lines={lines}
+          fabTier={
+            selectedTier ? { ...selectedTier, cost: activeFabCost } : null
+          }
+          product={products.find((p) => p.id === productId) ?? null}
+        />
         <LifecycleBar
           quote={quote}
           settings={settings}

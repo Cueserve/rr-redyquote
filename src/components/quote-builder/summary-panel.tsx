@@ -1,9 +1,8 @@
 "use client";
 
-import { Info, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { EmptyValue } from "@/components/ui/empty-state";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 import type { DbQuote, DbSettings } from "./quote-builder";
 
@@ -64,68 +63,93 @@ function Row({
   );
 }
 
+import { calculateQuote } from "@/lib/pricing";
+import type { DbQuoteLine, DbFabTier, DbProduct } from "./quote-builder";
+
 export function SummaryPanel({
   quote,
   settings,
-  isDirty,
+  lines,
+  fabTier,
+  product,
 }: {
   quote: DbQuote | null;
   settings: DbSettings;
-  isDirty: boolean;
+  lines: DbQuoteLine[];
+  fabTier: DbFabTier | null;
+  product: DbProduct | null;
 }) {
-  // Stored values are shown only while they still describe what is on screen.
-  const stored = quote && !isDirty ? quote : null;
-  // Not "pending calculation" -- these are genuinely absent until the quote is
-  // saved, which is a different statement from line-items' PendingValue.
-  const dash = <EmptyValue label="Not calculated until saved" />;
-  const money = (value: number | undefined) =>
-    value === undefined ? dash : formatMoney(value);
+  // PRD-007: Live recalculation as inputs change
+  // We use calculateQuote on the client side to show immediate totals
+  const pricing = calculateQuote(lines, settings, fabTier, product);
+
+  const money = (value: number | undefined) => formatMoney(value ?? 0);
+
+  // If the quote is locked (not a draft), display the historical values saved
+  // in the database. Otherwise, show the live calculated values.
+  const isLocked = quote?.status !== "draft";
+  const stored = isLocked && quote ? quote : pricing;
+
+  // Since historical quotes only save the dollar amounts (not the percentages),
+  // we mathematically reverse-engineer the percentage from the base cost so the
+  // UI accurately reflects the settings at the time it was saved.
+  const baseCost =
+    (stored.total_hard_cost ?? 0) + (stored.total_labor_cost ?? 0);
+  const displayCushionPct =
+    baseCost > 0
+      ? ((stored.cushion_amount ?? 0) / baseCost) * 100
+      : settings.cushion_percent;
+  const displayCommissionPct =
+    baseCost > 0
+      ? ((stored.commission_amount ?? 0) / baseCost) * 100
+      : settings.commission_percent;
 
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-md font-semibold tracking-tight">Cost Breakdown</h2>
         <p className="max-w-[70ch] text-sm text-muted-foreground">
-          Recomputed server-side at save time from the saved line items and
-          estimating defaults in effect then.
+          {isLocked
+            ? "Showing historically saved values."
+            : "Live recalculation based on current line items and estimating defaults."}
         </p>
       </div>
 
       <div className="flex flex-col divide-y divide-border">
         <div>
-          <Row label="Hard cost" value={money(stored?.total_hard_cost)} />
-          <Row label="Labor cost" value={money(stored?.total_labor_cost)} />
+          <Row label="Hard cost" value={money(stored.total_hard_cost)} />
+          <Row label="Labor cost" value={money(stored.total_labor_cost)} />
         </div>
         <div>
           <Row
-            label={`Cushion (${formatPercent(settings.cushion_percent)})`}
-            value={money(stored?.cushion_amount)}
+            label={`Cushion (${formatPercent(displayCushionPct)})`}
+            value={money(stored.cushion_amount)}
           />
           <Row
-            label={`Commission (${formatPercent(settings.commission_percent)})`}
-            value={money(stored?.commission_amount)}
+            label={`Commission (${formatPercent(displayCommissionPct)})`}
+            value={money(stored.commission_amount)}
           />
-          <Row label="Total cost" value={money(stored?.total_cost)} />
+          <Row label="Total cost" value={money(stored.total_cost)} />
         </div>
         <div>
           <Row
             label="Final price each"
-            value={money(stored?.final_price_each)}
+            value={money(stored.final_price_each)}
             emphasis
           />
-          <Row label="GP dollars" value={money(stored?.gp_dollars)} />
+          <Row label="GP dollars" value={money(stored.gp_dollars)} />
           <Row
             label="GP percent"
-            value={stored ? formatPercent(stored.gp_percent) : dash}
+            value={formatPercent(stored.gp_percent)}
             emphasis
-            tone={stored?.below_margin_floor ? "destructive" : "neutral"}
+            tone={stored.below_margin_floor ? "destructive" : "neutral"}
           />
         </div>
       </div>
 
       {/* PRD-016 — advisory only. Factual phrasing, no exclamation
           (DESIGN-SYSTEM.md §11). */}
-      {stored?.below_margin_floor ? (
+      {stored.below_margin_floor ? (
         <div className="flex items-start gap-2 rounded-sm border border-destructive-border bg-destructive-muted p-3 text-sm text-destructive">
           <TriangleAlert
             aria-hidden="true"
@@ -135,16 +159,6 @@ export function SummaryPanel({
             Margin floor: {formatPercent(settings.margin_floor_percent)} — this
             quote is below it. Advisory only; it can still be saved and
             submitted.
-          </p>
-        </div>
-      ) : null}
-
-      {isDirty ? (
-        <div className="flex items-start gap-2 rounded-sm border border-warning-border bg-warning-muted p-3 text-sm text-warning">
-          <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          <p>
-            Line items have changed. The breakdown updates when the quote is
-            saved, because the server recomputes it from the stored lines.
           </p>
         </div>
       ) : null}

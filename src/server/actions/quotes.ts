@@ -84,7 +84,7 @@ export async function saveQuote(data: QuoteInput) {
   };
 
   const rpcArgs = {
-    p_quote_id: id ?? "",
+    p_quote_id: (id ?? null) as string,
     p_customer_name: customer_name,
     p_product_id: product_id,
     p_fab_tier_id: fab_tier_id,

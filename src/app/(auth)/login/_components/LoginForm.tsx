@@ -1,21 +1,48 @@
 "use client";
 
-import { useActionState } from "react";
+import Image from "next/image";
+import { useTransition } from "react";
 import { signIn } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-const initialState = {
-  message: "",
-};
+import { toast } from "sonner";
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, initialState);
+  const [pending, startTransition] = useTransition();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const result = await signIn(undefined, formData);
+      if (result?.message) {
+        toast.error(result.message);
+      }
+    });
+  };
 
   return (
-    <Card className="w-full max-w-96">
-      <form action={formAction} className="flex flex-col gap-5 p-6">
+    <Card
+      padding="none"
+      className="w-full max-w-[380px] overflow-hidden shadow-xl border-border/60 rounded-2xl bg-card/80 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl"
+    >
+      <div className="flex justify-center bg-gradient-to-b from-muted/50 to-card/50 border-b border-border py-10 relative group">
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <Image
+          src="/redyref-logo.png"
+          alt="REDYREF Logo"
+          width={220}
+          height={73}
+          priority
+          className="h-auto w-auto max-w-[220px] drop-shadow-sm transition-transform duration-500 group-hover:scale-105"
+        />
+      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 px-8 py-10 sm:px-10"
+      >
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className="text-sm font-semibold">
             Email
@@ -42,10 +69,6 @@ export function LoginForm() {
             required
           />
         </div>
-
-        <p aria-live="polite" className="text-sm font-medium text-destructive">
-          {state?.message}
-        </p>
 
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Signing in..." : "Sign in"}

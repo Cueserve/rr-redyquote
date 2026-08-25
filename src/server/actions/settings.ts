@@ -26,7 +26,7 @@ export async function saveSettings(
     };
   }
 
-  // The DB columns are `_multiplier` for markups, but the UI edits them as `_percent`
+  // The DB columns and UI both use percentages for markups
   const dbPayload = {
     labor_rate: values.labor_rate,
     fab_markup_percent: values.fab_markup_percent,

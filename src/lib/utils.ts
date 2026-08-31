@@ -26,7 +26,7 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
+  maximumFractionDigits: 2,
 });
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {

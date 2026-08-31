@@ -48,11 +48,21 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
   // `react-hooks/refs` (eslint-plugin-react-hooks 7), which forbids touching
   // `ref.current` during render. State does the identical guard job without
   // that violation.
+  // What the debounce last handed to the router. This ref lets us distinguish
+  // our own commit landing from an external navigation (like the Back button).
+  const sent = React.useRef<string | null>(null);
+
   const [draft, setDraft] = React.useState(params.q);
   const [committed, setCommitted] = React.useState(params.q);
   if (committed !== params.q) {
     setCommitted(params.q);
-    if (draft !== params.q) setDraft(params.q);
+    // If `sent.current === params.q`, this URL update is our own commit
+    // finally landing. The user may have typed more characters in the meantime
+    // (`draft !== params.q`), and we MUST NOT clobber those live keystrokes.
+    // eslint-disable-next-line react-hooks/refs
+    if (sent.current !== params.q && draft !== params.q) {
+      setDraft(params.q);
+    }
   }
 
   const commit = React.useCallback(
@@ -77,12 +87,6 @@ export function useListParams<K extends string>(config: ListParamsConfig<K>) {
     },
     [],
   );
-
-  // What the debounce last handed to the router. The effect below needs it to
-  // tell our own commit landing apart from an external navigation, and only a
-  // ref will do: this must not itself trigger a render, or it recreates the
-  // race that deleting the eager `setCommitted` just fixed.
-  const sent = React.useRef<string | null>(null);
 
   // A pending debounce outlives an external navigation otherwise: type a term,
   // press Back inside the 250 ms window, and the timer still fires and commits

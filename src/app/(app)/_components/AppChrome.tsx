@@ -93,14 +93,13 @@ export function AppChrome({
             items={NAV}
             activeHref={activeHref}
             logo={
-              <Image
-                src="/redyref-logo.png"
+              <img
+                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`}
+                onError={(e) => {
+                  e.currentTarget.src = "/redyref-logo.png";
+                }}
                 alt="REDYREF"
-                width={1442}
-                height={817}
-                sizes="160px"
-                priority
-                className="h-auto w-40"
+                className="h-auto w-40 object-contain"
               />
             }
           />

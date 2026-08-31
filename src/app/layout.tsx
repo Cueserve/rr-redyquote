@@ -7,6 +7,9 @@ import { fontVariables } from "@/lib/fonts";
 export const metadata: Metadata = {
   title: "RedyQuote",
   description: "Quoting and approval for REDYREF interactive kiosks.",
+  icons: {
+    icon: "/api/branding/favicon",
+  },
 };
 
 export default function RootLayout({

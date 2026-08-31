@@ -30,13 +30,13 @@ export function LoginForm() {
     >
       <div className="flex justify-center bg-gradient-to-b from-muted/50 to-card/50 border-b border-border py-10 relative group">
         <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <Image
-          src="/redyref-logo.png"
+        <img
+          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`}
+          onError={(e) => {
+            e.currentTarget.src = "/redyref-logo.png";
+          }}
           alt="REDYREF Logo"
-          width={220}
-          height={73}
-          priority
-          className="h-auto w-auto max-w-[220px] drop-shadow-sm transition-transform duration-500 group-hover:scale-105"
+          className="h-auto w-auto max-h-[73px] max-w-[220px] drop-shadow-sm transition-transform duration-500 group-hover:scale-105"
         />
       </div>
       <form

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import { signIn } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,9 @@ import { toast } from "sonner";
 
 export function LoginForm() {
   const [pending, startTransition] = useTransition();
+  const [logoSrc, setLogoSrc] = useState(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`,
+  );
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,10 +34,8 @@ export function LoginForm() {
       <div className="flex justify-center bg-gradient-to-b from-muted/50 to-card/50 border-b border-border py-10 relative group">
         <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         <img
-          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`}
-          onError={(e) => {
-            e.currentTarget.src = "/redyref-logo.png";
-          }}
+          src={logoSrc}
+          onError={() => setLogoSrc("/redyref-logo.png")}
           alt="REDYREF Logo"
           className="h-auto w-auto max-h-[73px] max-w-[220px] drop-shadow-sm transition-transform duration-500 group-hover:scale-105"
         />

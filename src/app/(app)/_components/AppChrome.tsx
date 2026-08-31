@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Boxes, FileText, Package, SlidersHorizontal } from "lucide-react";
@@ -59,7 +60,7 @@ function crumbsFor(pathname: string): Crumb[] {
 
   const [section, id] = segments;
   const crumbs: Crumb[] = [
-    { label: "Home", href: "/" },
+    { label: "Home", href: "/quotes" },
     { label: SECTION_LABEL[section] ?? section, href: `/${section}` },
   ];
   if (id) crumbs.push({ label: leafLabel(section, id) });
@@ -68,15 +69,21 @@ function crumbsFor(pathname: string): Crumb[] {
 
 export function AppChrome({
   children,
-  name,
   roleLabel,
+  name,
 }: {
   children: React.ReactNode;
-  name: string;
   roleLabel: string;
+  name: string;
 }) {
   const pathname = usePathname();
-  const activeHref = `/${pathname.split("/").filter(Boolean)[0] ?? ""}`;
+  const activeHref = NAV.find(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
+  )?.href;
+
+  const [logoSrc, setLogoSrc] = useState(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`,
+  );
 
   return (
     <RoleProvider role={roleLabel === "Administrator" ? "admin" : "rep"}>
@@ -94,10 +101,8 @@ export function AppChrome({
             activeHref={activeHref}
             logo={
               <img
-                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/branding/logo.png`}
-                onError={(e) => {
-                  e.currentTarget.src = "/redyref-logo.png";
-                }}
+                src={logoSrc}
+                onError={() => setLogoSrc("/redyref-logo.png")}
                 alt="REDYREF"
                 className="h-auto w-40 object-contain"
               />

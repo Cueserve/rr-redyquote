@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import sharp from "sharp";
+import pngToIco from "png-to-ico";
 import type {
   SettingsValues,
   SettingsValidation,
@@ -52,4 +54,101 @@ export async function saveSettings(
   // Revalidate everything because settings dictate global pricing calculation
   revalidatePath("/", "layout");
   return { ok: true, values, errors: {} };
+}
+
+export async function uploadBrandingAsset(
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "Unauthorized - please log in." };
+  }
+
+  const assetType = formData.get("assetType") as string;
+  const file = formData.get("file") as File | null;
+
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: "No file provided" };
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return { ok: false, error: "File exceeds 2MB limit" };
+  }
+
+  let buffer = Buffer.from(await file.arrayBuffer());
+  let uploadContentType = file.type;
+  let uploadKey = "";
+
+  try {
+    if (assetType === "logo") {
+      if (!["image/png", "image/svg+xml"].includes(file.type)) {
+        return { ok: false, error: "Logo must be PNG or SVG" };
+      }
+      uploadKey = "logo.png";
+    } else if (assetType === "favicon") {
+      if (
+        !["image/png", "image/x-icon", "image/vnd.microsoft.icon"].includes(
+          file.type,
+        )
+      ) {
+        return { ok: false, error: "Favicon must be PNG or ICO" };
+      }
+      uploadKey = "favicon.ico";
+      uploadContentType = "image/x-icon";
+
+      // If it's a PNG, we convert it to ICO.
+      // If it's already an ICO, we might still want to ensure it's multi-res, but
+      // for simplicity, we'll convert PNGs to multi-res ICO using sharp + pngToIco.
+      if (file.type === "image/png") {
+        // Generate 16, 32, 48, 256 sizes
+        const sizes = [16, 32, 48, 256];
+        const resizedBuffers = await Promise.all(
+          sizes.map((size) =>
+            sharp(buffer).resize(size, size, { fit: "contain" }).toBuffer(),
+          ),
+        );
+        // png-to-ico accepts an array of buffers
+        buffer = await pngToIco(resizedBuffers);
+      }
+    } else {
+      return { ok: false, error: "Invalid asset type" };
+    }
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from("branding")
+      .upload(uploadKey, buffer as unknown as Uint8Array, {
+        contentType: uploadContentType,
+        upsert: true,
+        cacheControl: "0", // We'll rely on URL versioning
+      });
+
+    if (uploadError) {
+      return {
+        ok: false,
+        error: "Failed to upload to storage: " + uploadError.message,
+      };
+    }
+
+    // Log the event to settings_history
+    await supabase.from("settings_history").insert({
+      changed_field: `branding_${assetType}`,
+      old_value: null,
+      new_value: uploadKey,
+      actor: user.id,
+    });
+
+    // Revalidate everything
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "An unexpected error occurred";
+    return { ok: false, error: message };
+  }
 }

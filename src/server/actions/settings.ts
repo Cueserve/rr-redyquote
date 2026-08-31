@@ -80,7 +80,7 @@ export async function uploadBrandingAsset(
     return { ok: false, error: "File exceeds 2MB limit" };
   }
 
-  let buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Uint8Array = Buffer.from(await file.arrayBuffer());
   let uploadContentType = file.type;
   let uploadKey = "";
 
@@ -113,7 +113,7 @@ export async function uploadBrandingAsset(
           ),
         );
         // png-to-ico accepts an array of buffers
-        buffer = await pngToIco(resizedBuffers);
+        buffer = await pngToIco(resizedBuffers as unknown as Buffer[]);
       }
     } else {
       return { ok: false, error: "Invalid asset type" };

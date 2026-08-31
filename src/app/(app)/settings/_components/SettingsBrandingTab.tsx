@@ -39,6 +39,13 @@ export function SettingsBrandingTab({ readOnly }: { readOnly: boolean }) {
 
     try {
       await promise;
+      // Force a full page reload so the layout sidebar logo and browser
+      // favicon re-fetch the newly uploaded assets across the entire app.
+      if (window.location.search !== "?tab=branding") {
+        window.location.search = "?tab=branding";
+      } else {
+        window.location.reload();
+      }
     } finally {
       setIsUploading(false);
       if (type === "logo" && logoInputRef.current)

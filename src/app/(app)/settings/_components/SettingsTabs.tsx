@@ -43,9 +43,11 @@ function toSettingsDraft(settings: Settings): SettingsDraft {
 }
 
 export function SettingsTabs({
+  defaultTab = "defaults",
   settings,
   history,
 }: {
+  defaultTab?: string;
   settings: Settings;
   history: SettingsHistoryRow[];
 }) {
@@ -122,7 +124,7 @@ export function SettingsTabs({
   }
 
   return (
-    <Tabs defaultValue="defaults" className="flex flex-col gap-6">
+    <Tabs defaultValue={defaultTab} className="flex flex-col gap-6">
       <TabsList>
         <TabsTrigger value="defaults">Estimating Defaults</TabsTrigger>
         <TabsTrigger value="branding">Branding</TabsTrigger>

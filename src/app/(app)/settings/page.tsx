@@ -3,7 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 
 import { SettingsTabs } from "./_components/SettingsTabs";
 
-export default async function SettingsPage() {
+export default async function SettingsPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
+  const tab =
+    typeof searchParams.tab === "string" ? searchParams.tab : "defaults";
+
   const supabase = await createClient();
 
   const [settingsRes, historyRes] = await Promise.all([
@@ -25,6 +31,7 @@ export default async function SettingsPage() {
       />
 
       <SettingsTabs
+        defaultTab={tab}
         settings={settingsRes.data}
         history={historyRes.data.map((row) => ({
           ...row,

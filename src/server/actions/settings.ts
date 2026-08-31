@@ -136,12 +136,19 @@ export async function uploadBrandingAsset(
     }
 
     // Log the event to settings_history
-    await supabase.from("settings_history").insert({
-      changed_field: `branding_${assetType}`,
-      old_value: null,
-      new_value: uploadKey,
-      actor: user.id,
-    });
+    const { error: historyError } = await supabase
+      .from("settings_history")
+      .insert({
+        changed_field: assetType === "logo" ? "logo_url" : "favicon_url",
+        old_value: "uploaded", // We don't track old url since it's constant
+        new_value: "uploaded",
+        actor: user.id,
+      });
+
+    if (historyError) {
+      console.error("Failed to insert history log:", historyError);
+      // We don't fail the upload just because history failed, but we log it
+    }
 
     // Revalidate everything
     revalidatePath("/", "layout");
